@@ -661,8 +661,7 @@
 
 
     function startProtocol(gameId, opponent) {
-        // HIER würden wir später zur separaten Protokoll-Seite wechseln
-        // Wir verwenden die neue Protokoll-Route, die den Token-Transfer über den app_loader nutzt
+        // Leitet zur Protokollseite weiter
         localStorage.setItem('protocol_game_id', gameId);
         window.location.href = `/protocol/${gameId}`; 
     }
@@ -721,6 +720,7 @@
     loadLeagues();
     loadPositions(); 
     loadTeams();
+    {% endif %}
   </script>
 
 </body>

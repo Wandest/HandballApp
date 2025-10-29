@@ -70,38 +70,38 @@
     .success { color: #38E838; }
     .error { color: #FF6666; }
     
-    /* KORRIGIERT: Formular-Gruppen - flexibel für Input und Icon */
+    /* KORRIGIERT: Formular-Gruppen */
     .form-group {
         display: flex; 
         align-items: center;
-        width: 90%; /* Breite der Input-Felder */
-        margin: 8px auto; /* Zentriert die Gruppe und gibt vertikalen Abstand */
+        width: 90%; 
+        margin: 8px auto; 
         box-sizing: border-box;
     }
     .form-group input {
-        flex-grow: 1; /* Input nimmt den gesamten verfügbaren Platz ein */
-        margin: 0; /* Überschreibt globalen Input-Margin für diesen Kontext */
-        margin-right: 5px; /* Abstand zum Icon */
+        flex-grow: 1; 
+        margin: 0; 
+        margin-right: 5px; 
     }
     .form-group .icon {
         width: 30px;
         text-align: right;
         font-size: 1.2em; 
         font-weight: bold;
-        flex-shrink: 0; /* Icon schrumpft nicht */
+        flex-shrink: 0; 
     }
 
-    /* KORRIGIERT: NEU: CONTAINER für Passwort-Anforderungen */
+    /* Passwort-Validierungsliste direkt unter dem Feld */
     .password-validation-list {
         width: 90%; 
-        margin: 5px auto 15px auto; /* Platzierung: Etwas Abstand zum Feld darüber und unten */
+        margin: 5px auto 15px auto; 
         text-align: left;
-        font-size: 0.8em; /* Kleinere Schrift */
-        line-height: 1.4; /* Kompakter */
+        font-size: 0.8em; 
+        line-height: 1.4; 
         color: lightgray;
     }
     .password-validation-list p {
-        margin: 0 0 3px 0; /* Nur kleiner Abstand nach unten */
+        margin: 0 0 3px 0; 
         display: flex;
         align-items: center;
     }
@@ -188,7 +188,7 @@
         <h1 id="login-header">Login für...</h1>
         <form id="login-form">
             <input type="password" id="password-login" placeholder="Passwort" required>
-            <button type="submit">Login</button>
+            <button type="submit" id="login-button">Login</button>
         </form>
         <div id="message-login" class="message"></div>
         <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
@@ -212,11 +212,11 @@
             </div>
             
             
-<div class="form-group">
+            <div class="form-group">
                 <input type="password" id="password-reg" placeholder="Passwort" required onkeyup="validatePassword()">
                 <span class="icon"></span> </div>
             <div id="password-requirements" class="password-validation-list">
-</div>
+            </div>
             
             <div class="form-group">
                 <input type="password" id="confirm-password-reg" placeholder="Passwort bestätigen" required onkeyup="validatePassword()">
@@ -259,6 +259,7 @@
     const messageRegDiv = document.getElementById('message-reg');
 
     let currentUsername = ''; 
+    let currentPassword = '';
     let isUsernameAvailable = false;
     let isEmailAvailable = false;
     let arePasswordsValid = false; 
@@ -464,7 +465,9 @@
     function validatePassword() {
         if (!passwordField || !confirmPasswordField) return; 
 
-        const password = passwordField.value;
+        currentPassword = passwordField.value; 
+
+        const password = currentPassword;
         let allValid = true;
         let htmlContent = ''; 
 
@@ -498,7 +501,7 @@
         validatePassword();
     }
 
-    // --- 5. REGISTRATION SUBMISSION ---
+    // --- 5. REGISTRATION SUBMISSION (KORRIGIERT: Führt automatischen Login durch) ---
     document.getElementById('register-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         
@@ -533,13 +536,11 @@
             });
 
             if (response.ok) {
-                const data = await response.json(); 
-                const link = data.verification_link ? `<br><a href="${data.verification_link}" target="_blank" style="color:#ffdd44;">Klicken Sie hier zur Verifizierung (TESTLINK)</a>` : '';
+                // Registrierung war erfolgreich. Jetzt automatisch einloggen.
+                messageRegDiv.textContent = '✅ Registrierung erfolgreich. Logge automatisch ein...';
                 
-                messageRegDiv.innerHTML = `✅ Registrierung erfolgreich. E-Mail wurde gesendet! ${link}`;
-                messageRegDiv.className = 'message success';
-                document.getElementById('register-form').reset();
-                validatePassword();
+                // Führe den Login-Prozess aus
+                await loginAndRedirect(currentUsername, password, messageRegDiv);
                 
             } else {
                 const data = await response.json(); 
@@ -566,20 +567,13 @@
         }
     });
 
-    // --- 6. LOGIN LOGIK ---
-    document.getElementById('login-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
-
-        const password = document.getElementById('password-login').value;
-
-        messageLoginDiv.textContent = 'Logge ein...';
-        messageLoginDiv.className = 'message';
-        
+    // --- NEUE HILFSFUNKTION: Login und Weiterleitung ---
+    async function loginAndRedirect(username, password, messageDiv) {
         try {
             const response = await fetch('/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername, password: password }),
+                body: JSON.stringify({ username: username, password: password }),
             });
 
             const data = await response.json();
@@ -587,26 +581,44 @@
             if (response.ok) {
                 localStorage.setItem('access_token', data.access_token);
                 
-                messageLoginDiv.innerHTML = `✅ Login erfolgreich! Token gespeichert.`;
-                messageLoginDiv.className = 'message success';
+                messageDiv.innerHTML = `✅ Login erfolgreich. Weiterleitung...`;
+                messageDiv.className = 'message success';
                 
+                // Weiterleitung zur Dashboard-Ladeseite
                 window.location.href = "/app/dashboard"; 
                 
             } else {
                 const detail = data.detail || 'Unbekannter Fehler';
-                messageLoginDiv.textContent = `❌ Login fehlgeschlagen: ${detail}`;
-                messageLoginDiv.className = 'message error';
+                messageDiv.innerHTML = `⚠️ Registrierung war erfolgreich, aber Auto-Login fehlgeschlagen: ${detail}. Bitte manuell einloggen.`;
+                messageDiv.className = 'message error';
+                // Nach fehlgeschlagenem Auto-Login, zur Login-Seite wechseln
+                showLoginView();
+                document.getElementById('password-login').value = password;
             }
 
         } catch (error) {
-            messageLoginDiv.textContent = '❌ Serverfehler beim Login.';
-            messageLoginDiv.className = 'message error';
+            messageDiv.textContent = '❌ Kritischer Fehler beim Auto-Login.';
+            messageDiv.className = 'message error';
             console.error('Error:', error);
         }
+    }
+
+
+    // --- 6. LOGIN LOGIK (Angepasst, um die neue Funktion zu verwenden) ---
+    document.getElementById('login-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const password = document.getElementById('password-login').value;
+        currentPassword = password; 
+
+        messageLoginDiv.textContent = 'Logge ein...';
+        messageLoginDiv.className = 'message';
+        
+        await loginAndRedirect(currentUsername, currentPassword, messageLoginDiv);
     });
 
 
-    // --- HILFSFUNKTIONEN ---
+    // --- HILFSFUNKTIONEN (Unverändert) ---
     function setUsername(newUsername) {
         usernameRegInput.value = newUsername;
         checkRegistrationUsernameAvailability();
