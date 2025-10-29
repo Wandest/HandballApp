@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(120deg, #1e3c72, #2a5298);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      width: 350px;
+      text-align: center;
+    }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.1em;
+      background: #ffcc00;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #ffdd44;
+    }
+    .message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    .success { color: #38E838; }
+    .error { color: #FF6666; }
+    /* Tooltip Styles */
+    .tooltip-container { position: relative; display: inline-block; cursor: pointer; }
+    .tooltip-text {
+        visibility: hidden; width: 150px; background-color: #333; color: #fff; text-align: center; 
+        border-radius: 6px; padding: 5px 0; position: absolute; z-index: 10; bottom: 125%; left: 50%;
+        margin-left: -75px; opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+    }
+    .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <div id="register-view">
+        <h1>Trainer-Registrierung</h1>
+        <form id="register-form">
+            <input type="text" id="name" placeholder="Name" required>
+            <input type="email" id="email-reg" placeholder="E-Mail" required>
+            
+            <input type="password" id="password-reg" placeholder="Passwort" required onkeyup="validatePassword()">
+            <input type="password" id="confirm-password-reg" placeholder="Passwort bestätigen" required onkeyup="validatePassword()">
+
+            <div id="password-requirements" style="text-align: left; font-size: 0.85em; margin-top: 10px; line-height: 1.6;">
+                <p id="req-length" style="color: lightgray;">☐ Mindestens 8 Zeichen</p>
+                <p id="req-upper" style="color: lightgray;">☐ Mindestens 1 Großbuchstabe</p>
+                <p id="req-lower" style="color: lightgray;">☐ Mindestens 1 Kleinbuchstabe</p>
+                <p id="req-digit" style="color: lightgray;">☐ Mindestens 1 Ziffer</p>
+                <p id="req-special" style="color: lightgray;">
+                    ☐ Mindestens 1 Sonderzeichen 
+                    <span class="tooltip-container">
+                        <sup style="font-size: 0.7em;">(i)</sup>
+                        <span class="tooltip-text">Erlaubt: @ $ ! % * ? &</span>
+                    </span>
+                </p>
+                <p id="req-match" style="color: lightgray;">☐ Passwörter stimmen überein</p>
+            </div>
+
+            <button type="submit" id="register-button" disabled>Jetzt registrieren</button>
+        </form>
+
+        <div id="message-reg" class="message"></div>
+        <p style="margin-top: 20px; font-size: 0.9em;">
+            <a href="#" onclick="showLoginView()" style="color: #ffcc00;">
+                Schon registriert? Zum Login
+            </a>
+        </p>
+    </div>
+
+    <div id="login-view" style="display: none;">
+        <h1>Trainer-Login</h1>
+        <form id="login-form">
+            <input type="email" id="email-login" placeholder="E-Mail" required>
+            <input type="password" id="password-login" placeholder="Passwort" required>
+            <button type="submit">Login</button>
+        </form>
+
+        <div id="message-login" class="message"></div>
+        <p style="margin-top: 20px; font-size: 0.9em;">
+            <a href="#" onclick="showRegisterView()" style="color: #ffcc00;">
+                Noch kein Konto? Jetzt registrieren
+            </a>
+        </p>
+    </div>
+
+  </div>
+
+  <script>
+    // --- View Management ---
+    const registerView = document.getElementById('register-view');
+    const loginView = document.getElementById('login-view');
+    const messageRegDiv = document.getElementById('message-reg');
+    const messageLoginDiv = document.getElementById('message-login');
+
+    // Funktion zum Anzeigen der Login-Ansicht
+    function showLoginView() {
+        registerView.style.display = 'none';
+        loginView.style.display = 'block';
+        messageRegDiv.textContent = '';
+        messageLoginDiv.textContent = '';
+    }
+
+    // Funktion zum Anzeigen der Registrierungs-Ansicht
+    function showRegisterView() {
+        registerView.style.display = 'block';
+        loginView.style.display = 'none';
+        messageRegDiv.textContent = '';
+        messageLoginDiv.textContent = '';
+    }
+    
+    // --- Registrierungs-Validierung ---
+    const requirements = [
+        { id: 'req-length', regex: /.{8,}/, msg: 'Mindestens 8 Zeichen' },
+        { id: 'req-upper', regex: /[A-Z]/, msg: 'Mindestens 1 Großbuchstabe' },
+        { id: 'req-lower', regex: /[a-z]/, msg: 'Mindestens 1 Kleinbuchstabe' },
+        { id: 'req-digit', regex: /\d/, msg: 'Mindestens 1 Ziffer' },
+        { id: 'req-special', regex: /[@$!%*?&]/, msg: 'Mindestens 1 Sonderzeichen' }
+    ];
+
+    const confirmPasswordField = document.getElementById('confirm-password-reg');
+    const passwordField = document.getElementById('password-reg');
+    const registerButton = document.getElementById('register-button');
+    const matchReqElement = document.getElementById('req-match');
+
+    function validatePassword() {
+        const password = passwordField.value;
+        let allValid = true;
+
+        requirements.forEach(req => {
+            const element = document.getElementById(req.id);
+            const isValid = req.regex.test(password);
+            
+            element.style.color = isValid ? '#38E838' : 'lightgray'; 
+            element.innerHTML = isValid ? '&#10003; ' + req.msg : '☐ ' + req.msg; 
+
+            if (!isValid) { allValid = false; }
+        });
+
+        const passwordsMatch = password === confirmPasswordField.value && password.length > 0;
+        matchReqElement.style.color = passwordsMatch ? '#38E838' : 'lightgray';
+        matchReqElement.innerHTML = passwordsMatch ? '&#10003; Passwörter stimmen überein' : '☐ Passwörter stimmen überein';
+        
+        registerButton.disabled = !(allValid && passwordsMatch);
+    }
+    
+    // Initialisierung beim Laden
+    validatePassword();
+    
+    // --- Form Submission: REGISTRIERUNG ---
+    document.getElementById('register-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        if (registerButton.disabled) {
+            messageRegDiv.textContent = '❌ Bitte erfüllen Sie alle Anforderungen.';
+            messageRegDiv.className = 'message error';
+            return;
+        }
+
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email-reg').value;
+        const password = passwordField.value;
+
+        messageRegDiv.textContent = 'Registriere...';
+        messageRegDiv.className = 'message';
+        
+        try {
+            const response = await fetch('http://127.0.0.1:8000/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Link ist im Backend nur für Debugging sichtbar
+                const link = data.verification_link ? `<br><a href="${data.verification_link}" target="_blank" style="color:#ffdd44;">Klicken Sie hier zur Verifizierung (TESTLINK)</a>` : '';
+                
+                messageRegDiv.innerHTML = `✅ Registrierung erfolgreich. E-Mail wurde gesendet! ${link}`;
+                messageRegDiv.className = 'message success';
+                document.getElementById('register-form').reset();
+                validatePassword();
+                
+            } else {
+                const detail = data.detail && Array.isArray(data.detail) ? data.detail[0].msg : (data.detail || 'Unbekannter Fehler');
+                messageRegDiv.textContent = `❌ Fehler: ${detail}`;
+                messageRegDiv.className = 'message error';
+            }
+
+        } catch (error) {
+            messageRegDiv.textContent = '❌ Serverfehler bei der Registrierung.';
+            messageRegDiv.className = 'message error';
+            console.error('Error:', error);
+        }
+    });
+
+    // --- Form Submission: LOGIN ---
+    document.getElementById('login-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('email-login').value;
+        const password = document.getElementById('password-login').value;
+
+        messageLoginDiv.textContent = 'Logge ein...';
+        messageLoginDiv.className = 'message';
+        
+        try {
+            const response = await fetch('http://127.0.0.1:8000/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Login erfolgreich! Speichere den Token (z.B. in localStorage)
+                localStorage.setItem('access_token', data.access_token);
+                
+                messageLoginDiv.innerHTML = `✅ Login erfolgreich! Token gespeichert.`;
+                messageLoginDiv.className = 'message success';
+                
+                // Hier würden wir zum Haupt-Dashboard weiterleiten:
+                alert("Weiterleitung zum Haupt-Dashboard!");
+                
+            } else {
+                const detail = data.detail || 'Unbekannter Fehler';
+                messageLoginDiv.textContent = `❌ Login fehlgeschlagen: ${detail}`;
+                messageLoginDiv.className = 'message error';
+            }
+
+        } catch (error) {
+            messageLoginDiv.textContent = '❌ Serverfehler beim Login.';
+            messageLoginDiv.className = 'message error';
+            console.error('Error:', error);
+        }
+    });
+  </script>
+
+</body>
+</html>
