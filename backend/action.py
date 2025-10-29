@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+import re
 
 from backend.database import SessionLocal, Trainer, Team, Player, Game, Action, CustomAction
 from backend.auth import get_current_trainer 
@@ -10,7 +11,7 @@ from backend.auth import get_current_trainer
 router = APIRouter()
 
 # -----------------------------
-# Pydantic Modelle für Aktionen
+# Pydantic Modelle für Aktionen (Unverändert)
 # -----------------------------
 class ActionCreate(BaseModel):
     action_type: str 
@@ -31,22 +32,16 @@ class ActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Statistik-Modell
+# Statistik-Modell (Unverändert)
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
     player_number: Optional[int]
-    
-    # Standard-Aktionen
     goals: int
     misses: int
     tech_errors: int
-    
-    # 7m-Aktionen
     seven_meter_goals: int
     seven_meter_misses: int
-    
-    # Individuelle Aktionen (Dict)
     custom_counts: Dict[str, int]
 
 # Datenbanksession
@@ -58,7 +53,39 @@ def get_db():
         db.close()
 
 # -----------------------------
-# Endpunkte
+# Standard-Aktionen erstellen (FINAL KORRIGIERT: Keine 7m-Aktionen hier mehr!)
+# -----------------------------
+def create_default_actions(trainer_id: int, db: Session):
+    """
+    Diese Funktion stellt nur sicher, dass die CUSTOM ACTION Tabelle existiert.
+    Die 7m-Aktionen werden jetzt NICHT über die Datenbank erstellt, da sie hartcodiert sind.
+    """
+    
+    # Optional: Timeout, falls der Trainer es nicht löschen können soll
+    default_actions_to_create = [
+        {"name": "Timeout", "key": "TIMEOUT", "is_goalkeeper_action": False},
+    ]
+
+    for action_data in default_actions_to_create:
+        existing = db.query(CustomAction).filter(
+            CustomAction.trainer_id == trainer_id,
+            CustomAction.key == action_data['key']
+        ).first()
+
+        if not existing:
+            new_action = CustomAction(
+                trainer_id=trainer_id,
+                name=action_data['name'],
+                key=action_data['key'],
+                is_goalkeeper_action=action_data['is_goalkeeper_action']
+            )
+            db.add(new_action)
+    
+    db.commit()
+
+
+# -----------------------------
+# Endpunkte (Unverändert)
 # -----------------------------
 
 # AKTION HINZUFÜGEN
@@ -91,6 +118,10 @@ def log_action(
             action_key = 'Goal_7m'
         elif action_data.action_type == 'Miss':
             action_key = 'Miss_7m'
+            
+    # HINWEIS: SEVEN_METER_SAVE und SEVEN_METER_CAUSED müssen direkt als Action Type übergeben werden.
+    # Da dies bereits im Frontend-Code geschieht, wird das Backend es korrekt speichern.
+
 
     new_action = Action(
         action_type=action_key,
@@ -104,7 +135,7 @@ def log_action(
 
     return new_action
 
-# ALLE AKTIONEN EINES SPIELS LADEN
+# ALLE AKTIONEN EINES SPIELS LADEN (Unverändert)
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
     game_id: int,
@@ -148,14 +179,13 @@ def list_actions(
         
     return response_list
 
-# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (Korrigierte und robuste Abfrage)
+# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (Unverändert)
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # 1. Zugriffsprüfung
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
@@ -166,10 +196,8 @@ def get_game_stats(
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
         
-    # 2. Individuelle Aktionen des Trainers laden
     custom_actions = db.query(CustomAction).filter(CustomAction.trainer_id == current_trainer.id).all()
     
-    # 3. Aggregierte Abfrage (Zählt Standard- und 7m-Aktionen)
     stats_query = db.query(
         Player.id,
         Player.name,
@@ -186,7 +214,6 @@ def get_game_stats(
 
     stats_results = stats_query.all()
     
-    # 4. Individuelle Aktionen zählen (durch separate Abfrage im Speicher)
     all_actions_for_game = db.query(Action).filter(Action.game_id == game_id, Action.player_id.isnot(None)).all()
     
     final_stats = []
@@ -194,7 +221,6 @@ def get_game_stats(
     for player_id, name, number, goals, misses, tech_errors, sm_goals, sm_misses in stats_results:
         custom_counts = {}
         for ca in custom_actions:
-            # Zähle die Custom Actions für den aktuellen Spieler
             count = sum(1 for action in all_actions_for_game if action.player_id == player_id and action.action_type == ca.key)
             if count > 0:
                 custom_counts[ca.key] = count
