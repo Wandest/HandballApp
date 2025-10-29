@@ -177,8 +177,8 @@
     <div id="username-check-view" style="display: block;">
         <h1>Trainer-Login</h1>
         <form id="username-check-form">
-            <input type="text" id="username-input" placeholder="Benutzername" required>
-            <p class="username-info">(Nur Buchstaben und Zahlen erlaubt)</p>
+            <input type="text" id="username-input" placeholder="Benutzername oder E-Mail" required>
+            <p class="username-info">(Benutzername: Nur Buchstaben und Zahlen)</p>
             <button type="submit" id="check-button">Weiter</button>
         </form>
         <div id="message-check" class="message"></div>
@@ -192,7 +192,7 @@
         </form>
         <div id="message-login" class="message"></div>
         <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
-            Benutzername ändern
+            Identifikation ändern
         </a>
     </div>
 
@@ -233,7 +233,7 @@
 
         <div id="message-reg" class="message"></div>
         <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
-            Abbrechen und Benutzername ändern
+            Abbrechen und Identifikation ändern
         </a>
     </div>
 
@@ -258,7 +258,7 @@
     const messageLoginDiv = document.getElementById('message-login');
     const messageRegDiv = document.getElementById('message-reg');
 
-    let currentUsername = ''; 
+    let currentIdentifier = ''; 
     let currentPassword = '';
     let isUsernameAvailable = false;
     let isEmailAvailable = false;
@@ -283,16 +283,16 @@
     
     function showLoginView() {
         showView('login-view');
-        document.getElementById('login-header').textContent = `Login für ${currentUsername}`;
+        document.getElementById('login-header').textContent = `Login für ${currentIdentifier}`;
     }
 
     function showRegisterView() {
         const checkedUsername = document.getElementById('username-input').value;
         usernameRegInput.value = checkedUsername;
-        currentUsername = checkedUsername; 
+        currentIdentifier = checkedUsername; 
 
         showView('register-view');
-        document.getElementById('register-header').textContent = `Registrieren für ${currentUsername}`;
+        document.getElementById('register-header').textContent = `Registrieren für ${currentIdentifier}`;
         
         checkRegistrationUsernameAvailability(true);
         checkEmailAvailability(true);
@@ -311,27 +311,29 @@
     }
 
 
-    // --- 1. USERNAME CHECK FORM ---
+    // --- 1. USERNAME CHECK FORM (Hybrider Check) ---
     document.getElementById('username-check-form').addEventListener('submit', async function(event) {
         event.preventDefault();
 
-        currentUsername = usernameInput.value;
+        currentIdentifier = usernameInput.value;
         
         const usernameRegex = /^[a-zA-Z0-9]+$/;
-        if (!usernameRegex.test(currentUsername)) {
-            messageCheckDiv.textContent = '❌ Der Benutzername darf nur Buchstaben und Zahlen enthalten.';
-            messageCheckDiv.className = 'message error';
-            return; 
+        
+        const isEmail = currentIdentifier.includes('@');
+        if (!isEmail && !usernameRegex.test(currentIdentifier)) {
+             messageCheckDiv.textContent = '❌ Der Benutzername darf nur Buchstaben und Zahlen enthalten.';
+             messageCheckDiv.className = 'message error';
+             return; 
         }
         
-        messageCheckDiv.textContent = 'Prüfe Benutzername...';
+        messageCheckDiv.textContent = 'Prüfe Identifikation...';
         messageCheckDiv.className = 'message';
 
         try {
             const response = await fetch('/auth/check-username', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername }),
+                body: JSON.stringify({ username: currentIdentifier }),
             });
 
             const data = await response.json();
@@ -341,11 +343,14 @@
                 showLoginView();
             } else {
                 messageCheckDiv.textContent = '';
+                
+                usernameRegInput.value = currentIdentifier;
+                
                 showRegisterView();
             }
 
         } catch (error) {
-            messageCheckDiv.textContent = '❌ Serverfehler beim Prüfen des Benutzernamens.';
+            messageCheckDiv.textContent = '❌ Serverfehler beim Prüfen der Identifikation.';
             messageCheckDiv.className = 'message error';
             console.error('Error:', error);
         }
@@ -401,7 +406,7 @@
             return;
         }
 
-        if (!initialLoad && username === currentUsername) {
+        if (!initialLoad && username === currentIdentifier) {
             isUsernameAvailable = true;
             usernameIcon.innerHTML = '<span style="color: #38E838;">&#10003;</span>';
             usernameRegStatusDiv.innerHTML = '';
@@ -411,7 +416,7 @@
         
         usernameIcon.innerHTML = '<span style="color: lightgray;">...</span>';
         usernameRegStatusDiv.innerHTML = '<span style="color: lightgray;">Prüfe...</span>';
-        currentUsername = username;
+        currentIdentifier = username;
 
         try {
             const response = await fetch('/auth/check-availability', {
@@ -465,9 +470,7 @@
     function validatePassword() {
         if (!passwordField || !confirmPasswordField) return; 
 
-        currentPassword = passwordField.value; 
-
-        const password = currentPassword;
+        const password = passwordField.value;
         let allValid = true;
         let htmlContent = ''; 
 
@@ -501,7 +504,7 @@
         validatePassword();
     }
 
-    // --- 5. REGISTRATION SUBMISSION (KORRIGIERT: Führt automatischen Login durch) ---
+    // --- 5. REGISTRATION SUBMISSION (Führt automatischen Login durch) ---
     document.getElementById('register-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         
@@ -529,7 +532,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    username: currentUsername, 
+                    username: currentIdentifier, 
                     email: email, 
                     password: password 
                 }),
@@ -539,12 +542,12 @@
                 // Registrierung war erfolgreich. Jetzt automatisch einloggen.
                 messageRegDiv.textContent = '✅ Registrierung erfolgreich. Logge automatisch ein...';
                 
-                // Führe den Login-Prozess aus
-                await loginAndRedirect(currentUsername, password, messageRegDiv);
+                await loginAndRedirect(currentIdentifier, password, messageRegDiv);
                 
             } else {
                 const data = await response.json(); 
                 let detail = data.detail || 'Unbekannter Fehler';
+                // ... (Fehlerbehandlung) ...
                 if (data.detail && typeof data.detail === 'string') {
                     const match = data.detail.match(/'value_error', msg='(.*?)'/);
                     if (match && match[1]) {
@@ -568,12 +571,12 @@
     });
 
     // --- NEUE HILFSFUNKTION: Login und Weiterleitung ---
-    async function loginAndRedirect(username, password, messageDiv) {
+    async function loginAndRedirect(identifier, password, messageDiv) {
         try {
             const response = await fetch('/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username, password: password }),
+                body: JSON.stringify({ identifier: identifier, password: password }), // Sendet 'identifier'
             });
 
             const data = await response.json();
@@ -584,14 +587,13 @@
                 messageDiv.innerHTML = `✅ Login erfolgreich. Weiterleitung...`;
                 messageDiv.className = 'message success';
                 
-                // Weiterleitung zur Dashboard-Ladeseite
                 window.location.href = "/app/dashboard"; 
                 
             } else {
                 const detail = data.detail || 'Unbekannter Fehler';
                 messageDiv.innerHTML = `⚠️ Registrierung war erfolgreich, aber Auto-Login fehlgeschlagen: ${detail}. Bitte manuell einloggen.`;
                 messageDiv.className = 'message error';
-                // Nach fehlgeschlagenem Auto-Login, zur Login-Seite wechseln
+                
                 showLoginView();
                 document.getElementById('password-login').value = password;
             }
@@ -609,12 +611,11 @@
         event.preventDefault();
 
         const password = document.getElementById('password-login').value;
-        currentPassword = password; 
-
+        
         messageLoginDiv.textContent = 'Logge ein...';
         messageLoginDiv.className = 'message';
         
-        await loginAndRedirect(currentUsername, currentPassword, messageLoginDiv);
+        await loginAndRedirect(currentIdentifier, password, messageLoginDiv);
     });
 
 

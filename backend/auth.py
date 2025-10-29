@@ -5,12 +5,11 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic_core import PydanticCustomError
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import re
 import uuid
 from datetime import datetime, timedelta
 
-# Expliziter Import von 'database'
 from backend.database import SessionLocal, Trainer 
 
 router = APIRouter()
@@ -21,7 +20,6 @@ SECRET_KEY = "supergeheimeschluessel123"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
-# OAuth2PasswordBearer definiert das Schema für Token in Headern
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") 
 
 # Datenbanksession
@@ -73,7 +71,7 @@ class TrainerCreate(BaseModel):
         return self
 
 class TrainerLogin(BaseModel):
-    username: str
+    identifier: str 
     password: str
 
 class UsernameCheck(BaseModel):
@@ -120,10 +118,6 @@ def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depen
     
     if trainer is None:
         raise CREDENTIALS_EXCEPTION
-    
-    # NEU: Entferne die Verifizierungsprüfung hier. Sie wird im Dashboard selbst durchgeführt.
-    # if not trainer.is_verified:
-    #     raise HTTPException(...)
 
     return trainer 
 
@@ -133,12 +127,25 @@ def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depen
 
 @router.post("/check-username")
 def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
-    trainer = db.query(Trainer).filter(Trainer.username == user_check.username).first()
+    identifier = user_check.username
     
+    # Vereinfachte Prüfung, ob es ein E-Mail-Format ist
+    is_email = re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', identifier)
+    
+    # 1. Suche nach Username
+    trainer = db.query(Trainer).filter(Trainer.username == identifier).first()
+    
+    if not trainer and is_email:
+        # 2. Wenn Username fehlschlägt UND es eine Email ist, suche nach Email
+        trainer = db.query(Trainer).filter(Trainer.email == identifier).first()
+        
     if trainer:
+        # Benutzer gefunden (entweder per Username oder Email) -> Weiter zum Login
         return {"exists": True, "message": "Benutzer gefunden. Bitte Passwort eingeben."}
     else:
+        # Benutzer nicht gefunden -> Weiter zur Registrierung
         return {"exists": False, "message": "Benutzer nicht gefunden. Bitte registrieren Sie sich."}
+
 
 @router.post("/check-email-availability", response_model=AvailabilityResponse)
 def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_db)):
@@ -222,15 +229,27 @@ def verify_trainer(token: str, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login_trainer(credentials: TrainerLogin, db: Session = Depends(get_db)):
-    trainer = db.query(Trainer).filter(Trainer.username == credentials.username).first()
+    identifier = credentials.identifier
     
+    is_email = re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', identifier)
+    
+    # 1. Suche nach Username
+    trainer = db.query(Trainer).filter(Trainer.username == identifier).first()
+    
+    if not trainer and is_email:
+        # 2. Wenn Username fehlschlägt UND es eine Email ist, suche nach Email
+        trainer = db.query(Trainer).filter(Trainer.email == identifier).first()
+    
+    # 3. Wenn immer noch kein Trainer gefunden ODER Passwort falsch
     if not trainer or not verify_password(credentials.password, trainer.password):
-        raise HTTPException(status_code=401, detail="Falscher Benutzername oder Passwort")
-
-    # NEU: Die Verifizierungsprüfung wird hier entfernt!
+        raise HTTPException(status_code=401, detail="Falsche Anmeldedaten")
+        
+    # KORRIGIERT: Verifizierungsprüfung entfernt, um Zugriff zu erlauben
     # if not trainer.is_verified:
     #     raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
 
     token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    # 4. Token muss mit dem tatsächlichen USERNAME erstellt werden
     access_token = create_access_token(data={"username": trainer.username}, expires_delta=token_expires) 
     return {"access_token": access_token, "token_type": "bearer"}
