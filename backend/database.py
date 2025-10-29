@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 # ----------------------------
 # Datenbank-Verbindung & Basis
 # ----------------------------
-DATABASE_URL = "sqlite:///handball.db" 
+DATABASE_URL = "sqlite:///handball.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -35,6 +35,7 @@ class Team(Base):
 
     trainer = relationship("Trainer", back_populates="teams")
     players = relationship("Player", back_populates="team")
+    games = relationship("Game", back_populates="team") 
 
 class Player(Base):
     __tablename__ = "players"
@@ -46,6 +47,16 @@ class Player(Base):
     team_id = Column(Integer, ForeignKey("teams.id"))
 
     team = relationship("Team", back_populates="players")
+
+class Game(Base):
+    __tablename__ = "games"
+
+    id = Column(Integer, primary_key=True, index=True)
+    opponent = Column(String, nullable=False)
+    date = Column(String) # Einfache Speicherung als String/Text
+    team_id = Column(Integer, ForeignKey("teams.id"))
+
+    team = relationship("Team", back_populates="games")
 
 # ----------------------------
 # Datenbank erstellen (falls noch nicht vorhanden)

@@ -6,13 +6,19 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-# KORREKTUR: Explizite Imports (statt relativer)
 from backend.auth import router as auth_router, get_current_trainer
+from backend.team import router as team_router 
+from backend.player import router as player_router
+from backend.game import router as game_router # Wichtig: Game-Router importieren
 from backend.database import init_db, Trainer
 
 app = FastAPI(title="HandballApp Backend")
 
+# Router einbinden
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(team_router, prefix="/teams", tags=["Teams"])
+app.include_router(player_router, prefix="/players", tags=["Players"])
+app.include_router(game_router, prefix="/games", tags=["Games"]) # Wichtig: Game-Router einbinden
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -28,7 +34,7 @@ def home(request: Request):
         {"request": request, "title": "Handball Auswertung"}
     )
 
-# NEU: Diese Route wird vom Frontend aufgerufen, um das Dashboard mit Token-Handling zu laden
+# Diese Route wird vom Frontend aufgerufen, um das Dashboard mit Token-Handling zu laden
 @app.get("/app/dashboard", response_class=HTMLResponse)
 def app_dashboard(request: Request):
     return templates.TemplateResponse(
@@ -45,7 +51,7 @@ def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_t
     )
 
 # ------------------------------------
-# KORRIGIERTE SERVER-START-LOGIK
+# SERVER-START-LOGIK
 # ------------------------------------
 def start_server(application):
     uvicorn.run(application, host="127.0.0.1", port=8000, reload=False)
