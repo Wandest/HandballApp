@@ -5,12 +5,13 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic_core import PydanticCustomError
+from typing import List, Optional
 import re
 import uuid
 from datetime import datetime, timedelta
 
-# KORREKTUR: Importiere direkt aus der Datenbank-Datei (funktioniert meist besser, wenn main.py die App startet)
-from .database import SessionLocal, Trainer 
+# Expliziter Import von 'database'
+from backend.database import SessionLocal, Trainer 
 
 router = APIRouter()
 # Passwort-Hashing
@@ -42,21 +43,26 @@ CREDENTIALS_EXCEPTION = HTTPException(
 # Pydantic Modelle (Schemas)
 # -----------------------------
 class TrainerCreate(BaseModel):
-    name: str
+    username: str
     email: EmailStr
     password: str = Field(min_length=8)
 
     @model_validator(mode='after')
-    def validate_password_strength(self):
-        password = self.password
+    def validate_username_and_password_strength(self):
         
+        # Validierung 1: Benutzernamen auf Sonderzeichen prüfen
+        username = self.username
+        if not re.match(r'^[a-zA-Z0-9]+$', username):
+             raise ValueError("Der Benutzername darf nur Buchstaben und Zahlen enthalten (keine Leerzeichen oder Sonderzeichen).")
+             
+        # Validierung 2: Bestehende Passwort-Validierung (unverändert)
+        password = self.password
         rules = [
             (r'[A-Z]', 'Mindestens 1 Großbuchstabe'),
             (r'[a-z]', 'Mindestens 1 Kleinbuchstabe'),
             (r'\d', 'Mindestens 1 Ziffer'),
             (r'[@$!%*?&]', 'Mindestens 1 Sonderzeichen (@$!%*?&)'),
         ]
-
         failed_rules = []
         for regex, error_msg in rules:
             if not re.search(regex, password):
@@ -69,8 +75,19 @@ class TrainerCreate(BaseModel):
         return self
 
 class TrainerLogin(BaseModel):
-    email: EmailStr
+    username: str
     password: str
+
+class UsernameCheck(BaseModel):
+    username: str
+    
+# NEU: Modell für die E-Mail-Prüfung
+class EmailCheck(BaseModel):
+    email: EmailStr
+
+class AvailabilityResponse(BaseModel):
+    available: bool
+    alternatives: List[str]
 
 class Token(BaseModel):
     access_token: str
@@ -89,19 +106,20 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
+    to_encode.update({"sub": data["username"]})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # Abhängigkeitsfunktion zum Überprüfen des Tokens
 def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        username: str = payload.get("sub") 
+        if username is None:
             raise CREDENTIALS_EXCEPTION
     except JWTError:
         raise CREDENTIALS_EXCEPTION
     
-    trainer = db.query(Trainer).filter(Trainer.email == email).first()
+    trainer = db.query(Trainer).filter(Trainer.username == username).first()
     
     if trainer is None:
         raise CREDENTIALS_EXCEPTION
@@ -117,17 +135,72 @@ def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depen
 # -----------------------------
 # Endpunkte
 # -----------------------------
+
+@router.post("/check-username")
+def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
+    trainer = db.query(Trainer).filter(Trainer.username == user_check.username).first()
+    
+    if trainer:
+        return {"exists": True, "message": "Benutzer gefunden. Bitte Passwort eingeben."}
+    else:
+        return {"exists": False, "message": "Benutzer nicht gefunden. Bitte registrieren Sie sich."}
+
+# NEU: ENDPUNKT 2.1: Prüft die Verfügbarkeit der E-Mail-Adresse
+@router.post("/check-email-availability", response_model=AvailabilityResponse)
+def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_db)):
+    # Der Pydantic-Typ EmailStr validiert bereits das Format
+    trainer = db.query(Trainer).filter(Trainer.email == email_check.email).first()
+    
+    if trainer:
+        return AvailabilityResponse(available=False, alternatives=[])
+    else:
+        return AvailabilityResponse(available=True, alternatives=[])
+
+
+# ENDPUNKT 2.2: Prüft Verfügbarkeit des Usernames auf Registrierungsseite
+@router.post("/check-availability", response_model=AvailabilityResponse)
+def check_availability(user_check: UsernameCheck, db: Session = Depends(get_db)):
+    username = user_check.username
+    alternatives = []
+
+    # 1. Sofortige Validierung der Zeichen
+    if not re.match(r'^[a-zA-Z0-9]+$', username):
+        return AvailabilityResponse(available=False, alternatives=[])
+
+    # 2. Datenbankprüfung
+    trainer = db.query(Trainer).filter(Trainer.username == username).first()
+    
+    if not trainer:
+        return AvailabilityResponse(available=True, alternatives=[])
+    else:
+        # Benutzername ist nicht verfügbar, schlage Alternativen vor
+        base_username = username
+        match = re.match(r'(.+?)(\d+)$', username)
+        if match:
+            base_username = match.group(1)
+
+        for i in range(1, 4):
+            alternative = f"{base_username}{i}"
+            if not db.query(Trainer).filter(Trainer.username == alternative).first():
+                alternatives.append(alternative)
+        
+        return AvailabilityResponse(available=False, alternatives=alternatives)
+
+
 @router.post("/register")
 def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
-    existing = db.query(Trainer).filter(Trainer.email == trainer.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="E-Mail bereits registriert")
+    # Prüfe, ob Username oder E-Mail bereits existieren (diese Prüfungen sind IMMER nötig)
+    if db.query(Trainer).filter(Trainer.username == trainer.username).first():
+        raise HTTPException(status_code=400, detail="Dieser Benutzername ist bereits vergeben.")
+    if db.query(Trainer).filter(Trainer.email == trainer.email).first():
+        raise HTTPException(status_code=400, detail="Diese E-Mail-Adresse ist bereits registriert.")
+
 
     hashed_pw = hash_password(trainer.password)
     verification_token = str(uuid.uuid4()) 
 
     new_trainer = Trainer(
-        name=trainer.name, 
+        username=trainer.username,
         email=trainer.email, 
         password=hashed_pw,
         is_verified=False,
@@ -135,8 +208,7 @@ def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
     )
     db.add(new_trainer)
     db.commit()
-    db.refresh(new_trainer)
-    
+
     verification_link = f"http://127.0.0.1:8000/auth/verify?token={verification_token}"
 
     return {
@@ -163,14 +235,14 @@ def verify_trainer(token: str, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login_trainer(credentials: TrainerLogin, db: Session = Depends(get_db)):
-    trainer = db.query(Trainer).filter(Trainer.email == credentials.email).first()
+    trainer = db.query(Trainer).filter(Trainer.username == credentials.username).first()
     
     if not trainer or not verify_password(credentials.password, trainer.password):
-        raise HTTPException(status_code=401, detail="Falsche E-Mail oder Passwort")
+        raise HTTPException(status_code=401, detail="Falscher Benutzername oder Passwort")
 
     if not trainer.is_verified:
         raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
 
     token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": trainer.email}, expires_delta=token_expires)
+    access_token = create_access_token(data={"username": trainer.username}, expires_delta=token_expires) 
     return {"access_token": access_token, "token_type": "bearer"}

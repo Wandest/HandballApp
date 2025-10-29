@@ -16,132 +16,440 @@
     }
     .container {
       background: rgba(255, 255, 255, 0.1);
-      padding: 30px;
+      padding: 30px; 
       border-radius: 10px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-      width: 350px;
+      width: 350px; 
       text-align: center;
+      box-sizing: border-box;
     }
-    input[type="text"], input[type="email"], input[type="password"] {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
+    h1 {
+        font-size: 1.8em; 
+        margin-bottom: 20px; 
+    }
+    input[type="text"], 
+    input[type="email"], 
+    input[type="password"] {
+      width: 90%; 
+      padding: 10px; 
+      margin: 8px 0; 
       border: none;
       border-radius: 5px;
       background: rgba(255, 255, 255, 0.9);
       color: #333;
+      box-sizing: border-box; 
+      font-size: 1em; 
     }
     button {
       width: 100%;
-      padding: 10px;
-      margin-top: 20px;
+      padding: 10px; 
+      margin-top: 20px; 
       border: none;
       border-radius: 5px;
-      font-size: 1.1em;
-      background: #ffcc00;
+      font-size: 1.1em; 
+      background: #ffcc00; 
+      color: #333; 
       cursor: pointer;
       transition: 0.2s;
+      font-weight: normal; 
     }
     button:hover {
-      background: #ffdd44;
+      background: #ffdd44; 
+    }
+    button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #9e9e9e; 
+        color: #fff; 
     }
     .message {
-      margin-top: 15px;
+      margin-top: 15px; 
       font-weight: bold;
+      font-size: 1em; 
     }
     .success { color: #38E838; }
     .error { color: #FF6666; }
-    /* Tooltip Styles */
-    .tooltip-container { position: relative; display: inline-block; cursor: pointer; }
-    .tooltip-text {
-        visibility: hidden; width: 150px; background-color: #333; color: #fff; text-align: center; 
-        border-radius: 6px; padding: 5px 0; position: absolute; z-index: 10; bottom: 125%; left: 50%;
-        margin-left: -75px; opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+    
+    /* KORRIGIERT: Formular-Gruppen - flexibel für Input und Icon */
+    .form-group {
+        display: flex; 
+        align-items: center;
+        width: 90%; /* Breite der Input-Felder */
+        margin: 8px auto; /* Zentriert die Gruppe und gibt vertikalen Abstand */
+        box-sizing: border-box;
     }
-    .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+    .form-group input {
+        flex-grow: 1; /* Input nimmt den gesamten verfügbaren Platz ein */
+        margin: 0; /* Überschreibt globalen Input-Margin für diesen Kontext */
+        margin-right: 5px; /* Abstand zum Icon */
+    }
+    .form-group .icon {
+        width: 30px;
+        text-align: right;
+        font-size: 1.2em; 
+        font-weight: bold;
+        flex-shrink: 0; /* Icon schrumpft nicht */
+    }
+
+    /* KORRIGIERT: NEU: CONTAINER für Passwort-Anforderungen */
+    .password-validation-list {
+        width: 90%; 
+        margin: 5px auto 15px auto; /* Platzierung: Etwas Abstand zum Feld darüber und unten */
+        text-align: left;
+        font-size: 0.8em; /* Kleinere Schrift */
+        line-height: 1.4; /* Kompakter */
+        color: lightgray;
+    }
+    .password-validation-list p {
+        margin: 0 0 3px 0; /* Nur kleiner Abstand nach unten */
+        display: flex;
+        align-items: center;
+    }
+    .password-validation-list .status-icon {
+        font-size: 1.1em;
+        margin-right: 5px;
+        width: 15px;
+        text-align: center;
+    }
+    
+    .username-info {
+        font-size: 0.8em; 
+        margin-top: -5px; 
+        margin-bottom: 5px; 
+        text-align: left;
+        padding-left: 5%; 
+        color: lightgray;
+    }
+    .alternative-link {
+        color: #ffcc00;
+        cursor: pointer;
+        text-decoration: underline;
+        margin-left: 5px;
+    }
+
+    .terms-checkbox-group {
+        display: flex;
+        align-items: flex-start;
+        margin-top: 20px; 
+        font-size: 0.9em; 
+        line-height: 1.4; 
+        text-align: left;
+        color: lightgray;
+        width: 90%; 
+        margin-left: auto; 
+        margin-right: auto;
+    }
+    .terms-checkbox-group input[type="checkbox"] {
+        margin-top: 2px; 
+        margin-right: 8px; 
+        width: 16px; 
+        height: 16px;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+    .terms-checkbox-group a {
+        color: #ffcc00; 
+        text-decoration: underline; 
+        font-weight: normal;
+    }
+    .terms-checkbox-group a:hover {
+        text-decoration: none; 
+    }
+
+    .link-below-button {
+        color: #ffcc00;
+        cursor: pointer;
+        text-decoration: underline;
+        margin-top: 20px;
+        display: block;
+        font-size: 0.9em;
+    }
+    .link-below-button:hover {
+        text-decoration: none;
+    }
+
   </style>
 </head>
 <body>
 
   <div class="container">
     
-    <div id="register-view" style="display: none;">
-        <h1>Trainer-Registrierung</h1>
-        <form id="register-form">
-            <input type="text" id="name" placeholder="Name" required>
-            <input type="email" id="email-reg" placeholder="E-Mail" required>
-            
-            <input type="password" id="password-reg" placeholder="Passwort" required onkeyup="validatePassword()">
-            <input type="password" id="confirm-password-reg" placeholder="Passwort bestätigen" required onkeyup="validatePassword()">
+    <div id="username-check-view" style="display: block;">
+        <h1>Trainer-Login</h1>
+        <form id="username-check-form">
+            <input type="text" id="username-input" placeholder="Benutzername" required>
+            <p class="username-info">(Nur Buchstaben und Zahlen erlaubt)</p>
+            <button type="submit" id="check-button">Weiter</button>
+        </form>
+        <div id="message-check" class="message"></div>
+    </div>
+    
+    <div id="login-view" style="display: none;">
+        <h1 id="login-header">Login für...</h1>
+        <form id="login-form">
+            <input type="password" id="password-login" placeholder="Passwort" required>
+            <button type="submit">Login</button>
+        </form>
+        <div id="message-login" class="message"></div>
+        <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
+            Benutzername ändern
+        </a>
+    </div>
 
-            <div id="password-requirements" style="text-align: left; font-size: 0.85em; margin-top: 10px; line-height: 1.6;">
-                <p id="req-length" style="color: lightgray;">☐ Mindestens 8 Zeichen</p>
-                <p id="req-upper" style="color: lightgray;">☐ Mindestens 1 Großbuchstabe</p>
-                <p id="req-lower" style="color: lightgray;">☐ Mindestens 1 Kleinbuchstabe</p>
-                <p id="req-digit" style="color: lightgray;">☐ Mindestens 1 Ziffer</p>
-                <p id="req-special" style="color: lightgray;">
-                    ☐ Mindestens 1 Sonderzeichen 
-                    <span class="tooltip-container">
-                        <sup style="font-size: 0.7em;">(i)</sup>
-                        <span class="tooltip-text">Erlaubt: @ $ ! % * ? &</span>
-                    </span>
-                </p>
-                <p id="req-match" style="color: lightgray;">☐ Passwörter stimmen überein</p>
+    <div id="register-view" style="display: none;">
+        <h1 id="register-header">Registrieren für...</h1>
+        
+        <div class="form-group">
+            <input type="text" id="username-reg" placeholder="Benutzername" required onkeyup="checkRegistrationUsernameAvailability()">
+            <span id="username-icon" class="icon"></span>
+        </div>
+        <div id="username-reg-status" class="username-info"></div>
+
+        <form id="register-form">
+            <div class="form-group">
+                <input type="email" id="email-reg" placeholder="E-Mail" required onkeyup="checkEmailAvailability()">
+                <span id="email-icon" class="icon"></span>
+            </div>
+            
+            
+<div class="form-group">
+                <input type="password" id="password-reg" placeholder="Passwort" required onkeyup="validatePassword()">
+                <span class="icon"></span> </div>
+            <div id="password-requirements" class="password-validation-list">
+</div>
+            
+            <div class="form-group">
+                <input type="password" id="confirm-password-reg" placeholder="Passwort bestätigen" required onkeyup="validatePassword()">
+                <span id="match-icon" class="icon"></span>
+            </div>
+
+            <div class="terms-checkbox-group">
+                <input type="checkbox" id="terms-checkbox" onchange="updateRegisterButtonState()">
+                <span>Ich habe die <a href="http://example.com/agb" target="_blank">AGB</a> und die <a href="http://example.com/datenschutz" target="_blank">Datenschutzerklärung</a> gelesen und stimme diesen zu.</span>
             </div>
 
             <button type="submit" id="register-button" disabled>Jetzt registrieren</button>
         </form>
 
         <div id="message-reg" class="message"></div>
-        <p style="margin-top: 20px; font-size: 0.9em;">
-            <a href="#" onclick="showLoginView()" style="color: #ffcc00;">
-                Schon registriert? Zum Login
-            </a>
-        </p>
-    </div>
-
-    <div id="login-view" style="display: block;">
-        <h1>Trainer-Login</h1>
-        <form id="login-form">
-            <input type="email" id="email-login" placeholder="E-Mail" required>
-            <input type="password" id="password-login" placeholder="Passwort" required>
-            <button type="submit">Login</button>
-        </form>
-
-        <div id="message-login" class="message"></div>
-        <p style="margin-top: 20px; font-size: 0.9em;">
-            <a href="#" onclick="showRegisterView()" style="color: #ffcc00;">
-                Noch kein Konto? Jetzt registrieren
-            </a>
-        </p>
+        <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
+            Abbrechen und Benutzername ändern
+        </a>
     </div>
 
   </div>
 
   <script>
-    // --- View Management ---
-    const registerView = document.getElementById('register-view');
+    // --- View Management & Global State ---
+    const checkView = document.getElementById('username-check-view');
     const loginView = document.getElementById('login-view');
-    const messageRegDiv = document.getElementById('message-reg');
+    const registerView = document.getElementById('register-view');
+    
+    const usernameInput = document.getElementById('username-input');
+    const usernameRegInput = document.getElementById('username-reg');
+    const usernameIcon = document.getElementById('username-icon');
+    const emailRegInput = document.getElementById('email-reg');
+    const emailIcon = document.getElementById('email-icon');
+    const matchIcon = document.getElementById('match-icon');
+    const usernameRegStatusDiv = document.getElementById('username-reg-status');
+    const passwordRequirementsDiv = document.getElementById('password-requirements');
+    const termsCheckbox = document.getElementById('terms-checkbox'); 
+    const messageCheckDiv = document.getElementById('message-check');
     const messageLoginDiv = document.getElementById('message-login');
+    const messageRegDiv = document.getElementById('message-reg');
 
-    // Funktion zum Anzeigen der Login-Ansicht
-    function showLoginView() {
+    let currentUsername = ''; 
+    let isUsernameAvailable = false;
+    let isEmailAvailable = false;
+    let arePasswordsValid = false; 
+    
+    function showView(viewId) {
+        checkView.style.display = 'none';
+        loginView.style.display = 'none';
         registerView.style.display = 'none';
-        loginView.style.display = 'block';
-        messageRegDiv.textContent = '';
+        document.getElementById(viewId).style.display = 'block';
+        
+        messageCheckDiv.textContent = '';
         messageLoginDiv.textContent = '';
+        messageRegDiv.textContent = '';
     }
 
-    // Funktion zum Anzeigen der Registrierungs-Ansicht
-    function showRegisterView() {
-        registerView.style.display = 'block';
-        loginView.style.display = 'none';
-        messageRegDiv.textContent = '';
-        messageLoginDiv.textContent = '';
+    function showUsernameCheckView() {
+        showView('username-check-view');
+        document.getElementById('password-login').value = '';
+        document.getElementById('register-form').reset();
     }
     
-    // --- Registrierungs-Validierung ---
+    function showLoginView() {
+        showView('login-view');
+        document.getElementById('login-header').textContent = `Login für ${currentUsername}`;
+    }
+
+    function showRegisterView() {
+        const checkedUsername = document.getElementById('username-input').value;
+        usernameRegInput.value = checkedUsername;
+        currentUsername = checkedUsername; 
+
+        showView('register-view');
+        document.getElementById('register-header').textContent = `Registrieren für ${currentUsername}`;
+        
+        checkRegistrationUsernameAvailability(true);
+        checkEmailAvailability(true);
+        validatePassword();
+    }
+    
+    showUsernameCheckView(); 
+
+    // --- 0. Hilfsfunktion: Button-Status aktualisieren ---
+    function updateRegisterButtonState() {
+        const button = document.getElementById('register-button');
+        
+        if (button) {
+             button.disabled = !(arePasswordsValid && isUsernameAvailable && isEmailAvailable && termsCheckbox.checked);
+        }
+    }
+
+
+    // --- 1. USERNAME CHECK FORM ---
+    document.getElementById('username-check-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        currentUsername = usernameInput.value;
+        
+        const usernameRegex = /^[a-zA-Z0-9]+$/;
+        if (!usernameRegex.test(currentUsername)) {
+            messageCheckDiv.textContent = '❌ Der Benutzername darf nur Buchstaben und Zahlen enthalten.';
+            messageCheckDiv.className = 'message error';
+            return; 
+        }
+        
+        messageCheckDiv.textContent = 'Prüfe Benutzername...';
+        messageCheckDiv.className = 'message';
+
+        try {
+            const response = await fetch('/auth/check-username', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUsername }),
+            });
+
+            const data = await response.json();
+
+            if (data.exists) {
+                messageCheckDiv.textContent = '';
+                showLoginView();
+            } else {
+                messageCheckDiv.textContent = '';
+                showRegisterView();
+            }
+
+        } catch (error) {
+            messageCheckDiv.textContent = '❌ Serverfehler beim Prüfen des Benutzernamens.';
+            messageCheckDiv.className = 'message error';
+            console.error('Error:', error);
+        }
+    });
+    
+    // --- 2. REGISTRIERUNG: E-MAIL VERFÜGBARKEIT SPRÜFUNG ---
+    async function checkEmailAvailability() {
+        const email = emailRegInput.value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (email.length < 5 || !emailRegex.test(email)) {
+             isEmailAvailable = false;
+             emailIcon.innerHTML = email.length > 0 ? '<span style="color: #FF6666;">❌</span>' : '';
+             updateRegisterButtonState();
+             return;
+        }
+
+        emailIcon.innerHTML = '<span style="color: lightgray;">...</span>';
+
+        try {
+            const response = await fetch('/auth/check-email-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email }),
+            });
+            const data = await response.json();
+
+            if (data.available) {
+                isEmailAvailable = true;
+                emailIcon.innerHTML = '<span style="color: #38E838;">&#10003;</span>';
+            } else {
+                isEmailAvailable = false;
+                emailIcon.innerHTML = '<span style="color: #FF6666;">❌</span>';
+            }
+        } catch (error) {
+            isEmailAvailable = false;
+            emailIcon.innerHTML = '<span style="color: #FF6666;">!</span>';
+        }
+        updateRegisterButtonState();
+    }
+
+
+    // --- 3. REGISTRIERUNG: USERNAME VERFÜGBARKEITSPRÜFUNG ---
+    async function checkRegistrationUsernameAvailability(initialLoad = false) {
+        const username = usernameRegInput.value;
+
+        const usernameRegex = /^[a-zA-Z0-9]+$/;
+        if (!usernameRegex.test(username)) {
+            isUsernameAvailable = false;
+            usernameIcon.innerHTML = '<span style="color: #FF6666;">!</span>';
+            usernameRegStatusDiv.innerHTML = '<span style="color: #FF6666;">❌ Nur Buchstaben und Zahlen erlaubt!</span>';
+            updateRegisterButtonState();
+            return;
+        }
+
+        if (!initialLoad && username === currentUsername) {
+            isUsernameAvailable = true;
+            usernameIcon.innerHTML = '<span style="color: #38E838;">&#10003;</span>';
+            usernameRegStatusDiv.innerHTML = '';
+            updateRegisterButtonState();
+            return;
+        }
+        
+        usernameIcon.innerHTML = '<span style="color: lightgray;">...</span>';
+        usernameRegStatusDiv.innerHTML = '<span style="color: lightgray;">Prüfe...</span>';
+        currentUsername = username;
+
+        try {
+            const response = await fetch('/auth/check-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username }),
+            });
+            const data = await response.json();
+
+            if (data.available) {
+                isUsernameAvailable = true;
+                usernameIcon.innerHTML = '<span style="color: #38E838;">&#10003;</span>';
+                usernameRegStatusDiv.innerHTML = '';
+            } else {
+                isUsernameAvailable = false;
+                usernameIcon.innerHTML = '<span style="color: #FF6666;">❌</span>';
+                let altHtml = '<span style="color: #FF6666;">❌ Schon vergeben. Vorschläge:</span> ';
+                
+                data.alternatives.forEach(alt => {
+                    altHtml += `<span class="alternative-link" onclick="setUsername('${alt}')">${alt}</span>`;
+                });
+                usernameRegStatusDiv.innerHTML = altHtml;
+            }
+        } catch (error) {
+            isUsernameAvailable = false;
+            usernameIcon.innerHTML = '<span style="color: #FF6666;">!</span>';
+            usernameRegStatusDiv.innerHTML = '<span style="color: #FF6666;">Fehler bei der Prüfung.</span>';
+            console.error('Error:', error);
+        }
+        updateRegisterButtonState();
+    }
+    
+    function setUsername(newUsername) {
+        usernameRegInput.value = newUsername;
+        checkRegistrationUsernameAvailability();
+    }
+
+
+    // --- 4. PASSWORD VALIDATION ---
     const requirements = [
         { id: 'req-length', regex: /.{8,}/, msg: 'Mindestens 8 Zeichen' },
         { id: 'req-upper', regex: /[A-Z]/, msg: 'Mindestens 1 Großbuchstabe' },
@@ -152,60 +460,80 @@
 
     const confirmPasswordField = document.getElementById('confirm-password-reg');
     const passwordField = document.getElementById('password-reg');
-    const registerButton = document.getElementById('register-button');
-    const matchReqElement = document.getElementById('req-match');
-
+    
     function validatePassword() {
+        if (!passwordField || !confirmPasswordField) return; 
+
         const password = passwordField.value;
         let allValid = true;
+        let htmlContent = ''; 
 
         requirements.forEach(req => {
-            const element = document.getElementById(req.id);
             const isValid = req.regex.test(password);
+            const statusIcon = isValid ? '&#10003;' : '☐';
+            const statusColor = isValid ? '#38E838' : 'lightgray';
             
-            element.style.color = isValid ? '#38E838' : 'lightgray'; 
-            element.innerHTML = isValid ? '&#10003; ' + req.msg : '☐ ' + req.msg; 
+            htmlContent += `<p style="color: ${statusColor};"><span class="status-icon">${statusIcon}</span> ${req.msg}</p>`;
 
             if (!isValid) { allValid = false; }
         });
+        
+        passwordRequirementsDiv.innerHTML = htmlContent;
+
 
         const passwordsMatch = password === confirmPasswordField.value && password.length > 0;
-        matchReqElement.style.color = passwordsMatch ? '#38E838' : 'lightgray';
-        matchReqElement.innerHTML = passwordsMatch ? '&#10003; Passwörter stimmen überein' : '☐ Passwörter stimmen überein';
         
-        registerButton.disabled = !(allValid && passwordsMatch);
+        arePasswordsValid = allValid && passwordsMatch; 
+
+        if (password.length > 0 && confirmPasswordField.value.length > 0) {
+            matchIcon.innerHTML = passwordsMatch ? '<span style="color: #38E838;">&#10003;</span>' : '<span style="color: #FF6666;">❌</span>';
+        } else {
+            matchIcon.innerHTML = '';
+        }
+
+        updateRegisterButtonState(); 
     }
     
-    // Initialisierung beim Laden
-    validatePassword();
-    
-    // --- Form Submission: REGISTRIERUNG ---
+    if(registerView.style.display === 'block') {
+        validatePassword();
+    }
+
+    // --- 5. REGISTRATION SUBMISSION ---
     document.getElementById('register-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         
+        const registerButton = document.getElementById('register-button');
         if (registerButton.disabled) {
-            messageRegDiv.textContent = '❌ Bitte erfüllen Sie alle Anforderungen.';
+            messageRegDiv.textContent = '❌ Bitte stellen Sie sicher, dass alle Anforderungen erfüllt sind.';
             messageRegDiv.className = 'message error';
             return;
         }
 
-        const name = document.getElementById('name').value;
+        if (!isUsernameAvailable || !isEmailAvailable || !arePasswordsValid || !termsCheckbox.checked) {
+            messageRegDiv.textContent = '❌ Validierungsfehler. Prüfen Sie alle Felder und akzeptieren Sie die AGB.';
+            messageRegDiv.className = 'message error';
+            return;
+        }
+        
         const email = document.getElementById('email-reg').value;
-        const password = passwordField.value;
+        const password = document.getElementById('password-reg').value;
 
         messageRegDiv.textContent = 'Registriere...';
         messageRegDiv.className = 'message';
         
         try {
-            const response = await fetch('http://127.0.0.1:8000/auth/register', {
+            const response = await fetch('/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ 
+                    username: currentUsername, 
+                    email: email, 
+                    password: password 
+                }),
             });
 
-            const data = await response.json();
-
             if (response.ok) {
+                const data = await response.json(); 
                 const link = data.verification_link ? `<br><a href="${data.verification_link}" target="_blank" style="color:#ffdd44;">Klicken Sie hier zur Verifizierung (TESTLINK)</a>` : '';
                 
                 messageRegDiv.innerHTML = `✅ Registrierung erfolgreich. E-Mail wurde gesendet! ${link}`;
@@ -214,45 +542,54 @@
                 validatePassword();
                 
             } else {
-                const detail = data.detail && Array.isArray(data.detail) ? data.detail[0].msg : (data.detail || 'Unbekannter Fehler');
+                const data = await response.json(); 
+                let detail = data.detail || 'Unbekannter Fehler';
+                if (data.detail && typeof data.detail === 'string') {
+                    const match = data.detail.match(/'value_error', msg='(.*?)'/);
+                    if (match && match[1]) {
+                        detail = match[1];
+                    } else if (data.detail.includes("value_error")) {
+                        detail = data.detail.split("value_error, msg='")[1].split("',")[0] || 'Validierungsfehler auf dem Server';
+                    }
+                } else if (Array.isArray(data.detail) && data.detail[0].msg) {
+                    detail = data.detail[0].msg;
+                }
+                
                 messageRegDiv.textContent = `❌ Fehler: ${detail}`;
                 messageRegDiv.className = 'message error';
             }
 
         } catch (error) {
-            messageRegDiv.textContent = '❌ Serverfehler bei der Registrierung.';
+            messageRegDiv.textContent = '❌ Serverfehler bei der Registrierung (Netzwerk oder JSON-Parsing).';
             messageRegDiv.className = 'message error';
             console.error('Error:', error);
         }
     });
 
-    // --- Form Submission: LOGIN ---
+    // --- 6. LOGIN LOGIK ---
     document.getElementById('login-form').addEventListener('submit', async function(event) {
         event.preventDefault();
 
-        const email = document.getElementById('email-login').value;
         const password = document.getElementById('password-login').value;
 
         messageLoginDiv.textContent = 'Logge ein...';
         messageLoginDiv.className = 'message';
         
         try {
-            const response = await fetch('http://127.0.0.1:8000/auth/login', {
+            const response = await fetch('/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username: currentUsername, password: password }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                // Login erfolgreich! Speichere den Token 
                 localStorage.setItem('access_token', data.access_token);
                 
                 messageLoginDiv.innerHTML = `✅ Login erfolgreich! Token gespeichert.`;
                 messageLoginDiv.className = 'message success';
                 
-                // Weiterleitung zur Ladeseite (startet den Token-Transfer)
                 window.location.href = "/app/dashboard"; 
                 
             } else {
@@ -267,6 +604,13 @@
             console.error('Error:', error);
         }
     });
+
+
+    // --- HILFSFUNKTIONEN ---
+    function setUsername(newUsername) {
+        usernameRegInput.value = newUsername;
+        checkRegistrationUsernameAvailability();
+    }
   </script>
 
 </body>

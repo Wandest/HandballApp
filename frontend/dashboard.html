@@ -70,12 +70,19 @@
       color: #1e3c72;
       margin-top: 10px;
     }
-    .btn-delete { /* Stil für Lösch-Button */
+    .btn-delete {
         background: transparent;
         color: #ff6666;
         padding: 5px 10px;
         font-weight: bold;
         margin: 0;
+        margin-left: 10px;
+    }
+    .btn-protocol { 
+        background: #00bcd4;
+        color: white;
+        padding: 5px 10px;
+        margin-left: 10px;
     }
     input[type="text"], input[type="number"], input[type="datetime-local"], select {
       width: 90%;
@@ -115,7 +122,8 @@
         width: 100%;
     }
     .game-list-item {
-        flex-direction: row; /* Wichtig: Zeile bleiben */
+        flex-direction: row;
+        align-items: center;
     }
     .game-info {
         display: flex;
@@ -125,6 +133,10 @@
     }
     .game-info span {
         margin-bottom: 3px;
+    }
+    .game-actions {
+        display: flex;
+        gap: 5px;
     }
     .message {
         margin-top: 10px;
@@ -231,11 +243,9 @@
   </div>
   
   <script>
-    // Globale Variablen, die das aktuell ausgewählte Team speichern
     let selectedTeamId = null;
     let selectedTeamName = "";
 
-    // DOM-Elemente (Auszug)
     const teamListDiv = document.getElementById('team-list');
     const teamMessageDiv = document.getElementById('team-message');
     const teamLeagueSelect = document.getElementById('team-league');
@@ -260,6 +270,7 @@
     }
     
     // --- Ligen und Positionen Laden (unverändert) ---
+
     async function loadLeagues() {
         try {
             const response = await fetch('/teams/leagues'); 
@@ -361,7 +372,6 @@
     }
     
     document.getElementById('add-team-form').addEventListener('submit', async function(event) {
-        // ... (unverändert)
         event.preventDefault();
 
         const name = document.getElementById('team-name').value;
@@ -408,9 +418,7 @@
         }
     });
 
-    // --- Spieler-Logik ---
-    
-    // NEU: Spieler löschen
+    // --- Spieler-Logik (unverändert, inkl. Delete) ---
     async function deletePlayer(playerId) {
         if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
 
@@ -426,7 +434,7 @@
             if (response.ok) {
                 playerMessageDiv.textContent = `✅ Spieler erfolgreich gelöscht.`;
                 playerMessageDiv.className = 'message success';
-                loadPlayers(selectedTeamId); // Liste neu laden
+                loadPlayers(selectedTeamId);
             } else if (response.status === 401 || response.status === 403) {
                 logout();
             } else {
@@ -443,7 +451,6 @@
 
 
     document.getElementById('add-player-form').addEventListener('submit', async function(event) {
-        // ... (unverändert)
         event.preventDefault();
 
         if (!selectedTeamId) {
@@ -537,11 +544,10 @@
         }
     }
     
-    // --- Spiel-Logik ---
+    // --- Spiel-Logik (unverändert, inkl. Delete) ---
 
-    // NEU: Spiel löschen
     async function deleteGame(gameId) {
-        if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
+        if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten? Alle zugehörigen Aktionen werden ebenfalls gelöscht.")) return;
 
         const token = getToken();
         if (!token) return logout();
@@ -555,7 +561,7 @@
             if (response.ok) {
                 gameMessageDiv.textContent = `✅ Spiel erfolgreich gelöscht.`;
                 gameMessageDiv.className = 'message success';
-                loadGames(selectedTeamId); // Liste neu laden
+                loadGames(selectedTeamId); 
             } else if (response.status === 401 || response.status === 403) {
                 logout();
             } else {
@@ -571,7 +577,6 @@
     }
 
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
-        // ... (unverändert)
         event.preventDefault();
 
         if (!selectedTeamId) {
@@ -624,6 +629,13 @@
         }
     });
 
+    // NEU: Funktion, die später zur Protokollseite führt
+    function startProtocol(gameId, opponent) {
+        // HIER würden wir später zur separaten Protokoll-Seite wechseln
+        alert(`Starte Protokoll für Spiel ${gameId} gegen ${opponent}. \n\nDie nächste Seite mit der Protokoll-Oberfläche muss noch erstellt werden!`);
+        // window.location.href = `/protocol/${gameId}`;
+    }
+
 
     async function loadGames(teamId) {
         const token = getToken();
@@ -659,7 +671,10 @@
                         <span>📅 <strong>${formattedDate}</strong></span>
                         <span>vs. ${game.opponent}</span>
                     </div>
-                    <button class="btn-delete" onclick="deleteGame(${game.id})">Löschen</button>
+                    <div class="game-actions">
+                        <button class="btn-protocol" onclick="startProtocol(${game.id}, '${game.opponent}')">Protokoll starten</button>
+                        <button class="btn-delete" onclick="deleteGame(${game.id})">Löschen</button>
+                    </div>
                 `;
                 gameListContainer.appendChild(gameItem);
             });

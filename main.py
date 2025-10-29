@@ -9,7 +9,8 @@ from fastapi.templating import Jinja2Templates
 from backend.auth import router as auth_router, get_current_trainer
 from backend.team import router as team_router 
 from backend.player import router as player_router
-from backend.game import router as game_router # Wichtig: Game-Router importieren
+from backend.game import router as game_router
+from backend.action import router as action_router # Wichtig: Action-Router importieren
 from backend.database import init_db, Trainer
 
 app = FastAPI(title="HandballApp Backend")
@@ -18,7 +19,8 @@ app = FastAPI(title="HandballApp Backend")
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(team_router, prefix="/teams", tags=["Teams"])
 app.include_router(player_router, prefix="/players", tags=["Players"])
-app.include_router(game_router, prefix="/games", tags=["Games"]) # Wichtig: Game-Router einbinden
+app.include_router(game_router, prefix="/games", tags=["Games"])
+app.include_router(action_router, prefix="/actions", tags=["Actions"]) # Wichtig: Action-Router einbinden
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
