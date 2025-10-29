@@ -153,7 +153,7 @@
         grid-template-columns: 1fr 1fr;
         gap: 20px;
     }
-    /* NEU: Styling für den Verifizierungs-Hinweis */
+    /* Styling für den Verifizierungs-Hinweis */
     .verification-warning {
         width: 90%;
         max-width: 800px;
@@ -170,6 +170,16 @@
         font-weight: bold;
         text-decoration: underline;
     }
+    .btn-reload {
+        background: #1e3c72;
+        color: white;
+        padding: 10px 20px;
+        margin-top: 15px;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
 
   </style>
 </head>
@@ -184,15 +194,16 @@
   </div>
   
   {% if not is_verified %}
-  <div class="verification-warning">
+  <div id="verification-notice" class="verification-warning">
     <p>⚠️ **Dein Account ist noch nicht verifiziert!**</p>
     <p>Um Mannschaften, Spieler oder Spiele anzulegen, musst du deine E-Mail-Adresse bestätigen.</p>
-    <p>Bitte überprüfe dein Postfach (oder <a href="#" onclick="alert('Funktion zum erneuten Senden der Mail folgt!')">klicke hier, um die Verifizierungs-E-Mail erneut zu senden</a>).</p>
+    <p>Bitte überprüfe dein Postfach (oder klicke auf **Token abrufen**).</p>
+    <button onclick="window.location.reload()" class="btn-reload">✅ Jetzt neu laden / Status prüfen</button>
   </div>
   {% endif %}
 
 
-  {% if is_verified %}
+  <div id="app-features" {% if not is_verified %}style="display:none;"{% endif %}>
 
   <div class="dashboard-layout">
     
@@ -269,8 +280,14 @@
         </div>
     </div>
   </div>
-  {% endif %} <script>
-    // Führe die Logik nur aus, wenn der Trainer verifiziert ist, sonst läuft der Code ins Leere
+  </div> <script>
+    // --- Globale Logout Funktion ---
+    function logout() {
+      localStorage.removeItem('access_token');
+      window.location.href = "/"; 
+    }
+    
+    // Führe die Logik nur aus, wenn der Trainer verifiziert ist
     {% if is_verified %} 
     
     let selectedTeamId = null;
@@ -289,11 +306,6 @@
     const addPlayerButton = document.getElementById('add-player-button');
     const addGameButton = document.getElementById('add-game-button');
     const gameMessageDiv = document.getElementById('game-message');
-
-    function logout() {
-      localStorage.removeItem('access_token');
-      window.location.href = "/"; 
-    }
 
     function getToken() {
         return localStorage.getItem('access_token');
@@ -661,7 +673,6 @@
 
 
     function startProtocol(gameId, opponent) {
-        // Leitet zur Protokollseite weiter
         localStorage.setItem('protocol_game_id', gameId);
         window.location.href = `/protocol/${gameId}`; 
     }

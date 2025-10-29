@@ -85,19 +85,17 @@ def create_player(
 
     return new_player
 
-# NEU: SPIELER LÖSCHEN
+# SPIELER LÖSCHEN
 @router.delete("/delete/{player_id}")
 def delete_player(
     player_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # 1. Spieler finden
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
         raise HTTPException(status_code=404, detail="Spieler nicht gefunden.")
 
-    # 2. Prüfen, ob der Trainer das Team des Spielers besitzt
     team = db.query(Team).filter(
         Team.id == player.team_id,
         Team.trainer_id == current_trainer.id
@@ -106,14 +104,13 @@ def delete_player(
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung, diesen Spieler zu löschen.")
 
-    # 3. Löschen
     db.delete(player)
     db.commit()
 
     return {"message": "Spieler erfolgreich gelöscht."}
 
 
-# SPIELER-LISTE EINES TEAMS LADEN
+# SPIELER-LISTE EINES TEAMS LADEN (Unverändert für Dashboard)
 @router.get("/list/{team_id}", response_model=List[PlayerResponse])
 def list_players(
     team_id: int,

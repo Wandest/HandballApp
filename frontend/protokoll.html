@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - {{ team_name }} vs. {{ opponent }}</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(120deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px;
+        }
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .match-info h2 {
+            margin: 0 0 5px 0;
+            color: #ffcc00;
+        }
+        .match-info p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+        .score {
+            font-size: 3em;
+            font-weight: bold;
+            color: #38E838;
+        }
+        .score-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 150px;
+        }
+
+        /* --- HAUPTPROTOKOLL LAYOUT --- */
+        .protocol-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr; /* Spieler | Kontrollen | Protokoll-Liste */
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .player-list, .action-controls, .log-list {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 70vh;
+        }
+        
+        /* Spielerliste */
+        .player-list button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #00bcd4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .player-list button:hover {
+            background: #0097a7;
+        }
+        .player-list button.goalkeeper {
+            background: #ffcc00;
+            color: #333;
+        }
+
+        /* Kontrollen (Mitte) */
+        .action-controls h3 {
+            color: #ffcc00;
+            margin-top: 0;
+        }
+        .action-controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-goal { background: #38E838; color: #333; }
+        .btn-miss { background: #ff6666; color: white; }
+        .btn-save { background: #00bcd4; color: white; }
+        .btn-error { background: #f44336; color: white; }
+        .btn-team { background: #9e9e9e; color: white; }
+
+        /* Protokoll-Liste */
+        .log-list .log-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+        .log-list .log-item span:first-child {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button onclick="leaveProtocol()">⬅️ Dashboard</button>
+        <div class="match-info">
+            <h2>{{ team_name }} vs. {{ opponent }}</h2>
+            <p>Spiel-ID: {{ game_id }}</p>
+        </div>
+        <div class="score-info">
+            <div id="game-time" class="score">00:00</div>
+            <p id="score-board" class="score">0 - 0</p>
+        </div>
+    </div>
+
+    <div class="protocol-grid">
+        
+        <div class="player-list">
+            <h3>Spieler (Aktion zuordnen)</h3>
+            <div id="player-buttons-container">
+                <p style="text-align: center;">Lade Kader...</p>
+            </div>
+        </div>
+
+        <div class="action-controls">
+            <h3>Aktionen</h3>
+            
+            <button class="btn-goal" onclick="logAction('Goal')">🥅 Tor erzielt</button>
+            <button class="btn-miss" onclick="logAction('Miss')">❌ Wurf verworfen</button>
+            <button class="btn-error" onclick="logAction('TechError')">⚠️ Technischer Fehler</button>
+            <button class="btn-save" onclick="logAction('Save', null, true)">🧤 Parade Torwart</button>
+            
+            <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+
+            <button class="btn-team" onclick="logAction('Timeout')">⏱️ Team Timeout</button>
+            <button class="btn-team" onclick="logAction('OppGoal', null, true)">🟡 Gegner Tor</button>
+        </div>
+
+        <div class="log-list">
+            <h3>Protokoll (Aktuell)</h3>
+            <div id="action-log-container">
+                </div>
+        </div>
+
+    </div>
+
+    <script>
+        const GAME_ID = {{ game_id }};
+        const ACTION_LOG_CONTAINER = document.getElementById('action-log-container');
+        const PLAYER_BUTTONS_CONTAINER = document.getElementById('player-buttons-container');
+        const GAME_TIME_DISPLAY = document.getElementById('game-time');
+        const SCORE_BOARD = document.getElementById('score-board');
+        
+        let players = []; // Speichert den Kader
+        let gameTimeSeconds = 0;
+        let timerInterval = null;
+
+
+        // Hilfsfunktionen
+        function getToken() {
+            return localStorage.getItem('access_token');
+        }
+
+        function formatTime(totalSeconds) {
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+        
+        // --- Timer-Steuerung (Mockup) ---
+        function toggleTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                // Button-Text ändern
+            } else {
+                timerInterval = setInterval(() => {
+                    gameTimeSeconds++;
+                    GAME_TIME_DISPLAY.textContent = formatTime(gameTimeSeconds);
+                }, 1000);
+                // Button-Text ändern
+            }
+        }
+        // Starte den Timer initial (Man könnte dies später per Button steuern)
+        toggleTimer(); 
+
+
+        // --- Spieler laden und Buttons generieren ---
+        async function loadPlayers() {
+            const token = getToken();
+            if (!token) return leaveProtocol();
+
+            try {
+                const response = await fetch(`/players/list/${GAME_ID}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Fehler beim Laden des Kaders.');
+                
+                players = await response.json();
+                PLAYER_BUTTONS_CONTAINER.innerHTML = '';
+
+                if (players.length === 0) {
+                    PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center;">Kader ist leer.</p>';
+                    return;
+                }
+
+                players.forEach(player => {
+                    const isGoalie = player.position === 'Torwart';
+                    const button = document.createElement('button');
+                    button.textContent = `#${player.number || '?'} ${player.name}`;
+                    button.className = isGoalie ? 'goalkeeper' : '';
+                    
+                    // Klick-Aktion: Führt die generische Aktion 'Goal' für diesen Spieler aus
+                    button.onclick = () => logAction('Goal', player.id); 
+                    
+                    PLAYER_BUTTONS_CONTAINER.appendChild(button);
+                });
+                
+            } catch (error) {
+                PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; color: #ff6666;">Kader konnte nicht geladen werden.</p>';
+                console.error(error);
+            }
+        }
+        
+        // --- Aktion protokollieren ---
+        async function logAction(actionType, playerId = null, requiresConfirmation = false) {
+            const token = getToken();
+            if (!token) return leaveProtocol();
+
+            // Bestätigung für kritische Aktionen
+            if (requiresConfirmation && !confirm(`Aktion: ${actionType} protokollieren?`)) {
+                return;
+            }
+
+            const payload = {
+                action_type: actionType,
+                time_in_game: GAME_TIME_DISPLAY.textContent, // Aktuelle Zeit
+                game_id: GAME_ID,
+                player_id: playerId,
+            };
+
+            try {
+                const response = await fetch('/actions/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    // Erfolg: Log aktualisieren
+                    loadActionLog();
+                    // Optional: Score aktualisieren (muss später implementiert werden)
+                } else if (response.status === 401 || response.status === 403) {
+                    leaveProtocol();
+                } else {
+                    alert('Fehler beim Protokollieren der Aktion.');
+                }
+            } catch (error) {
+                console.error('Protokollfehler:', error);
+            }
+        }
+        
+        // --- Protokoll laden ---
+        async function loadActionLog() {
+            const token = getToken();
+            if (!token) return;
+
+            try {
+                const response = await fetch(`/actions/list/${GAME_ID}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const actions = await response.json();
+                ACTION_LOG_CONTAINER.innerHTML = '';
+
+                if (actions.length === 0) {
+                    ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Aktionen protokolliert.</p>';
+                    return;
+                }
+                
+                actions.forEach(action => {
+                    const player = action.player_id ? players.find(p => p.id === action.player_id) : null;
+                    const playerName = player ? `#${player.number || '?'} ${player.name}` : 'TEAM';
+                    
+                    const actionText = {
+                        'Goal': '⚽ TOR',
+                        'Miss': '💨 Fehlwurf',
+                        'TechError': '🚫 Technischer Fehler',
+                        'Save': '🛑 Parade (Gegner)',
+                        'Timeout': '⏱️ Timeout',
+                        'OppGoal': '🎯 Gegner Tor',
+                    }[action.action_type] || action.action_type;
+
+
+                    const logItem = document.createElement('div');
+                    logItem.className = 'log-item';
+                    logItem.innerHTML = `
+                        <span>[${action.time_in_game}] ${actionText}</span>
+                        <span>${playerName}</span>
+                    `;
+                    ACTION_LOG_CONTAINER.appendChild(logItem);
+                });
+
+
+            } catch (error) {
+                console.error('Fehler beim Laden des Logs:', error);
+            }
+        }
+        
+        // --- Verlassen der Seite ---
+        function leaveProtocol() {
+            if (timerInterval) clearInterval(timerInterval);
+            localStorage.removeItem('protocol_game_id');
+            window.location.href = "/app/dashboard"; // Zurück zum Dashboard
+        }
+
+        // Seite initialisieren
+        loadPlayers();
+        loadActionLog();
+    </script>
+
+</body>
+</html>
