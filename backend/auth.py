@@ -50,12 +50,10 @@ class TrainerCreate(BaseModel):
     @model_validator(mode='after')
     def validate_username_and_password_strength(self):
         
-        # Validierung 1: Benutzernamen auf Sonderzeichen prüfen
         username = self.username
         if not re.match(r'^[a-zA-Z0-9]+$', username):
              raise ValueError("Der Benutzername darf nur Buchstaben und Zahlen enthalten (keine Leerzeichen oder Sonderzeichen).")
              
-        # Validierung 2: Bestehende Passwort-Validierung (unverändert)
         password = self.password
         rules = [
             (r'[A-Z]', 'Mindestens 1 Großbuchstabe'),
@@ -81,7 +79,6 @@ class TrainerLogin(BaseModel):
 class UsernameCheck(BaseModel):
     username: str
     
-# NEU: Modell für die E-Mail-Prüfung
 class EmailCheck(BaseModel):
     email: EmailStr
 
@@ -124,11 +121,9 @@ def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depen
     if trainer is None:
         raise CREDENTIALS_EXCEPTION
     
-    if not trainer.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Konto ist nicht verifiziert."
-        )
+    # NEU: Entferne die Verifizierungsprüfung hier. Sie wird im Dashboard selbst durchgeführt.
+    # if not trainer.is_verified:
+    #     raise HTTPException(...)
 
     return trainer 
 
@@ -145,10 +140,8 @@ def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
     else:
         return {"exists": False, "message": "Benutzer nicht gefunden. Bitte registrieren Sie sich."}
 
-# NEU: ENDPUNKT 2.1: Prüft die Verfügbarkeit der E-Mail-Adresse
 @router.post("/check-email-availability", response_model=AvailabilityResponse)
 def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_db)):
-    # Der Pydantic-Typ EmailStr validiert bereits das Format
     trainer = db.query(Trainer).filter(Trainer.email == email_check.email).first()
     
     if trainer:
@@ -157,23 +150,19 @@ def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_
         return AvailabilityResponse(available=True, alternatives=[])
 
 
-# ENDPUNKT 2.2: Prüft Verfügbarkeit des Usernames auf Registrierungsseite
 @router.post("/check-availability", response_model=AvailabilityResponse)
 def check_availability(user_check: UsernameCheck, db: Session = Depends(get_db)):
     username = user_check.username
     alternatives = []
 
-    # 1. Sofortige Validierung der Zeichen
     if not re.match(r'^[a-zA-Z0-9]+$', username):
         return AvailabilityResponse(available=False, alternatives=[])
 
-    # 2. Datenbankprüfung
     trainer = db.query(Trainer).filter(Trainer.username == username).first()
     
     if not trainer:
         return AvailabilityResponse(available=True, alternatives=[])
     else:
-        # Benutzername ist nicht verfügbar, schlage Alternativen vor
         base_username = username
         match = re.match(r'(.+?)(\d+)$', username)
         if match:
@@ -189,12 +178,10 @@ def check_availability(user_check: UsernameCheck, db: Session = Depends(get_db))
 
 @router.post("/register")
 def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
-    # Prüfe, ob Username oder E-Mail bereits existieren (diese Prüfungen sind IMMER nötig)
     if db.query(Trainer).filter(Trainer.username == trainer.username).first():
         raise HTTPException(status_code=400, detail="Dieser Benutzername ist bereits vergeben.")
     if db.query(Trainer).filter(Trainer.email == trainer.email).first():
         raise HTTPException(status_code=400, detail="Diese E-Mail-Adresse ist bereits registriert.")
-
 
     hashed_pw = hash_password(trainer.password)
     verification_token = str(uuid.uuid4()) 
@@ -240,8 +227,9 @@ def login_trainer(credentials: TrainerLogin, db: Session = Depends(get_db)):
     if not trainer or not verify_password(credentials.password, trainer.password):
         raise HTTPException(status_code=401, detail="Falscher Benutzername oder Passwort")
 
-    if not trainer.is_verified:
-        raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
+    # NEU: Die Verifizierungsprüfung wird hier entfernt!
+    # if not trainer.is_verified:
+    #     raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
 
     token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"username": trainer.username}, expires_delta=token_expires) 

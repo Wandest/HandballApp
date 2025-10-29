@@ -2,7 +2,7 @@ import webview
 import threading
 import uvicorn
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -10,8 +10,8 @@ from backend.auth import router as auth_router, get_current_trainer
 from backend.team import router as team_router 
 from backend.player import router as player_router
 from backend.game import router as game_router
-from backend.action import router as action_router # Wichtig: Action-Router importieren
-from backend.database import init_db, Trainer
+from backend.action import router as action_router
+from backend.database import init_db, Trainer, Game, Team, SessionLocal
 
 app = FastAPI(title="HandballApp Backend")
 
@@ -20,7 +20,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(team_router, prefix="/teams", tags=["Teams"])
 app.include_router(player_router, prefix="/players", tags=["Players"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
-app.include_router(action_router, prefix="/actions", tags=["Actions"]) # Wichtig: Action-Router einbinden
+app.include_router(action_router, prefix="/actions", tags=["Actions"])
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -36,7 +36,6 @@ def home(request: Request):
         {"request": request, "title": "Handball Auswertung"}
     )
 
-# Diese Route wird vom Frontend aufgerufen, um das Dashboard mit Token-Handling zu laden
 @app.get("/app/dashboard", response_class=HTMLResponse)
 def app_dashboard(request: Request):
     return templates.TemplateResponse(
@@ -44,13 +43,45 @@ def app_dashboard(request: Request):
         {"request": request, "title": "Lade Dashboard"}
     )
 
-# Geschützte Route: Der eigentliche Dashboard-Inhalt (Zugriff nur mit gültigem Token)
+# Geschützte Route: Der eigentliche Dashboard-Inhalt
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    # NEU: Trainer-Daten an das Template übergeben
+    db = SessionLocal() # Temporäre Session
+    trainer_data = db.query(Trainer).filter(Trainer.id == current_trainer.id).first()
+    db.close()
+
+    if not trainer_data:
+        raise HTTPException(status_code=404, detail="Trainer nicht gefunden.")
+    
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "title": "Dashboard", "trainer_name": current_trainer.name}
+        {"request": request, "title": "Dashboard", 
+         "trainer_name": trainer_data.username,
+         "is_verified": trainer_data.is_verified # WICHTIG: Status übergeben
+        }
     )
+
+@app.get("/protocol/{game_id}", response_class=HTMLResponse)
+def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    db = SessionLocal()
+    game = db.query(Game).filter(Game.id == game_id).first()
+    
+    if not game:
+        db.close()
+        raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
+    
+    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+    db.close()
+    
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
+        
+    return templates.TemplateResponse(
+        "protocol.html",
+        {"request": request, "title": "Spielprotokoll", "game_id": game_id, "opponent": game.opponent, "team_name": team.name}
+    )
+
 
 # ------------------------------------
 # SERVER-START-LOGIK

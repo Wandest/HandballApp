@@ -153,6 +153,23 @@
         grid-template-columns: 1fr 1fr;
         gap: 20px;
     }
+    /* NEU: Styling für den Verifizierungs-Hinweis */
+    .verification-warning {
+        width: 90%;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 30px;
+        background: #ffcc00;
+        color: #333;
+        border-radius: 10px;
+        font-size: 1.2em;
+        text-align: center;
+    }
+    .verification-warning a {
+        color: #1e3c72;
+        font-weight: bold;
+        text-decoration: underline;
+    }
 
   </style>
 </head>
@@ -165,6 +182,17 @@
     </div>
     <button onclick="logout()" class="btn-logout">Logout</button>
   </div>
+  
+  {% if not is_verified %}
+  <div class="verification-warning">
+    <p>⚠️ **Dein Account ist noch nicht verifiziert!**</p>
+    <p>Um Mannschaften, Spieler oder Spiele anzulegen, musst du deine E-Mail-Adresse bestätigen.</p>
+    <p>Bitte überprüfe dein Postfach (oder <a href="#" onclick="alert('Funktion zum erneuten Senden der Mail folgt!')">klicke hier, um die Verifizierungs-E-Mail erneut zu senden</a>).</p>
+  </div>
+  {% endif %}
+
+
+  {% if is_verified %}
 
   <div class="dashboard-layout">
     
@@ -241,8 +269,10 @@
         </div>
     </div>
   </div>
-  
-  <script>
+  {% endif %} <script>
+    // Führe die Logik nur aus, wenn der Trainer verifiziert ist, sonst läuft der Code ins Leere
+    {% if is_verified %} 
+    
     let selectedTeamId = null;
     let selectedTeamName = "";
 
@@ -307,7 +337,7 @@
         }
     }
 
-    // --- Team-Logik (unverändert) ---
+    // --- Team-Logik ---
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
@@ -418,7 +448,7 @@
         }
     });
 
-    // --- Spieler-Logik (unverändert, inkl. Delete) ---
+    // --- Spieler-Logik ---
     async function deletePlayer(playerId) {
         if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
 
@@ -544,7 +574,7 @@
         }
     }
     
-    // --- Spiel-Logik (unverändert, inkl. Delete) ---
+    // --- Spiel-Logik ---
 
     async function deleteGame(gameId) {
         if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten? Alle zugehörigen Aktionen werden ebenfalls gelöscht.")) return;
@@ -629,11 +659,12 @@
         }
     });
 
-    // NEU: Funktion, die später zur Protokollseite führt
+
     function startProtocol(gameId, opponent) {
         // HIER würden wir später zur separaten Protokoll-Seite wechseln
-        alert(`Starte Protokoll für Spiel ${gameId} gegen ${opponent}. \n\nDie nächste Seite mit der Protokoll-Oberfläche muss noch erstellt werden!`);
-        // window.location.href = `/protocol/${gameId}`;
+        // Wir verwenden die neue Protokoll-Route, die den Token-Transfer über den app_loader nutzt
+        localStorage.setItem('protocol_game_id', gameId);
+        window.location.href = `/protocol/${gameId}`; 
     }
 
 
