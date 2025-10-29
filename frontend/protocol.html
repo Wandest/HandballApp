@@ -36,12 +36,12 @@
         /* --- HAUPTPROTOKOLL LAYOUT --- */
         .protocol-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr 3fr; /* Spieler | Kontrollen | Protokoll-Liste */
+            grid-template-columns: 2fr 1fr 3fr; /* Spieler | Kontrollen | Statistik/Protokoll */
             gap: 20px;
             max-width: 1200px;
             margin: 0 auto;
         }
-        .player-list, .action-controls, .log-list-container {
+        .player-list, .action-controls, .right-column-area {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 8px;
@@ -95,14 +95,37 @@
         .btn-opp-goal { background: #9e9e9e; color: white; } /* Gegner Tor */
         .btn-custom { background: #505050; color: white; }
 
-        /* Statistik-Bereich */
-        .stats-area {
-            grid-column: 1 / 4; /* Volle Breite unter dem Protokoll */
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
+        /* NEU: Tab-Navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid #ffcc00;
+            margin-bottom: 15px;
         }
+        .tab-button {
+            padding: 10px 15px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: white;
+            font-weight: bold;
+            opacity: 0.7;
+            font-size: 1.1em;
+        }
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.2);
+            opacity: 1;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .tab-content {
+            display: none; /* Standardmäßig ausgeblendet */
+        }
+        .tab-content.active {
+            display: block; /* Aktivierter Tab wird angezeigt */
+        }
+
+
+        /* Statistik-Tabelle */
         .stats-table {
             width: 100%;
             border-collapse: collapse;
@@ -140,6 +163,14 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 0.9em;
         }
+        /* Button-Stil für das Löschen im Protokoll */
+        .btn-delete-log {
+            background: #f44336; /* Rot (wie Tech. Fehler) */
+            color: white;
+            padding: 4px 8px;
+            font-size: 0.9em;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -153,7 +184,7 @@
         <div class="score-info">
             <p id="score-board" class="score-board-display">0 - 0</p>
         </div>
-        <button onclick="updateScoreDisplay(); loadStats();">🔄 Aktualisieren</button>
+        <button onclick="updateAllStats()">🔄 Aktualisieren</button>
     </div>
 
     <div class="protocol-grid">
@@ -190,19 +221,26 @@
                 </div>
         </div>
 
-        <div class="log-list-container">
-            <h3>Protokoll Tabelle</h3>
-            <div id="action-log-container">
+        <div class="right-column-area">
+            <div class="tab-nav">
+                <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
+                <button class="tab-button" onclick="showTab('log')">Protokoll</button>
+            </div>
+
+            <div id="stats-tab" class="tab-content active">
+                <h3>Live-Statistik (Wurfquoten & Fehler)</h3>
+                <div id="stats-table-container">
+                    <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
-        </div>
-        
-        <div class="stats-area">
-            <h3>Live-Statistik (Wurfquoten & Fehler)</h3>
-            <div id="stats-table-container">
-                <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
+            </div>
+
+            <div id="log-tab" class="tab-content">
+                <h3>Protokoll Tabelle (Letzte Aktionen zuerst)</h3>
+                <div id="action-log-container">
+                    </div>
             </div>
         </div>
-
+        
     </div>
 
     <script>
@@ -215,7 +253,7 @@
         const STATS_TABLE_CONTAINER = document.getElementById('stats-table-container');
 
         let players = []; 
-        let customActions = []; // Speichert individuelle Aktionen
+        let customActions = []; 
         let selectedPlayerId = null; 
 
         // Hilfsfunktionen
@@ -223,6 +261,38 @@
         function leaveProtocol() {
             localStorage.removeItem('protocol_game_id');
             window.location.href = "/app/dashboard"; 
+        }
+        
+        // NEU: Tab-Umschaltfunktion
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            if (tabName === 'stats') {
+                document.getElementById('stats-tab').classList.add('active');
+                document.querySelector('.tab-button[onclick="showTab(\'stats\')"]').classList.add('active');
+                loadStats(); // Statistik neu laden, wenn Tab gezeigt wird
+            } else {
+                document.getElementById('log-tab').classList.add('active');
+                document.querySelector('.tab-button[onclick="showTab(\'log\')"]').classList.add('active');
+                loadActionLog(); // Protokoll neu laden
+            }
+        }
+        
+        // NEU: Kombinierte Aktualisierungsfunktion
+        function updateAllStats() {
+            // Aktualisiert immer Score und den aktuell sichtbaren Tab
+            updateScoreDisplay();
+            if (document.getElementById('stats-tab').classList.contains('active')) {
+                loadStats();
+            }
+            if (document.getElementById('log-tab').classList.contains('active')) {
+                loadActionLog();
+            }
         }
 
         
@@ -297,9 +367,7 @@
                 });
 
                 if (response.ok) {
-                    loadActionLog();
-                    updateScoreDisplay();
-                    loadStats(); 
+                    updateAllStats(); // Aktualisiert beide Tabs und den Score
                 } else if (response.status === 401 || response.status === 403) {
                     leaveProtocol();
                 } else {
@@ -309,6 +377,30 @@
                 console.error('Protokollfehler:', error);
             }
         }
+        
+        // NEU: Aktion löschen
+        async function deleteAction(actionId) {
+            if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
+            
+            const token = getToken();
+            if (!token) return leaveProtocol();
+
+            try {
+                const response = await fetch(`/actions/delete/${actionId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    updateAllStats(); // Lade alles neu
+                } else {
+                    alert('Aktion konnte nicht gelöscht werden.');
+                }
+            } catch (error) {
+                console.error('Löschfehler:', error);
+            }
+        }
+
         
         // --- Score aktualisieren ---
         async function updateScoreDisplay() {
@@ -364,6 +456,7 @@
                                             <th>Aktion</th>
                                             <th>Spieler</th>
                                             <th>#</th>
+                                            <th>Löschen</th>
                                         </tr>
                                     </thead>
                                     <tbody>`;
@@ -393,6 +486,9 @@
                             <td>${actionText}</td>
                             <td>${playerInfo}</td>
                             <td>${playerNumber}</td>
+                            <td>
+                                <button class"btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button>
+                            </td>
                         </tr>`;
                 });
                 
@@ -519,7 +615,7 @@
                 let headers = [
                     { key: 'player_name', name: 'Spieler', isFixed: true },
                     { key: 'player_number', name: '#', isFixed: true },
-                    { key: 'goals', name: 'Tore' },
+                    { key: 'goals', name: 'Tore (Quote)' },
                     { key: 'misses', name: 'Fehlwürfe' },
                     { key: 'tech_errors', name: 'Tech. Fehler' },
                     { key: 'seven_meter_goals', name: '7m Tor' },
@@ -528,7 +624,16 @@
                 
                 // Füge Custom Actions als Header hinzu
                 customActions.forEach(ca => {
-                    headers.push({ key: ca.key, name: ca.name.replace(' ', '\u00a0') });
+                    // Ignoriere die Standard-Aktionen, da sie bereits als separate Spalten existieren
+                    const standardKeys = [
+                        'Goal', 'Miss', 'TechError', 'Goal_7m', 'Miss_7m', 
+                        'Save', 'OppGoal', 'Timeout', 
+                        'SEVEN_METER_CAUSED', 'SEVEN_METER_SAVE'
+                    ];
+                    
+                    if (!standardKeys.includes(ca.key)) {
+                        headers.push({ key: ca.key, name: ca.name.replace(' ', '\u00a0') });
+                    }
                 });
                 
                 let tableHtml = `<table class="stats-table"><thead><tr>`;
@@ -544,15 +649,19 @@
                         
                         if (h.isFixed) {
                             value = player[h.key];
+                        } else if (h.key.startsWith('custom_')) { // Fallback für ältere Keys
+                            value = player.custom_counts[h.key] || 0;
                         } else {
+                            // Verwende den Header-Key, um die Zählung aus custom_counts abzurufen
                             value = player.custom_counts[h.key] || 0;
                         }
                         
                         // Spezielle Behandlung für Tore/Quote
-                        if (h.name === 'Tore') {
+                        if (h.name === 'Tore (Quote)') {
                             const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                            const quote = totalShots > 0 ? ((player.goals / totalShots) * 100).toFixed(0) + '%' : '—';
-                            value = `${player.goals} (${quote})`;
+                            const totalGoals = player.goals + player.seven_meter_goals;
+                            const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+                            value = `${totalGoals} (${quote})`;
                         }
                         
                         tableHtml += `<td>${value}</td>`;
@@ -569,12 +678,18 @@
             }
         }
         
-        // Seite initialisieren
-        loadPlayers();
-        loadCustomActions();
-        loadActionLog();
-        updateScoreDisplay();
-        loadStats();
+        // --- Seite initialisieren ---
+        async function initializeProtocol() {
+            await loadPlayers();
+            await loadCustomActions(); // Lade Custom Actions
+            
+            // Lade den Rest
+            loadActionLog();
+            updateScoreDisplay();
+            loadStats();
+        }
+        
+        initializeProtocol();
     </script>
 
 </body>

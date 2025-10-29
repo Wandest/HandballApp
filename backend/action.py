@@ -11,7 +11,7 @@ from backend.auth import get_current_trainer
 router = APIRouter()
 
 # -----------------------------
-# Pydantic Modelle für Aktionen (Unverändert)
+# Pydantic Modelle für Aktionen
 # -----------------------------
 class ActionCreate(BaseModel):
     action_type: str 
@@ -32,7 +32,7 @@ class ActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Statistik-Modell (Unverändert)
+# Statistik-Modell
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
@@ -53,16 +53,17 @@ def get_db():
         db.close()
 
 # -----------------------------
-# Standard-Aktionen erstellen (FINAL KORRIGIERT: Keine 7m-Aktionen hier mehr!)
+# Standard-Aktionen erstellen
 # -----------------------------
 def create_default_actions(trainer_id: int, db: Session):
     """
-    Diese Funktion stellt nur sicher, dass die CUSTOM ACTION Tabelle existiert.
-    Die 7m-Aktionen werden jetzt NICHT über die Datenbank erstellt, da sie hartcodiert sind.
+    Stellt sicher, dass die Standard-Aktionen (7m Gehalten, 7m verursacht) 
+    in der CustomAction-Tabelle für den Trainer existieren.
     """
     
-    # Optional: Timeout, falls der Trainer es nicht löschen können soll
     default_actions_to_create = [
+        {"name": "7m Gehalten", "key": "SEVEN_METER_SAVE", "is_goalkeeper_action": True},
+        {"name": "7m verursacht", "key": "SEVEN_METER_CAUSED", "is_goalkeeper_action": False},
         {"name": "Timeout", "key": "TIMEOUT", "is_goalkeeper_action": False},
     ]
 
@@ -85,7 +86,7 @@ def create_default_actions(trainer_id: int, db: Session):
 
 
 # -----------------------------
-# Endpunkte (Unverändert)
+# Endpunkte
 # -----------------------------
 
 # AKTION HINZUFÜGEN
@@ -118,10 +119,6 @@ def log_action(
             action_key = 'Goal_7m'
         elif action_data.action_type == 'Miss':
             action_key = 'Miss_7m'
-            
-    # HINWEIS: SEVEN_METER_SAVE und SEVEN_METER_CAUSED müssen direkt als Action Type übergeben werden.
-    # Da dies bereits im Frontend-Code geschieht, wird das Backend es korrekt speichern.
-
 
     new_action = Action(
         action_type=action_key,
@@ -135,7 +132,7 @@ def log_action(
 
     return new_action
 
-# ALLE AKTIONEN EINES SPIELS LADEN (Unverändert)
+# ALLE AKTIONEN EINES SPIELS LADEN
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
     game_id: int,
@@ -179,7 +176,7 @@ def list_actions(
         
     return response_list
 
-# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (Unverändert)
+# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
@@ -238,3 +235,29 @@ def get_game_stats(
         ))
 
     return final_stats
+
+# NEU: ENDPUNKT ZUM LÖSCHEN EINER AKTION
+@router.delete("/delete/{action_id}")
+def delete_action(
+    action_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    action = db.query(Action).filter(Action.id == action_id).first()
+    if not action:
+        raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
+
+    # Prüfen, ob der Trainer das Spiel besitzt, zu dem die Aktion gehört
+    game = db.query(Game).filter(Game.id == action.game_id).first()
+    team = db.query(Team).filter(
+        Team.id == game.team_id,
+        Team.trainer_id == current_trainer.id
+    ).first()
+
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung, diese Aktion zu löschen.")
+
+    db.delete(action)
+    db.commit()
+
+    return {"message": "Aktion erfolgreich gelöscht."}
