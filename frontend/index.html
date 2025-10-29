@@ -65,7 +65,7 @@
 
   <div class="container">
     
-    <div id="register-view">
+    <div id="register-view" style="display: none;">
         <h1>Trainer-Registrierung</h1>
         <form id="register-form">
             <input type="text" id="name" placeholder="Name" required>
@@ -100,7 +100,7 @@
         </p>
     </div>
 
-    <div id="login-view" style="display: none;">
+    <div id="login-view" style="display: block;">
         <h1>Trainer-Login</h1>
         <form id="login-form">
             <input type="email" id="email-login" placeholder="E-Mail" required>
@@ -206,7 +206,6 @@
             const data = await response.json();
 
             if (response.ok) {
-                // Link ist im Backend nur für Debugging sichtbar
                 const link = data.verification_link ? `<br><a href="${data.verification_link}" target="_blank" style="color:#ffdd44;">Klicken Sie hier zur Verifizierung (TESTLINK)</a>` : '';
                 
                 messageRegDiv.innerHTML = `✅ Registrierung erfolgreich. E-Mail wurde gesendet! ${link}`;
@@ -247,14 +246,14 @@
             const data = await response.json();
 
             if (response.ok) {
-                // Login erfolgreich! Speichere den Token (z.B. in localStorage)
+                // Login erfolgreich! Speichere den Token 
                 localStorage.setItem('access_token', data.access_token);
                 
                 messageLoginDiv.innerHTML = `✅ Login erfolgreich! Token gespeichert.`;
                 messageLoginDiv.className = 'message success';
                 
-                // Hier würden wir zum Haupt-Dashboard weiterleiten:
-                alert("Weiterleitung zum Haupt-Dashboard!");
+                // Weiterleitung zur Ladeseite (startet den Token-Transfer)
+                window.location.href = "/app/dashboard"; 
                 
             } else {
                 const detail = data.detail || 'Unbekannter Fehler';

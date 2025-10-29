@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(120deg, #1e3c72, #2a5298);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      text-align: center;
+    }
+    .header {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 600px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #ffcc00;
+      font-size: 2.2em;
+      margin-bottom: 5px;
+    }
+    .welcome {
+        font-size: 1.1em;
+        margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      background: #ff6666;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #ff7777;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Dashboard 📊</h1>
+    <p class="welcome">Willkommen, **{{ trainer_name }}**!</p>
+    <p>Hier siehst du später deine Teams und kannst Spiele erfassen.</p>
+    <button onclick="logout()">Logout</button>
+  </div>
+  
+  <script>
+    function logout() {
+      // Lösche den gespeicherten Token
+      localStorage.removeItem('access_token');
+      // Leite zur Login-Seite zurück
+      window.location.href = "/"; 
+    }
+  </script>
+
+</body>
+</html>

@@ -4,9 +4,8 @@ from sqlalchemy.orm import relationship, sessionmaker
 # ----------------------------
 # Datenbank-Verbindung & Basis
 # ----------------------------
-DATABASE_URL = "sqlite:///handball.db"  # erzeugt handball.db im Projektverzeichnis
+DATABASE_URL = "sqlite:///handball.db" 
 
-# ACHTUNG: check_same_thread=False ist für SQLite + FastAPI/Threads notwendig
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -21,10 +20,7 @@ class Trainer(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
-    
-    # NEU: Verifizierungs-Status (Standard: False)
     is_verified = Column(Boolean, default=False)
-    # NEU: Speichert das Token für den Verifizierungslink
     verification_token = Column(String, nullable=True) 
 
     teams = relationship("Team", back_populates="trainer")

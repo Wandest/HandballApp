@@ -1,22 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic_core import PydanticCustomError
 import re
-import uuid # NEU: Für die Token-Generierung
+import uuid
 from datetime import datetime, timedelta
 
+# KORREKTUR: Importiere direkt aus der Datenbank-Datei (funktioniert meist besser, wenn main.py die App startet)
 from .database import SessionLocal, Trainer 
 
 router = APIRouter()
 # Passwort-Hashing
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 # JWT-Konfiguration
-SECRET_KEY = "supergeheimeschluessel123"  # später sicher speichern!
+SECRET_KEY = "supergeheimeschluessel123" 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+
+# OAuth2PasswordBearer definiert das Schema für Token in Headern
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") 
 
 # Datenbanksession
 def get_db():
@@ -25,6 +30,13 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# Exception für ungültige Zugangsdaten
+CREDENTIALS_EXCEPTION = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Zugangsdaten sind ungültig oder Token ist abgelaufen",
+    headers={"WWW-Authenticate": "Bearer"},
+)
 
 # -----------------------------
 # Pydantic Modelle (Schemas)
@@ -79,6 +91,29 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+# Abhängigkeitsfunktion zum Überprüfen des Tokens
+def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise CREDENTIALS_EXCEPTION
+    except JWTError:
+        raise CREDENTIALS_EXCEPTION
+    
+    trainer = db.query(Trainer).filter(Trainer.email == email).first()
+    
+    if trainer is None:
+        raise CREDENTIALS_EXCEPTION
+    
+    if not trainer.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Konto ist nicht verifiziert."
+        )
+
+    return trainer 
+
 # -----------------------------
 # Endpunkte
 # -----------------------------
@@ -89,29 +124,26 @@ def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="E-Mail bereits registriert")
 
     hashed_pw = hash_password(trainer.password)
-    verification_token = str(uuid.uuid4()) # Generiere eindeutigen Token
+    verification_token = str(uuid.uuid4()) 
 
     new_trainer = Trainer(
         name=trainer.name, 
         email=trainer.email, 
         password=hashed_pw,
-        is_verified=False, # Standardmäßig unverifiziert
-        verification_token=verification_token # Speichere Token
+        is_verified=False,
+        verification_token=verification_token
     )
     db.add(new_trainer)
     db.commit()
     db.refresh(new_trainer)
     
-    # Hier müsste jetzt der Code zum VERSENDEN der E-Mail stehen.
-    # Vorläufig geben wir den Link im Ergebnis zurück (für den Test):
     verification_link = f"http://127.0.0.1:8000/auth/verify?token={verification_token}"
 
     return {
         "msg": "Trainer erfolgreich registriert. Bitte E-Mail überprüfen.",
-        "verification_link": verification_link # WIRD SPÄTER DURCH E-MAIL-VERSAND ERSETZT
+        "verification_link": verification_link
     }
 
-# NEUER ENDPUNKT ZUR VERIFIZIERUNG DES TRAINERS
 @router.get("/verify")
 def verify_trainer(token: str, db: Session = Depends(get_db)):
     trainer = db.query(Trainer).filter(Trainer.verification_token == token).first()
@@ -122,7 +154,6 @@ def verify_trainer(token: str, db: Session = Depends(get_db)):
     if trainer.is_verified:
         return {"msg": "Konto ist bereits verifiziert."}
 
-    # Verifiziere den Trainer und setze den Token zurück
     trainer.is_verified = True
     trainer.verification_token = None
     db.commit()
@@ -137,7 +168,6 @@ def login_trainer(credentials: TrainerLogin, db: Session = Depends(get_db)):
     if not trainer or not verify_password(credentials.password, trainer.password):
         raise HTTPException(status_code=401, detail="Falsche E-Mail oder Passwort")
 
-    # WICHTIG: Füge die Verifizierungsprüfung hinzu
     if not trainer.is_verified:
         raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
 
