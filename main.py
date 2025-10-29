@@ -1,7 +1,6 @@
 import webview
 import threading
 import uvicorn
-
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -11,6 +10,7 @@ from backend.team import router as team_router
 from backend.player import router as player_router
 from backend.game import router as game_router
 from backend.action import router as action_router
+from backend.custom_action import router as custom_action_router
 from backend.database import init_db, Trainer, Game, Team, SessionLocal
 
 app = FastAPI(title="HandballApp Backend")
@@ -21,6 +21,7 @@ app.include_router(team_router, prefix="/teams", tags=["Teams"])
 app.include_router(player_router, prefix="/players", tags=["Players"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
+app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"])
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -43,11 +44,19 @@ def app_dashboard(request: Request):
         {"request": request, "title": "Lade Dashboard"}
     )
 
+# NEU HIER EINGEFÜGT: Ungeschützte Route, die den Protokoll-Loader lädt
+@app.get("/app/protocol/{game_id}", response_class=HTMLResponse)
+def app_protocol_loader(game_id: int, request: Request):
+    return templates.TemplateResponse(
+        "protocol_loader.html",
+        {"request": request, "title": "Lade Protokoll"}
+    )
+# ENDE NEU
+
 # Geschützte Route: Der eigentliche Dashboard-Inhalt
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
-    # NEU: Trainer-Daten an das Template übergeben
-    db = SessionLocal() # Temporäre Session
+    db = SessionLocal()
     trainer_data = db.query(Trainer).filter(Trainer.id == current_trainer.id).first()
     db.close()
 
@@ -58,15 +67,16 @@ def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_t
         "dashboard.html",
         {"request": request, "title": "Dashboard", 
          "trainer_name": trainer_data.username,
-         "is_verified": trainer_data.is_verified # WICHTIG: Status übergeben
+         "is_verified": trainer_data.is_verified 
         }
     )
 
+# Geschützte Route: Protokoll-Oberfläche
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
-    db = SessionLocal()
-    game = db.query(Game).filter(Game.id == game_id).first()
+    db = SessionLocal() 
     
+    game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         db.close()
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")

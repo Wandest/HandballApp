@@ -220,7 +220,7 @@
             window.location.href = "/app/dashboard"; 
         }
 
-        // --- Spieler-Auswahl ---
+        // --- Spieler-Auswahl (Unverändert) ---
         function selectPlayer(playerId, playerName, isGoalie) {
             selectedPlayerId = playerId;
             SELECTED_PLAYER_INFO.textContent = playerName;
@@ -231,7 +231,6 @@
             document.getElementById(`player-btn-${playerId}`).classList.add('selected');
         }
 
-        
         // --- Aktion verarbeiten: Feldspieler (Goal, Miss, TechError) ---
         function handleAction(actionType, isGoalieAction) {
             if (selectedPlayerId === null) {
@@ -241,7 +240,7 @@
             logAction(actionType, selectedPlayerId, false, false);
         }
         
-        // Aktion verarbeiten: Wurfaktionen (Unterscheidet 7m)
+        // NEU: Aktion verarbeiten: Wurfaktionen (Unterscheidet 7m)
         function handleShotAction(actionType, isSevenMeter) {
             if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
@@ -250,7 +249,7 @@
             logAction(actionType, selectedPlayerId, isSevenMeter, false);
         }
         
-        // Aktion verarbeiten: Torwart
+        // NEU: Aktion verarbeiten: Torwart
         function handleGoalieAction(actionType) {
             const selectedPlayer = players.find(p => p.id === selectedPlayerId);
             
@@ -262,7 +261,6 @@
             logAction(actionType, selectedPlayerId, false, false);
         }
 
-        
         // --- Aktion protokollieren (Sendet an Backend) ---
         async function logAction(actionType, playerId = null, isSevenMeter = false, requiresConfirmation = false) {
             const token = getToken();
@@ -277,7 +275,7 @@
                 time_in_game: "N/A", 
                 game_id: GAME_ID,
                 player_id: playerId,
-                is_seven_meter: isSevenMeter
+                is_seven_meter: isSevenMeter // NEU
             };
 
             try {
@@ -293,7 +291,7 @@
                 if (response.ok) {
                     loadActionLog();
                     updateScoreDisplay();
-                    loadStats(); 
+                    loadStats(); // Statistik nach jeder Aktion aktualisieren
                 } else if (response.status === 401 || response.status === 403) {
                     leaveProtocol();
                 } else {
@@ -304,7 +302,7 @@
             }
         }
         
-        // --- Score aktualisieren ---
+        // --- Score aktualisieren (Unverändert) ---
         async function updateScoreDisplay() {
             const token = getToken();
             if (!token) return;
@@ -366,11 +364,12 @@
                     const actionText = {
                         'Goal': '⚽ TOR (Feld)',
                         'Miss': '💨 Fehlwurf (Feld)',
-                        'Goal_7m': '🎯 TOR (7m)', 
-                        'Miss_7m': '🧱 Fehlwurf (7m)', 
+                        'Goal_7m': '🎯 TOR (7m)', // NEU
+                        'Miss_7m': '🧱 Fehlwurf (7m)', // NEU
                         'TechError': '🚫 Technischer Fehler',
                         'Save': '🛑 Parade',
                         'OppGoal': '🟡 Gegner Tor',
+                        // Individuelle Aktionen dynamisch auflösen
                         ...(Object.fromEntries(customActions.map(ca => [ca.key, ca.name])))
                     }[action.action_type] || action.action_type;
 
@@ -394,7 +393,7 @@
             }
         }
         
-        // --- Kader laden und Buttons generieren ---
+        // --- Kader laden und Buttons generieren (Unverändert) ---
         async function loadPlayers() {
             const token = getToken();
             if (!token) return leaveProtocol();
@@ -433,7 +432,39 @@
             }
         }
         
-        // --- Statistik-Tabelle laden (NEU) ---
+        // NEU: Custom Actions laden und Buttons generieren
+        async function loadCustomActions() {
+            const token = getToken();
+            if (!token) return;
+
+            try {
+                const response = await fetch('/custom-actions/list', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                customActions = await response.json(); // Speichere global
+                
+                CUSTOM_ACTION_BUTTONS.innerHTML = '';
+                
+                customActions.forEach(ca => {
+                    const button = document.createElement('button');
+                    button.textContent = `⭐ ${ca.name}`;
+                    button.className = ca.is_goalkeeper_action ? 'btn-save-opp' : 'btn-team';
+                    
+                    button.onclick = () => {
+                        const actionFunction = ca.is_goalkeeper_action ? handleGoalieAction : handleAction;
+                        actionFunction(ca.key); // Führt die Aktion mit dem Custom Key aus
+                    };
+                    
+                    CUSTOM_ACTION_BUTTONS.appendChild(button);
+                });
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Custom Actions:', error);
+            }
+        }
+
+        // NEU: Statistik-Tabelle laden
         async function loadStats() {
             const token = getToken();
             if (!token) return;
@@ -441,14 +472,10 @@
             STATS_TABLE_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
 
             try {
-                // NEU: Ruft den korrigierten Statistik-Endpunkt auf
                 const response = await fetch(`/actions/stats/${GAME_ID}`, {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                
-                if (!response.ok) throw new Error('Statistikdaten konnten nicht abgerufen werden.');
-                
                 const stats = await response.json();
                 
                 if (stats.length === 0) {
@@ -456,7 +483,7 @@
                     return;
                 }
 
-                // Generiere dynamische Header (basierend auf Custom Actions)
+                // Generiere dynamische Header (inkl. Custom Actions)
                 let headers = [
                     { key: 'player_name', name: 'Spieler', isFixed: true },
                     { key: 'goals', name: 'Tore' },
@@ -468,7 +495,7 @@
                 
                 // Füge Custom Actions als Header hinzu
                 customActions.forEach(ca => {
-                    headers.push({ key: ca.key, name: ca.name.replace(' ', '\u00a0') });
+                    headers.push({ key: ca.key, name: ca.name.replace(' ', '\u00a0') }); // \u00a0 = non-breaking space
                 });
                 
                 let tableHtml = `<table class="stats-table"><thead><tr>`;
@@ -480,15 +507,13 @@
                 stats.forEach(player => {
                     tableHtml += `<tr>`;
                     headers.forEach(h => {
-                        let value;
+                        let value = player[h.key];
                         
-                        if (h.isFixed) {
-                            value = player[h.key];
-                        } else {
-                            // Custom Action Key
+                        // Spezielle Behandlung für Custom Actions
+                        if (!h.isFixed) {
                             value = player.custom_counts[h.key] || 0;
                         }
-                        
+
                         // Berechnung der Wurfquote (Gesamt)
                         if (h.name === 'Tore') {
                             const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
@@ -505,14 +530,14 @@
                 STATS_TABLE_CONTAINER.innerHTML = tableHtml;
 
             } catch (error) {
-                STATS_TABLE_CONTAINER.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
+                STATS_TABLE_CONTAINER.innerHTML = `<p class="error">Fehler beim Laden der Statistik.</p>`;
                 console.error("Statistikfehler:", error);
             }
         }
         
         // Seite initialisieren
         loadPlayers();
-        loadCustomActions();
+        loadCustomActions(); // Lade Custom Actions zuerst
         loadActionLog();
         updateScoreDisplay();
         loadStats();

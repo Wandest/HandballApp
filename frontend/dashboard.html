@@ -673,9 +673,10 @@
 
 
     function startProtocol(gameId, opponent) {
-        localStorage.setItem('protocol_game_id', gameId);
-        window.location.href = `/protocol/${gameId}`; 
-    }
+    localStorage.setItem('protocol_game_id', gameId);
+    // WICHTIG: Leite zur ungeschützten Loader-Seite um, damit der Token gelesen wird!
+    window.location.href = `/app/protocol/${gameId}`; 
+}
 
 
     async function loadGames(teamId) {

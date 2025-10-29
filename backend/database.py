@@ -19,7 +19,6 @@ class Trainer(Base):
     __tablename__ = "trainers"
 
     id = Column(Integer, primary_key=True, index=True)
-    # NEU: 'username' ist jetzt das primäre Identifikationsfeld und muss einzigartig sein
     username = Column(String, unique=True, index=True) 
     email = Column(String, unique=True, index=True)
     password = Column(String) 
@@ -28,9 +27,25 @@ class Trainer(Base):
 
     # Beziehungen
     teams = relationship("Team", back_populates="trainer", cascade="all, delete-orphan")
+    custom_actions = relationship("CustomAction", back_populates="trainer", cascade="all, delete-orphan")
 
 # ---------------------------------
-# 2. Team (Mannschaft) Modell
+# 2. CustomAction Modell
+# ---------------------------------
+class CustomAction(Base):
+    __tablename__ = "custom_actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trainer_id = Column(Integer, ForeignKey("trainers.id"))
+    
+    name = Column(String)
+    key = Column(String)
+    is_goalkeeper_action = Column(Boolean, default=False)
+    
+    trainer = relationship("Trainer", back_populates="custom_actions")
+
+# ---------------------------------
+# 3. Team (Mannschaft) Modell
 # ---------------------------------
 class Team(Base):
     __tablename__ = "teams"
@@ -47,7 +62,7 @@ class Team(Base):
 
 
 # ---------------------------------
-# 3. Player (Spieler) Modell
+# 4. Player (Spieler) Modell
 # ---------------------------------
 class Player(Base):
     __tablename__ = "players"
@@ -63,7 +78,7 @@ class Player(Base):
     actions = relationship("Action", back_populates="player", cascade="all, delete-orphan") 
 
 # ---------------------------------
-# 4. Game (Spiel) Modell
+# 5. Game (Spiel) Modell
 # ---------------------------------
 class Game(Base):
     __tablename__ = "games"
@@ -79,7 +94,7 @@ class Game(Base):
 
 
 # ---------------------------------
-# 5. Action (Aktion/Event) Modell
+# 6. Action (Aktion/Event) Modell
 # ---------------------------------
 class Action(Base):
     __tablename__ = "actions"
