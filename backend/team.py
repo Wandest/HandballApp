@@ -109,3 +109,4 @@ def list_teams(
     ).all()
     
     return teams
+

@@ -23,19 +23,18 @@
       padding: 20px 30px;
       border-radius: 10px;
       width: 90%;
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto 30px auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    /* KORRIGIERT: 3 Spalten Layout */
     .dashboard-layout {
         width: 90%;
-        max-width: 1200px;
+        max-width: 1400px; 
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr; 
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 20px;
     }
     .card {
@@ -111,7 +110,7 @@
         color: #1e3c72;
         font-weight: bold;
     }
-    .player-list-item, .game-list-item {
+    .player-list-item, .game-list-item, .custom-action-list-item { 
         background: rgba(255, 255, 255, 0.05);
         padding: 8px;
         margin-bottom: 4px;
@@ -148,13 +147,12 @@
     
     .detail-area {
         width: 90%;
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 30px auto 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
         gap: 20px;
     }
-    /* Styling für den Verifizierungs-Hinweis */
     .verification-warning {
         width: 90%;
         max-width: 800px;
@@ -255,12 +253,12 @@
         </form>
         <div id="player-message" class="message"></div>
     </div>
-    
-    </div>
 
-  <div class="detail-area" style="grid-template-columns: 1fr 1fr 1fr; max-width: 1200px; width: 90%; margin: 30px auto 0 auto;">
+  </div>
+
+  <div class="detail-area">
     <div class="card" style="grid-column: span 1;">
-        <h2>Kader Übersicht für <span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+        <h2>Kader für <span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
         <div id="player-list-container">
             <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
         </div>
@@ -284,21 +282,44 @@
         </form>
         <div id="game-message" class="message"></div>
     </div>
+    
+    <div class="card" style="grid-column: span 1;">
+        <h2>Aktionen für <span id="action-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+        <form id="add-custom-action-form">
+            <label for="custom-action-name">Name der Aktion:</label><br>
+            <input type="text" id="custom-action-name" required><br>
+
+            <label for="custom-action-category">Kategorie:</label><br>
+            <select id="custom-action-category">
+                {% for category in action_categories %}
+                    <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select><br>
+            
+            <button type="submit" class="btn-primary" id="add-custom-action-button" disabled>Aktion erstellen</button>
+        </form>
+        <div id="custom-action-message" class="message"></div>
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+        <div id="custom-action-list-container">
+            <p style="opacity: 0.6;">Wählen Sie ein Team.</p>
+        </div>
+    </div>
+
   </div>
-  </div> <script>
+  </div> 
+  
+  <script>
     // --- Globale Logout Funktion ---
     function logout() {
       localStorage.removeItem('access_token');
       window.location.href = "/"; 
     }
     
-    // Führe die Logik nur aus, wenn der Trainer verifiziert ist
     {% if is_verified %} 
     
     let selectedTeamId = null;
     let selectedTeamName = "";
 
-    // DOM Elemente (aktualisiert)
     const teamListDiv = document.getElementById('team-list');
     const teamMessageDiv = document.getElementById('team-message');
     const teamLeagueSelect = document.getElementById('team-league');
@@ -312,13 +333,17 @@
     const addPlayerButton = document.getElementById('add-player-button');
     const addGameButton = document.getElementById('add-game-button');
     const gameMessageDiv = document.getElementById('game-message');
+    
+    const actionTeamName = document.getElementById('action-team-name');
+    const addCustomActionButton = document.getElementById('add-custom-action-button');
+    const customActionMessageDiv = document.getElementById('custom-action-message');
+    const customActionListContainer = document.getElementById('custom-action-list-container');
+    const addCustomActionForm = document.getElementById('add-custom-action-form');
 
     function getToken() {
         return localStorage.getItem('access_token');
     }
     
-    // --- Ligen und Positionen Laden (ENTFERNT, da synchron geladen) ---
-
     // --- Team-Logik ---
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
@@ -332,11 +357,15 @@
         selectedTeamInfo.textContent = `Ausgewählt: ${teamName}`;
         kaderTeamName.textContent = teamName;
         gameplanTeamName.textContent = teamName;
+        actionTeamName.textContent = teamName; 
+        
         addPlayerButton.disabled = false;
         addGameButton.disabled = false;
+        addCustomActionButton.disabled = false; 
 
         loadPlayers(teamId);
         loadGames(teamId);
+        loadCustomActions(teamId); 
     }
     
     async function loadTeams() {
@@ -362,10 +391,15 @@
             selectedTeamInfo.textContent = "";
             kaderTeamName.textContent = "(Team wählen)";
             gameplanTeamName.textContent = "(Team wählen)";
+            actionTeamName.textContent = "(Team wählen)"; 
+            
             addPlayerButton.disabled = true;
             addGameButton.disabled = true;
+            addCustomActionButton.disabled = true; 
+
             playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
+            customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
 
 
             if (teams.length === 0) {
@@ -392,171 +426,118 @@
     
     document.getElementById('add-team-form').addEventListener('submit', async function(event) {
         event.preventDefault();
-
         const name = document.getElementById('team-name').value;
         const league = teamLeagueSelect.value;
         const token = getToken();
-
-        if (!token) {
-            teamMessageDiv.textContent = '❌ Nicht eingeloggt.';
-            teamMessageDiv.className = 'message error';
-            return;
-        }
-
+        if (!token) { /* ... */ return; }
         teamMessageDiv.textContent = 'Erstelle Mannschaft...';
         teamMessageDiv.className = 'message';
-
         try {
             const response = await fetch('/teams/add', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ name, league }),
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 teamMessageDiv.textContent = `✅ Mannschaft "${name}" erfolgreich erstellt.`;
                 teamMessageDiv.className = 'message success';
                 document.getElementById('add-team-form').reset();
                 loadTeams(); 
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
+            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
-                const detail = data.detail || 'Unbekannter Fehler';
-                teamMessageDiv.textContent = `❌ Fehler: ${detail}`;
+                teamMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 teamMessageDiv.className = 'message error';
             }
-        } catch (error) {
-            teamMessageDiv.textContent = '❌ Serverfehler beim Erstellen der Mannschaft.';
-            teamMessageDiv.className = 'message error';
-            console.error('Error:', error);
-        }
+        } catch (error) { /* ... */ }
     });
 
     // --- Spieler-Logik ---
     async function deletePlayer(playerId) {
         if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
-
         const token = getToken();
         if (!token) return logout();
-
         try {
             const response = await fetch(`/players/delete/${playerId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (response.ok) {
                 playerMessageDiv.textContent = `✅ Spieler erfolgreich gelöscht.`;
                 playerMessageDiv.className = 'message success';
                 loadPlayers(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
+            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 const data = await response.json();
                 playerMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
                 playerMessageDiv.className = 'message error';
             }
-        } catch (error) {
-            playerMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spielers.';
-            playerMessageDiv.className = 'message error';
-            console.error('Error:', error);
-        }
+        } catch (error) { /* ... */ }
     }
-
 
     document.getElementById('add-player-form').addEventListener('submit', async function(event) {
         event.preventDefault();
-
         if (!selectedTeamId) {
             playerMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
             playerMessageDiv.className = 'message error';
             return;
         }
-
         const name = document.getElementById('player-name').value;
         const number = document.getElementById('player-number').value ? parseInt(document.getElementById('player-number').value) : null; 
         const position = playerPositionSelect.value;
         const token = getToken();
-
         playerMessageDiv.textContent = `Füge Spieler zu ${selectedTeamName} hinzu...`;
         playerMessageDiv.className = 'message';
-        
-        const payload = {
-            name: name,
-            number: number,
-            position: position || null,
-            team_id: selectedTeamId 
-        };
-
+        const payload = { name: name, number: number, position: position || null, team_id: selectedTeamId };
         try {
             const response = await fetch('/players/add', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 playerMessageDiv.textContent = `✅ Spieler "${name}" erfolgreich hinzugefügt.`;
                 playerMessageDiv.className = 'message success';
                 document.getElementById('add-player-form').reset();
                 loadPlayers(selectedTeamId); 
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
+            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
-                const detail = data.detail || 'Unbekannter Fehler';
-                playerMessageDiv.textContent = `❌ Fehler: ${detail}`;
+                playerMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 playerMessageDiv.className = 'message error';
             }
-        } catch (error) {
-            playerMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spielers.';
-            playerMessageDiv.className = 'message error';
-            console.error('Error:', error);
-        }
+        } catch (error) { /* ... */ }
     });
 
     async function loadPlayers(teamId) {
         const token = getToken();
         if (!token) return;
-
         playerListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Kader für ${selectedTeamName}...</p>`;
-
         try {
             const response = await fetch(`/players/list/${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (response.status === 401 || response.status === 403) { logout(); }
+            if (!response.ok) throw new Error('Kader-Ladefehler');
 
             const players = await response.json();
             playerListContainer.innerHTML = '';
-            
             if (players.length === 0) {
                 playerListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spieler im Kader von ${selectedTeamName}.</p>`;
                 return;
             }
-
             players.forEach(player => {
                 const playerItem = document.createElement('div');
                 playerItem.className = 'player-list-item';
                 const numberDisplay = player.number !== null ? `#${player.number}` : '';
                 const positionDisplay = player.position ? ` (${player.position})` : '';
-
                 playerItem.innerHTML = `
                     <span>${numberDisplay} <strong>${player.name}</strong>${positionDisplay}</span>
                     <button class="btn-delete" onclick="deletePlayer(${player.id})">Löschen</button>
                 `;
                 playerListContainer.appendChild(playerItem);
             });
-
         } catch (error) {
             console.error('Fehler beim Laden des Kaders:', error);
             playerListContainer.innerHTML = `<p class="error">Fehler beim Laden des Kaders.</p>`;
@@ -564,126 +545,91 @@
     }
     
     // --- Spiel-Logik ---
-
     async function deleteGame(gameId) {
-        if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten? Alle zugehörigen Aktionen werden ebenfalls gelöscht.")) return;
-
+        if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
         const token = getToken();
         if (!token) return logout();
-
         try {
             const response = await fetch(`/games/delete/${gameId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (response.ok) {
                 gameMessageDiv.textContent = `✅ Spiel erfolgreich gelöscht.`;
                 gameMessageDiv.className = 'message success';
                 loadGames(selectedTeamId); 
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
+            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 const data = await response.json();
-                playerMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
-                playerMessageDiv.className = 'message error';
+                gameMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
+                gameMessageDiv.className = 'message error';
             }
-        } catch (error) {
-            gameMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spiels.';
-            gameMessageDiv.className = 'message error';
-            console.error('Error:', error);
-        }
+        } catch (error) { /* ... */ }
     }
 
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
         event.preventDefault();
-
         if (!selectedTeamId) {
             gameMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
             gameMessageDiv.className = 'message error';
             return;
         }
-
         const opponent = document.getElementById('game-opponent').value;
         const date = document.getElementById('game-date').value;
         const token = getToken();
-
         gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
         gameMessageDiv.className = 'message';
-        
-        const payload = {
-            opponent: opponent,
-            date: date,
-            team_id: selectedTeamId 
-        };
-
+        const payload = { opponent: opponent, date: date, team_id: selectedTeamId };
         try {
             const response = await fetch('/games/add', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
-
             const data = await response.json();
-
             if (response.ok) {
                 gameMessageDiv.textContent = `✅ Spiel gegen "${opponent}" erfolgreich angelegt.`;
                 gameMessageDiv.className = 'message success';
                 document.getElementById('add-game-form').reset();
                 loadGames(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
+            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
-                const detail = data.detail || 'Unbekannter Fehler';
-                gameMessageDiv.textContent = `❌ Fehler: ${detail}`;
+                gameMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 gameMessageDiv.className = 'message error';
             }
-        } catch (error) {
-            gameMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spiels.';
-            gameMessageDiv.className = 'message error';
-            console.error('Error:', error);
-        }
+        } catch (error) { /* ... */ }
     });
-
 
     function startProtocol(gameId, opponent) {
         localStorage.setItem('protocol_game_id', gameId);
         window.location.href = `/app/protocol/${gameId}`; 
     }
 
-
     async function loadGames(teamId) {
         const token = getToken();
         if (!token) return;
-
         gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan für ${selectedTeamName}...</p>`;
-
         try {
             const response = await fetch(`/games/list/${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            if (response.status === 401 || response.status === 403) { logout(); }
+            if (!response.ok) throw new Error('Spielplan-Ladefehler');
 
             const games = await response.json();
             gameListContainer.innerHTML = '';
-            
             if (games.length === 0) {
                 gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele für ${selectedTeamName} angelegt.</p>`;
                 return;
             }
-
             games.forEach(game => {
                 const gameItem = document.createElement('div');
                 gameItem.className = 'game-list-item';
-                
                 const dateObj = new Date(game.date);
                 const formattedDate = dateObj.toLocaleDateString('de-DE', {
                     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                 });
-
                 gameItem.innerHTML = `
                     <div class="game-info">
                         <span>📅 <strong>${formattedDate}</strong></span>
@@ -696,34 +642,127 @@
                 `;
                 gameListContainer.appendChild(gameItem);
             });
-
         } catch (error) {
             console.error('Fehler beim Laden des Spielplans:', error);
             gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
         }
     }
+    
+    // --- CUSTOM ACTION LOGIK (SYNCHRONISIERT) ---
+    
+    async function deleteCustomAction(actionId) {
+        if (!confirm("Sind Sie sicher, dass Sie diese Aktionsvorlage löschen möchten?")) return;
+        const token = getToken();
+        if (!token || !selectedTeamId) return logout(); 
+        try {
+            // WICHTIG: Sendet team_id als Query-Parameter
+            const response = await fetch(`/custom-actions/delete/${actionId}?team_id=${selectedTeamId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                customActionMessageDiv.textContent = `✅ Aktion erfolgreich gelöscht.`;
+                customActionMessageDiv.className = 'message success';
+                loadCustomActions(selectedTeamId);
+            } else if (response.status === 401 || response.status === 403) { logout();
+            } else {
+                const data = await response.json();
+                customActionMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
+                customActionMessageDiv.className = 'message error';
+            }
+        } catch (error) { /* ... */ }
+    }
 
-    // --- KORRIGIERTE INITIALISIERUNG ---
+    async function loadCustomActions(teamId) {
+        if (!teamId) {
+            customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie ein Team.</p>';
+            return;
+        }
+        const token = getToken();
+        if (!token) return;
+        customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Aktionen für ${selectedTeamName}...</p>`;
+        try {
+            // WICHTIG: Sendet team_id als Query-Parameter
+            const response = await fetch(`/custom-actions/list?team_id=${teamId}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.status === 401 || response.status === 403) { logout(); }
+            if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Aktionen.');
+
+            const actions = await response.json();
+            customActionListContainer.innerHTML = '';
+            if (actions.length === 0) {
+                customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Keine eigenen Aktionen erstellt.</p>`;
+                return;
+            }
+            actions.forEach(action => {
+                const actionItem = document.createElement('div');
+                actionItem.className = 'custom-action-list-item';
+                const categoryDisplay = action.category ? ` (${action.category})` : '';
+                actionItem.innerHTML = `
+                    <span><strong>${action.name}</strong>${categoryDisplay}</span>
+                    <button class="btn-delete" onclick="deleteCustomAction(${action.id})">Löschen</button>
+                `;
+                customActionListContainer.appendChild(actionItem);
+            });
+        } catch (error) {
+            console.error('Fehler beim Laden der Aktionen:', error);
+            customActionListContainer.innerHTML = `<p class="error">Fehler beim Laden der Aktionen.</p>`;
+        }
+    }
+
+    addCustomActionForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (!selectedTeamId) {
+            customActionMessageDiv.textContent = '❌ Bitte zuerst ein Team auswählen.';
+            customActionMessageDiv.className = 'message error';
+            return;
+        }
+        const name = document.getElementById('custom-action-name').value;
+        const category = document.getElementById('custom-action-category').value;
+        const token = getToken();
+        customActionMessageDiv.textContent = `Erstelle Aktion "${name}"...`;
+        customActionMessageDiv.className = 'message';
+        const payload = {
+            name: name,
+            category: category,
+            team_id: selectedTeamId // WICHTIG: team_id wird mitgesendet
+        };
+        try {
+            const response = await fetch('/custom-actions/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                customActionMessageDiv.textContent = `✅ Aktion "${name}" erfolgreich erstellt.`;
+                customActionMessageDiv.className = 'message success';
+                addCustomActionForm.reset();
+                loadCustomActions(selectedTeamId);
+            } else if (response.status === 401 || response.status === 403) { logout();
+            } else {
+                customActionMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
+                customActionMessageDiv.className = 'message error';
+            }
+        } catch (error) { /* ... */ }
+    });
+
+    // --- INITIALISIERUNG ---
     async function initDashboard() {
         try {
-            // Ligen und Positionen sind bereits im HTML (via Jinja2 geladen)
-            
-            // Lade nur noch Teams (asynchron)
             await loadTeams();
-            
-            // Status setzen (falls Listen leer sind)
             const teamLoadText = teamListDiv.querySelector('p');
             if (teamLoadText && teamLoadText.textContent.includes('Lade Mannschaften')) {
                  teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
             }
-
         } catch (error) {
             console.error("Dashboard-Initialisierungsfehler:", error);
             teamListDiv.innerHTML = '<p class="error">FEHLER beim Laden der Teams.</p>';
         }
     }
     
-    // Starte das Dashboard nur, wenn es im HTML gerendert wird
     if (document.getElementById('app-features')) {
         initDashboard();
     }
@@ -732,3 +771,4 @@
 
 </body>
 </html>
+

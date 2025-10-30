@@ -35,7 +35,7 @@
                     // Wenn der Aufruf erfolgreich ist (Code 200), lädt er den HTML-Inhalt des Dashboards
                     return response.text();
                 } else if (response.status === 401 || response.status === 403) {
-                    // Token ungültig/abgelaufen oder Konto unverifiziert
+                    // Token ungültig/abgelaufen
                     localStorage.removeItem('access_token');
                     window.location.href = "/";
                 } else {

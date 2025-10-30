@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import re
 
-# KORRIGIERT: CustomAction Import entfernt
 from backend.database import SessionLocal, Trainer, Team, Player, Game, Action
 from backend.auth import get_current_trainer 
 
@@ -19,7 +18,7 @@ class ActionCreate(BaseModel):
     time_in_game: Optional[str] = "N/A" 
     game_id: int 
     player_id: Optional[int] = None 
-    is_seven_meter: Optional[bool] = False
+    is_seven_meter: Optional[bool] = False # Für 7m-Tore/Fehlwürfe
 
 class ActionResponse(BaseModel):
     id: int
@@ -33,12 +32,13 @@ class ActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Statistik-Modell (Ohne Custom Counts, mit 7m-Statistik)
+# Statistik-Modell
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
     player_number: Optional[int]
-    position: Optional[str] # NEU: Um TW und Feldspieler zu unterscheiden
+    position: Optional[str] 
+    # Feste Aktionen
     goals: int
     misses: int
     tech_errors: int
@@ -48,6 +48,8 @@ class PlayerStats(BaseModel):
     seven_meter_saves: int
     saves: int
     opponent_goals: int
+    # Dynamische Aktionen
+    custom_counts: Dict[str, int] # Hier kommen die Custom Actions rein
 
 # Datenbanksession
 def get_db():
@@ -86,6 +88,8 @@ def log_action(
             raise HTTPException(status_code=400, detail="Ungültige Spieler-ID oder Spieler gehört nicht zu diesem Team.")
 
     action_key = action_data.action_type
+    
+    # Spezielle 7m-Logik
     if action_data.is_seven_meter:
         if action_data.action_type == 'Goal':
             action_key = 'Goal_7m'
@@ -93,7 +97,7 @@ def log_action(
             action_key = 'Miss_7m'
 
     new_action = Action(
-        action_type=action_key,
+        action_type=action_key, # Speichert "Goal_7m" oder "Gute Abwehr"
         time_in_game=action_data.time_in_game,
         game_id=action_data.game_id,
         player_id=action_data.player_id
@@ -101,8 +105,20 @@ def log_action(
     db.add(new_action)
     db.commit()
     db.refresh(new_action)
+    
+    # Fülle Antwort aus
+    player_name_resp = player.name if action_data.player_id and player else None
+    player_number_resp = player.number if action_data.player_id and player else None
 
-    return new_action
+    return ActionResponse(
+        id=new_action.id,
+        action_type=new_action.action_type,
+        time_in_game=new_action.time_in_game,
+        game_id=new_action.game_id,
+        player_id=new_action.player_id,
+        player_name=player_name_resp,
+        player_number=player_number_resp
+    )
 
 # ALLE AKTIONEN EINES SPIELS LADEN
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
@@ -148,7 +164,7 @@ def list_actions(
         
     return response_list
 
-# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (KORRIGIERT)
+# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (Platzhalter für Custom Actions)
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
@@ -166,26 +182,14 @@ def get_game_stats(
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
         
     
-    # --- KORREKTUR START ---
+    # HINWEIS: Diese Abfrage zählt NOCH KEINE Custom Actions.
+    # Sie zählt nur die festen Typen.
     
-    # 1. Hole Team-Gesamtwerte für Gegentore (Feld)
-    total_opp_goals = db.query(func.count(Action.id)).filter(
-        Action.game_id == game_id,
-        Action.action_type == 'OppGoal'
-    ).scalar() or 0
-    
-    # 2. Hole Team-Gesamtwerte für 7m (alle verursachten 7m = 7m Würfe auf das Tor)
-    total_7m_faced_by_team = db.query(func.count(Action.id)).filter(
-        Action.game_id == game_id,
-        Action.action_type == 'SEVEN_METER_CAUSED'
-    ).scalar() or 0
-
-    # 3. Aggregierte Abfrage (Zählt alle Aktionen pro Spieler)
     stats_query = db.query(
         Player.id,
         Player.name,
         Player.number,
-        Player.position,
+        Player.position, 
         func.count(case((Action.action_type == 'Goal', 1), else_=None)).label('goals'),
         func.count(case((Action.action_type == 'Miss', 1), else_=None)).label('misses'),
         func.count(case((Action.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
@@ -193,8 +197,8 @@ def get_game_stats(
         func.count(case((Action.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
         func.count(case((Action.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
         func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
-        func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves')
-        # opponent_goals entfernt, da es (player_id=None) hat und hier immer 0 wäre
+        func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
+        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
     ).select_from(Player).outerjoin(Action, (Action.player_id == Player.id) & (Action.game_id == game_id))\
     .filter(Player.team_id == team.id)\
     .group_by(Player.id, Player.name, Player.number, Player.position)\
@@ -205,18 +209,6 @@ def get_game_stats(
     final_stats = []
     
     for row in stats_results:
-        
-        # Standardwerte
-        opponent_goals_for_player = 0
-        seven_meter_caused_for_player = row.seven_meter_caused
-        
-        # Für Torhüter: Überschreibe die Werte mit den Team-Gesamtwerten für die Quotenberechnung
-        if row.position == 'Torwart':
-            opponent_goals_for_player = total_opp_goals
-            # Wir "missbrauchen" das Feld seven_meter_caused, um dem Torwart die Gesamtzahl 
-            # der 7m-Würfe (total_7m_faced_by_team) für die Quotenberechnung zu übergeben.
-            seven_meter_caused_for_player = total_7m_faced_by_team
-            
         final_stats.append(PlayerStats(
             player_id=row.id,
             player_name=row.name,
@@ -227,13 +219,12 @@ def get_game_stats(
             tech_errors=row.tech_errors,
             seven_meter_goals=row.seven_meter_goals,
             seven_meter_misses=row.seven_meter_misses,
-            seven_meter_caused=seven_meter_caused_for_player,
+            seven_meter_caused=row.seven_meter_caused,
             seven_meter_saves=row.seven_meter_saves,
             saves=row.saves,
-            opponent_goals=opponent_goals_for_player
+            opponent_goals=row.opponent_goals,
+            custom_counts={} # TODO: Muss noch implementiert werden
         ))
-    
-    # --- KORREKTUR ENDE ---
 
     return final_stats
 

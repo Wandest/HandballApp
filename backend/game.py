@@ -63,7 +63,7 @@ def create_game(
 
     return new_game
 
-# NEU: SPIEL LÖSCHEN
+# SPIEL LÖSCHEN
 @router.delete("/delete/{game_id}")
 def delete_game(
     game_id: int,
@@ -84,12 +84,9 @@ def delete_game(
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung, dieses Spiel zu löschen.")
 
-    # 3. Löschen
+    # 3. Löschen (Dank "cascade" werden zugehörige "Action"-Einträge mitgelöscht)
     db.delete(game)
     db.commit()
-
-    # HINWEIS: Hier müssten später auch alle Protokoll-Aktionen gelöscht werden, 
-    # aber diese Tabelle existiert noch nicht.
 
     return {"message": "Spiel erfolgreich gelöscht."}
 

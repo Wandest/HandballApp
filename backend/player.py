@@ -123,6 +123,10 @@ def list_players(
     ).first()
 
     if not team:
+        # Erlaube Lesezugriff, wenn der Trainer in der gleichen Liga ist
+        # (Funktion für öffentliche Liga-Daten - HIER NOCH NICHT AKTIVIERT)
+        # Wenn wir das wollen, müssen wir die Logik hier ändern.
+        # Aktuell: Strikte Berechtigung
         raise HTTPException(status_code=404, detail="Team nicht gefunden oder gehört nicht zu diesem Trainer.")
 
     players = db.query(Player).filter(

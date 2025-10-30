@@ -27,7 +27,8 @@ class Trainer(Base):
 
     # Beziehungen
     teams = relationship("Team", back_populates="trainer", cascade="all, delete-orphan")
-    # KEINE CustomAction-Beziehung
+    # custom_actions-Beziehung wurde entfernt
+
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
@@ -44,6 +45,8 @@ class Team(Base):
     trainer = relationship("Trainer", back_populates="teams")
     players = relationship("Player", back_populates="team", cascade="all, delete-orphan") 
     games = relationship("Game", back_populates="team", cascade="all, delete-orphan") 
+    # NEUE BEZIEHUNG: (Team-spezifische Aktionen)
+    custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
 
 
 # ---------------------------------
@@ -88,13 +91,31 @@ class Action(Base):
     game_id = Column(Integer, ForeignKey("games.id"))
     player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
     
-    action_type = Column(String) 
+    action_type = Column(String) # Speichert "Goal", "Miss", oder den Namen der CustomAction
     time_in_game = Column(String)
     
     # Beziehungen
     game = relationship("Game", back_populates="actions")
     player = relationship("Player", back_populates="actions")
 
+# ---------------------------------
+# 6. CustomAction (Definition) Modell
+# ---------------------------------
+class CustomAction(Base):
+    __tablename__ = "custom_actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    category = Column(String, nullable=True) 
+    
+    # Verknüpfung zum Team statt zum Trainer
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    
+    # Beziehung
+    team = relationship("Team", back_populates="custom_actions")
+
+
 # Initialisierungsfunktion
 def init_db():
     Base.metadata.create_all(bind=engine)
+

@@ -70,7 +70,6 @@
     .success { color: #38E838; }
     .error { color: #FF6666; }
     
-    /* KORRIGIERT: Formular-Gruppen */
     .form-group {
         display: flex; 
         align-items: center;
@@ -91,7 +90,6 @@
         flex-shrink: 0; 
     }
 
-    /* Passwort-Validierungsliste direkt unter dem Feld */
     .password-validation-list {
         width: 90%; 
         margin: 5px auto 15px auto; 
@@ -547,13 +545,15 @@
             } else {
                 const data = await response.json(); 
                 let detail = data.detail || 'Unbekannter Fehler';
-                // ... (Fehlerbehandlung) ...
+
                 if (data.detail && typeof data.detail === 'string') {
-                    const match = data.detail.match(/'value_error', msg='(.*?)'/);
-                    if (match && match[1]) {
-                        detail = match[1];
-                    } else if (data.detail.includes("value_error")) {
-                        detail = data.detail.split("value_error, msg='")[1].split("',")[0] || 'Validierungsfehler auf dem Server';
+                    if (data.detail.includes("value_error")) {
+                         try {
+                            // Versuche, die spezifische Fehlermeldung aus der Pydantic-Validierung zu extrahieren
+                            detail = data.detail.split("value_error, msg='")[1].split("',")[0] || 'Validierungsfehler auf dem Server';
+                         } catch (e) {
+                            detail = "Passwortanforderungen nicht erfüllt.";
+                         }
                     }
                 } else if (Array.isArray(data.detail) && data.detail[0].msg) {
                     detail = data.detail[0].msg;
@@ -570,13 +570,13 @@
         }
     });
 
-    // --- NEUE HILFSFUNKTION: Login und Weiterleitung ---
+    // --- HILFSFUNKTION: Login und Weiterleitung ---
     async function loginAndRedirect(identifier, password, messageDiv) {
         try {
             const response = await fetch('/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier: identifier, password: password }), // Sendet 'identifier'
+                body: JSON.stringify({ identifier: identifier, password: password }),
             });
 
             const data = await response.json();
@@ -606,7 +606,7 @@
     }
 
 
-    // --- 6. LOGIN LOGIK (Angepasst, um die neue Funktion zu verwenden) ---
+    // --- 6. LOGIN LOGIK ---
     document.getElementById('login-form').addEventListener('submit', async function(event) {
         event.preventDefault();
 
@@ -619,7 +619,7 @@
     });
 
 
-    // --- HILFSFUNKTIONEN (Unverändert) ---
+    // --- HILFSFUNKTIONEN ---
     function setUsername(newUsername) {
         usernameRegInput.value = newUsername;
         checkRegistrationUsernameAvailability();

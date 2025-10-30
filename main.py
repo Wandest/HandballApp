@@ -10,8 +10,11 @@ from backend.team import router as team_router, get_league_list
 from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
 from backend.action import router as action_router
-# KEIN Custom Action Import
+from backend.custom_action import router as custom_action_router
 from backend.database import init_db, Trainer, Game, Team, SessionLocal
+
+# NEU: Kategorien für Aktionen
+ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
 
 app = FastAPI(title="HandballApp Backend")
 
@@ -21,7 +24,7 @@ app.include_router(team_router, prefix="/teams", tags=["Teams"])
 app.include_router(player_router, prefix="/players", tags=["Players"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
-# KEIN Custom Action Router
+app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -72,7 +75,8 @@ def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_t
              "trainer_name": trainer_data.username,
              "is_verified": trainer_data.is_verified,
              "leagues": leagues,    
-             "positions": positions 
+             "positions": positions,
+             "action_categories": ACTION_CATEGORIES 
             }
         )
     finally:
@@ -93,9 +97,17 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
         if not team:
             raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
             
+        # KORREKTUR: Alle notwendigen Infos an das Template übergeben
         return templates.TemplateResponse(
             "protocol.html",
-            {"request": request, "title": "Spielprotokoll", "game_id": game_id, "opponent": game.opponent, "team_name": team.name}
+            {
+                "request": request, 
+                "title": "Spielprotokoll", 
+                "game_id": game.id, 
+                "team_id": team.id, # SEHR WICHTIG: Die Team-ID wird jetzt übergeben
+                "opponent": game.opponent, 
+                "team_name": team.name
+            }
         )
     finally:
         db.close()
@@ -111,5 +123,6 @@ if __name__ == "__main__":
     t = threading.Thread(target=start_server, args=(app,), daemon=True)
     t.start()
 
-    webview.create_window("Handball Auswertung", "http://127.0.0.1:8000", width=1200, height=800)
+    webview.create_window("Handball Auswertung", "http://127.0.0.1:8000", width=1400, height=800) # Breite angepasst
     webview.start()
+

@@ -5,10 +5,10 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pydantic_core import PydanticCustomError
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta 
 
 from backend.database import SessionLocal, Trainer 
 
@@ -97,9 +97,13 @@ def hash_password(password: str):
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+        
     to_encode.update({"exp": expire})
     to_encode.update({"sub": data["username"]})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -129,21 +133,16 @@ def get_current_trainer(token: str = Depends(oauth2_scheme), db: Session = Depen
 def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
     identifier = user_check.username
     
-    # Vereinfachte Prüfung, ob es ein E-Mail-Format ist
     is_email = re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', identifier)
     
-    # 1. Suche nach Username
     trainer = db.query(Trainer).filter(Trainer.username == identifier).first()
     
     if not trainer and is_email:
-        # 2. Wenn Username fehlschlägt UND es eine Email ist, suche nach Email
         trainer = db.query(Trainer).filter(Trainer.email == identifier).first()
         
     if trainer:
-        # Benutzer gefunden (entweder per Username oder Email) -> Weiter zum Login
         return {"exists": True, "message": "Benutzer gefunden. Bitte Passwort eingeben."}
     else:
-        # Benutzer nicht gefunden -> Weiter zur Registrierung
         return {"exists": False, "message": "Benutzer nicht gefunden. Bitte registrieren Sie sich."}
 
 
@@ -233,23 +232,19 @@ def login_trainer(credentials: TrainerLogin, db: Session = Depends(get_db)):
     
     is_email = re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', identifier)
     
-    # 1. Suche nach Username
     trainer = db.query(Trainer).filter(Trainer.username == identifier).first()
     
     if not trainer and is_email:
-        # 2. Wenn Username fehlschlägt UND es eine Email ist, suche nach Email
         trainer = db.query(Trainer).filter(Trainer.email == identifier).first()
     
-    # 3. Wenn immer noch kein Trainer gefunden ODER Passwort falsch
     if not trainer or not verify_password(credentials.password, trainer.password):
         raise HTTPException(status_code=401, detail="Falsche Anmeldedaten")
         
-    # KORRIGIERT: Verifizierungsprüfung entfernt, um Zugriff zu erlauben
+    # Verifizierungsprüfung (auskommentiert für einfaches Testen)
     # if not trainer.is_verified:
     #     raise HTTPException(status_code=403, detail="Konto ist nicht verifiziert. Bitte E-Mail überprüfen.")
 
     token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # 4. Token muss mit dem tatsächlichen USERNAME erstellt werden
     access_token = create_access_token(data={"username": trainer.username}, expires_delta=token_expires) 
     return {"access_token": access_token, "token_type": "bearer"}
