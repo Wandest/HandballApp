@@ -13,7 +13,7 @@ from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
 from backend.database import init_db, Trainer, Game, Team, SessionLocal
 
-# NEU: Kategorien für Aktionen
+# Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
 
 app = FastAPI(title="HandballApp Backend")
@@ -49,35 +49,43 @@ def app_dashboard(request: Request):
 
 @app.get("/app/protocol/{game_id}", response_class=HTMLResponse)
 def app_protocol_loader(game_id: int, request: Request):
+    # Speichert die Game-ID, die vom Loader-Skript verwendet wird
     return templates.TemplateResponse(
         "protocol_loader.html",
-        {"request": request, "title": "Lade Protokoll"}
+        {"request": request, "title": "Lade Protokoll", "game_id_to_load": game_id}
     )
 
+# --- HIER SIND DIE ÄNDERUNGEN ---
 # Geschützte Route: Der eigentliche Dashboard-Inhalt
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
     
     try:
+        # Lade Ligen und Positionen (sind immer erforderlich)
+        leagues = get_league_list()
+        positions = POSITIONS 
+        
+        # Trainerdaten abrufen (ist immer erforderlich)
         trainer_data = db.query(Trainer).filter(Trainer.id == current_trainer.id).first()
 
         if not trainer_data:
             raise HTTPException(status_code=404, detail="Trainer nicht gefunden.")
         
-        # Ligen und Positionen synchron abrufen
-        leagues = get_league_list()
-        positions = POSITIONS 
+        # Alle Variablen für das Template zusammenstellen
+        template_vars = {
+            "request": request,
+            "title": "Dashboard",
+            "trainer_name": trainer_data.username,
+            "is_verified": trainer_data.is_verified,
+            "leagues": leagues,
+            "positions": positions,
+            "action_categories": ACTION_CATEGORIES
+        }
 
         return templates.TemplateResponse(
             "dashboard.html",
-            {"request": request, "title": "Dashboard", 
-             "trainer_name": trainer_data.username,
-             "is_verified": trainer_data.is_verified,
-             "leagues": leagues,    
-             "positions": positions,
-             "action_categories": ACTION_CATEGORIES 
-            }
+            template_vars
         )
     finally:
         db.close() 
@@ -97,17 +105,14 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
         if not team:
             raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
             
-        # KORREKTUR: Alle notwendigen Infos an das Template übergeben
         return templates.TemplateResponse(
             "protocol.html",
-            {
-                "request": request, 
-                "title": "Spielprotokoll", 
-                "game_id": game.id, 
-                "team_id": team.id, # SEHR WICHTIG: Die Team-ID wird jetzt übergeben
-                "opponent": game.opponent, 
-                "team_name": team.name
-            }
+            {"request": request, 
+             "title": "Spielprotokoll", 
+             "game_id": game_id, 
+             "team_id": team.id, # NEU: Übergibt die Team-ID an das Protokoll
+             "opponent": game.opponent, 
+             "team_name": team.name}
         )
     finally:
         db.close()
@@ -123,6 +128,6 @@ if __name__ == "__main__":
     t = threading.Thread(target=start_server, args=(app,), daemon=True)
     t.start()
 
-    webview.create_window("Handball Auswertung", "http://127.0.0.1:8000", width=1400, height=800) # Breite angepasst
+    webview.create_window("Handball Auswertung", "http://127.0.0.1:8000", width=1400, height=800)
     webview.start()
 

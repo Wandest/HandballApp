@@ -23,36 +23,50 @@
       padding: 20px 30px;
       border-radius: 10px;
       width: 90%;
-      max-width: 1400px;
+      max-width: 1400px; 
       margin: 0 auto 30px auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
+    
+    /* Layout obere Reihe */
     .dashboard-layout {
         width: 90%;
         max-width: 1400px; 
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr; /* 3 Spalten */
         gap: 20px;
     }
+    /* Layout untere Reihe */
+    .detail-area {
+        width: 90%;
+        max-width: 1400px; 
+        margin: 30px auto 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 Spalten */
+        gap: 20px;
+    }
+    
     .card {
       background: rgba(255, 255, 255, 0.15);
       padding: 20px;
       border-radius: 10px;
       text-align: left;
       flex: 1;
+      display: flex;
+      flex-direction: column;
     }
-    h1 {
-      color: #ffcc00;
-      font-size: 2em;
-      margin: 0;
+    .card-content {
+        flex-grow: 1;
     }
-    .greeting {
-      font-size: 1em;
-      margin-top: 5px;
-    }
+    
+    h1 { color: #ffcc00; font-size: 2em; margin: 0; }
+    .greeting { font-size: 1em; margin-top: 5px; }
+    h2 { margin-top: 0; }
+    h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
+    
     button {
       padding: 10px 15px;
       border: none;
@@ -61,123 +75,134 @@
       cursor: pointer;
       transition: 0.2s;
     }
-    .btn-logout {
-      background: #ff6666;
-      color: white;
-    }
-    .btn-primary {
-      background: #38E838;
-      color: #1e3c72;
-      margin-top: 10px;
-    }
+    .btn-logout { background: #ff6666; color: white; }
+    .btn-primary { background: #38E838; color: #1e3c72; margin-top: 10px; }
     .btn-delete {
-        background: transparent;
-        color: #ff6666;
-        padding: 5px 10px;
-        font-weight: bold;
-        margin: 0;
-        margin-left: 10px;
+        background: transparent; color: #ff6666;
+        padding: 5px 10px; font-weight: bold;
+        margin: 0; margin-left: 10px;
     }
     .btn-protocol { 
-        background: #00bcd4;
-        color: white;
-        padding: 5px 10px;
-        margin-left: 10px;
+        background: #00bcd4; color: white;
+        padding: 5px 10px; margin-left: 10px;
     }
+    
+    /* Allgemeine Formular-Stile */
     input[type="text"], input[type="number"], input[type="datetime-local"], select {
-      width: 90%;
+      width: calc(100% - 16px); /* Anpassung für Padding */
       padding: 8px;
       margin-bottom: 10px;
       border-radius: 4px;
       border: 1px solid #ccc;
+      box-sizing: border-box; /* Wichtig */
     }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
     .team-list-item {
         background: rgba(255, 255, 255, 0.1);
-        padding: 10px;
-        margin-bottom: 8px;
-        border-radius: 4px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer; 
-        transition: background-color 0.2s;
+        padding: 10px; margin-bottom: 8px; border-radius: 4px;
+        display: flex; justify-content: space-between; align-items: center;
+        cursor: pointer; transition: background-color 0.2s;
     }
-    .team-list-item:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
+    .team-list-item:hover { background: rgba(255, 255, 255, 0.2); }
     .team-list-item.selected {
-        background: #ffcc00; 
-        color: #1e3c72;
-        font-weight: bold;
+        background: #ffcc00; color: #1e3c72; font-weight: bold;
     }
-    .player-list-item, .game-list-item, .custom-action-list-item { 
+    
+    .player-list-item, .custom-action-list-item {
         background: rgba(255, 255, 255, 0.05);
-        padding: 8px;
-        margin-bottom: 4px;
-        border-radius: 4px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.9em;
-        width: 100%;
+        padding: 8px; margin-bottom: 4px; border-radius: 4px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 0.9em; width: 100%;
+    }
+    
+    /* --- Spielplan-Liste --- */
+    .game-list-header {
+        color: #ffcc00;
+        font-size: 1.1em;
+        font-weight: bold;
+        border-bottom: 1px solid #ffcc00;
+        padding-bottom: 5px;
+        margin-top: 15px;
+        margin-bottom: 10px;
     }
     .game-list-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 8px; margin-bottom: 4px; border-radius: 4px;
+        display: flex;
         flex-direction: row;
         align-items: center;
+        font-size: 0.9em;
     }
     .game-info {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        flex-grow: 1;
+        display: flex; flex-direction: column;
+        align-items: flex-start; flex-grow: 1;
     }
-    .game-info span {
-        margin-bottom: 3px;
+    .game-info span { margin-bottom: 3px; }
+    .game-actions { display: flex; gap: 5px; }
+    
+    /* --- NEU: Spiel anlegen Kachel --- */
+    .game-category-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 2px;
+        margin-bottom: 20px;
     }
-    .game-actions {
-        display: flex;
-        gap: 5px;
-    }
-    .message {
-        margin-top: 10px;
+    .tab-button {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 10px 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
         font-weight: bold;
+        text-align: center;
     }
+    .tab-button.active {
+        background: #ffcc00;
+        color: #1e3c72;
+    }
+    .tab-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .form-section {
+        display: none; /* Alle Sektionen standardmäßig ausblenden */
+    }
+    .form-section.active {
+        display: block; /* Nur die aktive Sektion anzeigen */
+    }
+    
+    #new-tournament-group {
+        display: none; /* Standardmäßig ausgeblendet */
+        margin-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 10px;
+    }
+    /* --- Ende: Spiel anlegen Kachel --- */
+
+    .message { margin-top: 10px; font-weight: bold; }
     .success { color: #38E838; }
     .error { color: #FF6666; }
     
-    .detail-area {
-        width: 90%;
-        max-width: 1400px;
-        margin: 30px auto 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        gap: 20px;
-    }
     .verification-warning {
-        width: 90%;
-        max-width: 800px;
-        margin: 50px auto;
-        padding: 30px;
-        background: #ffcc00;
-        color: #333;
-        border-radius: 10px;
-        font-size: 1.2em;
+        width: 90%; max-width: 800px;
+        margin: 50px auto; padding: 30px;
+        background: #ffcc00; color: #333;
+        border-radius: 10px; font-size: 1.2em;
         text-align: center;
     }
-    .verification-warning a {
-        color: #1e3c72;
-        font-weight: bold;
-        text-decoration: underline;
-    }
     .btn-reload {
-        background: #1e3c72;
-        color: white;
-        padding: 10px 20px;
-        margin-top: 15px;
-        font-weight: bold;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
+        background: #1e3c72; color: white;
+        padding: 10px 20px; margin-top: 15px;
+        font-weight: bold; border: none;
+        border-radius: 5px; cursor: pointer;
     }
   </style>
 </head>
@@ -203,108 +228,143 @@
 
   <div id="app-features" {% if not is_verified %}style="display:none;"{% endif %}>
 
+  <!-- OBERE REIHE -->
   <div class="dashboard-layout">
     
     <div class="card">
+      <div class="card-content">
         <h2>Mannschaft hinzufügen</h2>
         <form id="add-team-form">
-            <label for="team-name">Name der Mannschaft:</label><br>
+            <label for="team-name">Name der Mannschaft:</label>
             <input type="text" id="team-name" required><br>
-
-            <label for="team-league">Spielklasse / Liga:</label><br>
+            <label for="team-league">Spielklasse / Liga:</label>
             <select id="team-league" required>
                 <option value="" disabled selected>Wählen Sie eine Klasse</option>
                 {% for league in leagues %}
                     <option value="{{ league }}">{{ league }}</option>
                 {% endfor %}
             </select><br>
-
             <button type="submit" class="btn-primary">Mannschaft erstellen</button>
         </form>
         <div id="team-message" class="message"></div>
+      </div>
     </div>
 
     <div class="card">
+      <div class="card-content">
         <h2>Meine Mannschaften (Auswahl)</h2>
         <div id="team-list">
             <p style="opacity: 0.6;">Lade Mannschaften...</p>
         </div>
         <p id="selected-team-info" style="margin-top: 15px; font-weight: bold; color: #ffcc00;"></p>
+      </div>
     </div>
 
     <div class="card">
+      <div class="card-content">
         <h2>Spieler hinzufügen</h2>
         <form id="add-player-form">
-            <label for="player-name">Name:</label><br>
+            <label for="player-name">Name:</label>
             <input type="text" id="player-name" required><br>
-
-            <label for="player-number">Trikotnummer (optional):</label><br>
+            <label for="player-number">Trikotnummer (optional):</label>
             <input type="number" id="player-number" min="1" max="99"><br>
-
-            <label for="player-position">Position (optional):</label><br>
+            <label for="player-position">Position (optional):</label>
             <select id="player-position">
                 <option value="">(Keine Position)</option>
                 {% for position in positions %}
                     <option value="{{ position }}">{{ position }}</option>
                 {% endfor %}
             </select><br>
-            
             <button type="submit" class="btn-primary" id="add-player-button" disabled>Spieler hinzufügen</button>
         </form>
         <div id="player-message" class="message"></div>
+      </div>
     </div>
-
   </div>
-
+  
+  <!-- UNTERE REIHE -->
   <div class="detail-area">
     <div class="card" style="grid-column: span 1;">
-        <h2>Kader für <span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+      <div class="card-content">
+        <h2>Kader Übersicht</h2>
+        <h3><span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
         <div id="player-list-container">
             <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
         </div>
+      </div>
     </div>
+    
     <div class="card" style="grid-column: span 1;">
-        <h2>Spielplan für <span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
-        <div id="game-list-container">
-            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
-        </div>
-    </div>
-    <div class="card" style="grid-column: span 1;">
+      <div class="card-content">
         <h2>Spiel anlegen</h2>
+        
+        <div class="game-category-tabs">
+            <button class="tab-button" id="tab-btn-saison" onclick="switchGameCategory('Saison')" disabled>Saison</button>
+            <button class="tab-button active" id="tab-btn-testspiel" onclick="switchGameCategory('Testspiel')" disabled>Testspiel</button>
+            <button class="tab-button" id="tab-btn-turnier" onclick="switchGameCategory('Turnier')" disabled>Turnier</button>
+        </div>
+        
         <form id="add-game-form">
-            <label for="game-opponent">Gegner:</label><br>
-            <input type="text" id="game-opponent" required><br>
+            <input type="hidden" id="active-game-category" value="Testspiel">
+            
+            <div class="form-section active" id="common-game-fields">
+                <label for="game-opponent">Gegner:</label>
+                <input type="text" id="game-opponent" required>
+                <label for="game-date">Datum & Uhrzeit:</label>
+                <input type="datetime-local" id="game-date" required>
+            </div>
 
-            <label for="game-date">Datum & Uhrzeit:</label><br>
-            <input type="datetime-local" id="game-date" required><br>
+            <div class="form-section" id="tournament-game-fields">
+                 <label for="tournament-select">Turnier auswählen:</label>
+                 <select id="tournament-select">
+                     <option value="" disabled selected>Lade Turniere...</option>
+                 </select>
+                 
+                 <div id="new-tournament-group">
+                     <label for="new-tournament-name">Neuer Turniername:</label>
+                     <input type="text" id="new-tournament-name">
+                 </div>
+            </div>
 
             <button type="submit" class="btn-primary" id="add-game-button" disabled>Spiel erstellen</button>
         </form>
         <div id="game-message" class="message"></div>
+        
+      </div>
     </div>
     
     <div class="card" style="grid-column: span 1;">
-        <h2>Aktionen für <span id="action-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+      <div class="card-content">
+        <h2>Spielplan</h2>
+        <h3><span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
+        <div id="game-list-container" style="max-height: 400px; overflow-y: auto;">
+            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card" style="grid-column: span 1;">
+      <div class="card-content">
+        <h2>Aktionen</h2>
+        <h3><span id="custom-action-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
         <form id="add-custom-action-form">
-            <label for="custom-action-name">Name der Aktion:</label><br>
+            <label for="custom-action-name">Name der Aktion:</label>
             <input type="text" id="custom-action-name" required><br>
-
-            <label for="custom-action-category">Kategorie:</label><br>
+            <label for="custom-action-category">Kategorie:</label>
             <select id="custom-action-category">
                 {% for category in action_categories %}
                     <option value="{{ category }}">{{ category }}</option>
                 {% endfor %}
             </select><br>
-            
             <button type="submit" class="btn-primary" id="add-custom-action-button" disabled>Aktion erstellen</button>
         </form>
         <div id="custom-action-message" class="message"></div>
         <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
         <div id="custom-action-list-container">
-            <p style="opacity: 0.6;">Wählen Sie ein Team.</p>
+             <p style="opacity: 0.6;">Wählen Sie ein Team.</p>
         </div>
+      </div>
     </div>
-
   </div>
   </div> 
   
@@ -315,36 +375,80 @@
       window.location.href = "/"; 
     }
     
+    // Führe die Logik nur aus, wenn der Trainer verifiziert ist
     {% if is_verified %} 
     
     let selectedTeamId = null;
     let selectedTeamName = "";
 
+    // DOM Elemente (aktualisiert)
     const teamListDiv = document.getElementById('team-list');
     const teamMessageDiv = document.getElementById('team-message');
-    const teamLeagueSelect = document.getElementById('team-league');
-    const playerPositionSelect = document.getElementById('player-position');
     const playerMessageDiv = document.getElementById('player-message');
     const playerListContainer = document.getElementById('player-list-container');
     const gameListContainer = document.getElementById('game-list-container');
     const selectedTeamInfo = document.getElementById('selected-team-info');
     const kaderTeamName = document.getElementById('kader-team-name');
     const gameplanTeamName = document.getElementById('gameplan-team-name');
+    const customActionTeamName = document.getElementById('custom-action-team-name');
     const addPlayerButton = document.getElementById('add-player-button');
     const addGameButton = document.getElementById('add-game-button');
-    const gameMessageDiv = document.getElementById('game-message');
-    
-    const actionTeamName = document.getElementById('action-team-name');
     const addCustomActionButton = document.getElementById('add-custom-action-button');
+    const gameMessageDiv = document.getElementById('game-message');
     const customActionMessageDiv = document.getElementById('custom-action-message');
     const customActionListContainer = document.getElementById('custom-action-list-container');
     const addCustomActionForm = document.getElementById('add-custom-action-form');
+    
+    // NEU: DOM Elemente für "Spiel anlegen"
+    const tabBtnSaison = document.getElementById('tab-btn-saison');
+    const tabBtnTestspiel = document.getElementById('tab-btn-testspiel');
+    const tabBtnTurnier = document.getElementById('tab-btn-turnier');
+    const activeGameCategoryInput = document.getElementById('active-game-category');
+    const tournamentGameFields = document.getElementById('tournament-game-fields');
+    const tournamentSelect = document.getElementById('tournament-select');
+    const newTournamentGroup = document.getElementById('new-tournament-group');
 
     function getToken() {
         return localStorage.getItem('access_token');
     }
     
-    // --- Team-Logik ---
+    // --- KORRIGIERTE Logik für "Spiel anlegen" Tabs ---
+    function switchGameCategory(category) {
+        activeGameCategoryInput.value = category;
+
+        [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.classList.remove('active'));
+        if (category === 'Saison') tabBtnSaison.classList.add('active');
+        if (category === 'Testspiel') tabBtnTestspiel.classList.add('active');
+        if (category === 'Turnier') tabBtnTurnier.classList.add('active');
+
+        // --- KORREKTUR START ---
+        // Die Logik hier wurde vereinfacht und korrigiert
+        if (category === 'Turnier') {
+            tournamentGameFields.style.display = 'block';
+            // Prüfe den *aktuellen* Dropdown-Status, anstatt ihn zurückzusetzen
+            if (tournamentSelect.value === 'NEW') {
+                newTournamentGroup.style.display = 'block';
+            } else {
+                newTournamentGroup.style.display = 'none';
+            }
+        } else {
+            tournamentGameFields.style.display = 'none';
+            // Verstecke auch die Turnier-spezifischen Unter-Felder
+            newTournamentGroup.style.display = 'none';
+        }
+        // --- KORREKTUR ENDE ---
+    }
+    
+    // Event Listener für das Turnier-Dropdown
+    tournamentSelect.addEventListener('change', function() {
+        if (this.value === 'NEW') {
+            newTournamentGroup.style.display = 'block';
+        } else {
+            newTournamentGroup.style.display = 'none';
+        }
+    });
+
+    // --- Team-Logik (Angepasst) ---
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
@@ -357,15 +461,17 @@
         selectedTeamInfo.textContent = `Ausgewählt: ${teamName}`;
         kaderTeamName.textContent = teamName;
         gameplanTeamName.textContent = teamName;
-        actionTeamName.textContent = teamName; 
+        customActionTeamName.textContent = teamName;
         
         addPlayerButton.disabled = false;
         addGameButton.disabled = false;
-        addCustomActionButton.disabled = false; 
+        addCustomActionButton.disabled = false;
+        [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = false);
 
         loadPlayers(teamId);
         loadGames(teamId);
-        loadCustomActions(teamId); 
+        loadCustomActions(teamId);
+        loadTournaments(teamId); // NEU
     }
     
     async function loadTeams() {
@@ -378,29 +484,26 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (response.status === 401 || response.status === 403) {
-                 logout(); 
-            }
+            if (response.status === 401 || response.status === 403) { logout(); }
             if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
 
             const teams = await response.json();
-            
             teamListDiv.innerHTML = '';
             
             selectedTeamId = null;
             selectedTeamInfo.textContent = "";
             kaderTeamName.textContent = "(Team wählen)";
             gameplanTeamName.textContent = "(Team wählen)";
-            actionTeamName.textContent = "(Team wählen)"; 
-            
+            customActionTeamName.textContent = "(Team wählen)";
             addPlayerButton.disabled = true;
             addGameButton.disabled = true;
-            addCustomActionButton.disabled = true; 
-
+            addCustomActionButton.disabled = true;
+            [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = true);
+            
             playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
-
+            tournamentSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
 
             if (teams.length === 0) {
                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
@@ -411,9 +514,7 @@
                 const teamItem = document.createElement('div');
                 teamItem.className = 'team-list-item';
                 teamItem.id = `team-${team.id}`;
-                teamItem.innerHTML = `
-                    <span><strong>${team.name}</strong> (${team.league})</span>
-                `;
+                teamItem.innerHTML = `<span><strong>${team.name}</strong> (${team.league})</span>`;
                 teamItem.addEventListener('click', () => selectTeam(team.id, team.name));
                 teamListDiv.appendChild(teamItem);
             });
@@ -427,7 +528,7 @@
     document.getElementById('add-team-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         const name = document.getElementById('team-name').value;
-        const league = teamLeagueSelect.value;
+        const league = document.getElementById('team-league').value;
         const token = getToken();
         if (!token) { /* ... */ return; }
         teamMessageDiv.textContent = 'Erstelle Mannschaft...';
@@ -444,15 +545,19 @@
                 teamMessageDiv.className = 'message success';
                 document.getElementById('add-team-form').reset();
                 loadTeams(); 
-            } else if (response.status === 401 || response.status === 403) { logout();
+            } else if (response.status === 401 || response.status === 403) {
+                logout();
             } else {
                 teamMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 teamMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            teamMessageDiv.textContent = '❌ Serverfehler beim Erstellen der Mannschaft.';
+            teamMessageDiv.className = 'message error';
+        }
     });
 
-    // --- Spieler-Logik ---
+    // --- Spieler-Logik (Unverändert) ---
     async function deletePlayer(playerId) {
         if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
         const token = getToken();
@@ -466,15 +571,16 @@
                 playerMessageDiv.textContent = `✅ Spieler erfolgreich gelöscht.`;
                 playerMessageDiv.className = 'message success';
                 loadPlayers(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 const data = await response.json();
                 playerMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
                 playerMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            playerMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spielers.';
+            playerMessageDiv.className = 'message error';
+        }
     }
-
     document.getElementById('add-player-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         if (!selectedTeamId) {
@@ -484,11 +590,14 @@
         }
         const name = document.getElementById('player-name').value;
         const number = document.getElementById('player-number').value ? parseInt(document.getElementById('player-number').value) : null; 
-        const position = playerPositionSelect.value;
+        const position = document.getElementById('player-position').value;
         const token = getToken();
         playerMessageDiv.textContent = `Füge Spieler zu ${selectedTeamName} hinzu...`;
         playerMessageDiv.className = 'message';
-        const payload = { name: name, number: number, position: position || null, team_id: selectedTeamId };
+        const payload = {
+            name: name, number: number,
+            position: position || null, team_id: selectedTeamId 
+        };
         try {
             const response = await fetch('/players/add', {
                 method: 'POST',
@@ -501,30 +610,28 @@
                 playerMessageDiv.className = 'message success';
                 document.getElementById('add-player-form').reset();
                 loadPlayers(selectedTeamId); 
-            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 playerMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 playerMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            playerMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spielers.';
+            playerMessageDiv.className = 'message error';
+        }
     });
-
     async function loadPlayers(teamId) {
         const token = getToken();
         if (!token) return;
-        playerListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Kader für ${selectedTeamName}...</p>`;
+        playerListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Kader...</p>`;
         try {
             const response = await fetch(`/players/list/${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.status === 401 || response.status === 403) { logout(); }
-            if (!response.ok) throw new Error('Kader-Ladefehler');
-
             const players = await response.json();
             playerListContainer.innerHTML = '';
             if (players.length === 0) {
-                playerListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spieler im Kader von ${selectedTeamName}.</p>`;
+                playerListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spieler im Kader.</p>`;
                 return;
             }
             players.forEach(player => {
@@ -539,12 +646,12 @@
                 playerListContainer.appendChild(playerItem);
             });
         } catch (error) {
-            console.error('Fehler beim Laden des Kaders:', error);
             playerListContainer.innerHTML = `<p class="error">Fehler beim Laden des Kaders.</p>`;
         }
     }
     
-    // --- Spiel-Logik ---
+    // --- Spiel-Logik (Angepasst) ---
+
     async function deleteGame(gameId) {
         if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
         const token = getToken();
@@ -558,28 +665,62 @@
                 gameMessageDiv.textContent = `✅ Spiel erfolgreich gelöscht.`;
                 gameMessageDiv.className = 'message success';
                 loadGames(selectedTeamId); 
-            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 const data = await response.json();
                 gameMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
                 gameMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            gameMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spiels.';
+            gameMessageDiv.className = 'message error';
+        }
     }
 
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
         event.preventDefault();
+
         if (!selectedTeamId) {
             gameMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
             gameMessageDiv.className = 'message error';
             return;
         }
+
         const opponent = document.getElementById('game-opponent').value;
         const date = document.getElementById('game-date').value;
         const token = getToken();
+        
+        const category = activeGameCategoryInput.value;
+        let tournamentName = null;
+
+        if (category === "Turnier") {
+            const selectedTournament = tournamentSelect.value;
+            if (selectedTournament === "NEW") {
+                tournamentName = document.getElementById('new-tournament-name').value;
+                if (!tournamentName) {
+                    gameMessageDiv.textContent = '❌ Bitte einen Namen für das neue Turnier eingeben.';
+                    gameMessageDiv.className = 'message error';
+                    return;
+                }
+            } else if (!selectedTournament) {
+                 gameMessageDiv.textContent = '❌ Bitte ein Turnier auswählen oder ein neues anlegen.';
+                 gameMessageDiv.className = 'message error';
+                 return;
+            } else {
+                tournamentName = selectedTournament;
+            }
+        }
+
         gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
         gameMessageDiv.className = 'message';
-        const payload = { opponent: opponent, date: date, team_id: selectedTeamId };
+        
+        const payload = {
+            opponent: opponent,
+            date: date,
+            team_id: selectedTeamId,
+            game_category: category,
+            tournament_name: tournamentName
+        };
+
         try {
             const response = await fetch('/games/add', {
                 method: 'POST',
@@ -591,16 +732,24 @@
                 gameMessageDiv.textContent = `✅ Spiel gegen "${opponent}" erfolgreich angelegt.`;
                 gameMessageDiv.className = 'message success';
                 document.getElementById('add-game-form').reset();
+                switchGameCategory('Testspiel'); // Setze auf Standard zurück
                 loadGames(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) { logout();
+                if (category === "Turnier") {
+                    loadTournaments(selectedTeamId); // Lade Turnierliste neu
+                }
+            } else if (response.status === 401 || response.status === 403) {
+                logout();
             } else {
                 gameMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 gameMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            gameMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spiels.';
+            gameMessageDiv.className = 'message error';
+        }
     });
 
-    function startProtocol(gameId, opponent) {
+    function startProtocol(gameId) {
         localStorage.setItem('protocol_game_id', gameId);
         window.location.href = `/app/protocol/${gameId}`; 
     }
@@ -608,55 +757,139 @@
     async function loadGames(teamId) {
         const token = getToken();
         if (!token) return;
-        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan für ${selectedTeamName}...</p>`;
+
+        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         try {
             const response = await fetch(`/games/list/${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.status === 401 || response.status === 403) { logout(); }
-            if (!response.ok) throw new Error('Spielplan-Ladefehler');
-
             const games = await response.json();
             gameListContainer.innerHTML = '';
+            
             if (games.length === 0) {
-                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele für ${selectedTeamName} angelegt.</p>`;
+                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
                 return;
             }
-            games.forEach(game => {
-                const gameItem = document.createElement('div');
-                gameItem.className = 'game-list-item';
-                const dateObj = new Date(game.date);
-                const formattedDate = dateObj.toLocaleDateString('de-DE', {
-                    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-                });
-                gameItem.innerHTML = `
-                    <div class="game-info">
-                        <span>📅 <strong>${formattedDate}</strong></span>
-                        <span>vs. ${game.opponent}</span>
-                    </div>
-                    <div class="game-actions">
-                        <button class="btn-protocol" onclick="startProtocol(${game.id}, '${game.opponent}')">Protokoll starten</button>
-                        <button class="btn-delete" onclick="deleteGame(${game.id})">Löschen</button>
-                    </div>
-                `;
-                gameListContainer.appendChild(gameItem);
+
+            const saisonGames = games.filter(g => g.game_category === 'Saison');
+            const testGames = games.filter(g => g.game_category === 'Testspiel');
+            const tournamentGames = games.filter(g => g.game_category === 'Turnier');
+            
+            const tournaments = {};
+            tournamentGames.forEach(game => {
+                const tourName = game.tournament_name || 'Unbenanntes Turnier';
+                if (!tournaments[tourName]) {
+                    tournaments[tourName] = [];
+                }
+                tournaments[tourName].push(game);
             });
+
+            const renderGameList = (gameList) => {
+                let html = '';
+                gameList.forEach(game => {
+                    const dateObj = new Date(game.date);
+                    const formattedDate = dateObj.toLocaleDateString('de-DE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                    });
+                    html += `
+                        <div class="game-list-item">
+                            <div class="game-info">
+                                <span>📅 <strong>${formattedDate}</strong></span>
+                                <span>vs. ${game.opponent}</span>
+                            </div>
+                            <div class="game-actions">
+                                <button class="btn-protocol" onclick="startProtocol(${game.id})">Protokoll</button>
+                                <button class="btn-delete" onclick="deleteGame(${game.id})">Löschen</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                return html;
+            };
+
+            let finalHtml = '';
+            if (saisonGames.length > 0) {
+                finalHtml += '<h3 class="game-list-header">Saison (Liga)</h3>';
+                finalHtml += renderGameList(saisonGames);
+            }
+            if (testGames.length > 0) {
+                finalHtml += '<h3 class="game-list-header">Testspiele</h3>';
+                finalHtml += renderGameList(testGames);
+            }
+            if (Object.keys(tournaments).length > 0) {
+                finalHtml += '<h3 class="game-list-header">Turniere</h3>';
+                for (const tourName in tournaments) {
+                    finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ddd;">${tourName}</h4>`;
+                    finalHtml += renderGameList(tournaments[tourName]);
+                }
+            }
+            gameListContainer.innerHTML = finalHtml;
+
         } catch (error) {
-            console.error('Fehler beim Laden des Spielplans:', error);
             gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
         }
     }
     
-    // --- CUSTOM ACTION LOGIK (SYNCHRONISIERT) ---
-    
+    // --- NEU: TURNIER-DROPDOWN LADEN ---
+    async function loadTournaments(teamId) {
+        const token = getToken();
+        if (!token) return;
+        
+        tournamentSelect.innerHTML = '<option value="" disabled selected>Lade Turniere...</option>';
+        
+        try {
+            const response = await fetch(`/games/tournaments/${teamId}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) throw new Error('Turniere konnten nicht geladen werden.');
+            
+            const tournaments = await response.json();
+            
+            tournamentSelect.innerHTML = '';
+            
+            if (tournaments.length > 0) {
+                tournaments.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    tournamentSelect.appendChild(option);
+                });
+            }
+            
+            const newOption = document.createElement('option');
+            newOption.value = 'NEW';
+            newOption.textContent = '[ Neues Turnier anlegen ]';
+            tournamentSelect.appendChild(newOption);
+            
+            if (tournaments.length > 0) {
+                 tournamentSelect.selectedIndex = 0;
+            } else {
+                tournamentSelect.value = 'NEW';
+            }
+            tournamentSelect.dispatchEvent(new Event('change'));
+
+        } catch (error) {
+            console.error('Fehler beim Laden der Turniere:', error);
+            tournamentSelect.innerHTML = '<option value="" disabled selected>Fehler</Möglichkeit>';
+            const newOption = document.createElement('option');
+            newOption.value = 'NEW';
+            newOption.textContent = '[ Neues Turnier anlegen ]';
+            tournamentSelect.appendChild(newOption);
+            tournamentSelect.value = 'NEW';
+            tournamentSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // --- Custom Action Logik (Unverändert) ---
     async function deleteCustomAction(actionId) {
         if (!confirm("Sind Sie sicher, dass Sie diese Aktionsvorlage löschen möchten?")) return;
         const token = getToken();
-        if (!token || !selectedTeamId) return logout(); 
+        if (!token) return logout();
         try {
-            // WICHTIG: Sendet team_id als Query-Parameter
-            const response = await fetch(`/custom-actions/delete/${actionId}?team_id=${selectedTeamId}`, {
+            const response = await fetch(`/custom-actions/delete/${actionId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -664,32 +897,28 @@
                 customActionMessageDiv.textContent = `✅ Aktion erfolgreich gelöscht.`;
                 customActionMessageDiv.className = 'message success';
                 loadCustomActions(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 const data = await response.json();
                 customActionMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
                 customActionMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            customActionMessageDiv.textContent = '❌ Serverfehler beim Löschen der Aktion.';
+            customActionMessageDiv.className = 'message error';
+        }
     }
-
     async function loadCustomActions(teamId) {
-        if (!teamId) {
+        const token = getToken();
+        if (!token || !teamId) {
             customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie ein Team.</p>';
             return;
         }
-        const token = getToken();
-        if (!token) return;
-        customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Aktionen für ${selectedTeamName}...</p>`;
+        customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Aktionen...</p>`;
         try {
-            // WICHTIG: Sendet team_id als Query-Parameter
             const response = await fetch(`/custom-actions/list?team_id=${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.status === 401 || response.status === 403) { logout(); }
-            if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Aktionen.');
-
             const actions = await response.json();
             customActionListContainer.innerHTML = '';
             if (actions.length === 0) {
@@ -707,15 +936,13 @@
                 customActionListContainer.appendChild(actionItem);
             });
         } catch (error) {
-            console.error('Fehler beim Laden der Aktionen:', error);
             customActionListContainer.innerHTML = `<p class="error">Fehler beim Laden der Aktionen.</p>`;
         }
     }
-
     addCustomActionForm.addEventListener('submit', async function(event) {
         event.preventDefault();
         if (!selectedTeamId) {
-            customActionMessageDiv.textContent = '❌ Bitte zuerst ein Team auswählen.';
+            customActionMessageDiv.textContent = '❌ Bitte zuerst Team auswählen.';
             customActionMessageDiv.className = 'message error';
             return;
         }
@@ -727,7 +954,7 @@
         const payload = {
             name: name,
             category: category,
-            team_id: selectedTeamId // WICHTIG: team_id wird mitgesendet
+            team_id: selectedTeamId
         };
         try {
             const response = await fetch('/custom-actions/add', {
@@ -741,24 +968,23 @@
                 customActionMessageDiv.className = 'message success';
                 addCustomActionForm.reset();
                 loadCustomActions(selectedTeamId);
-            } else if (response.status === 401 || response.status === 403) { logout();
             } else {
                 customActionMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
                 customActionMessageDiv.className = 'message error';
             }
-        } catch (error) { /* ... */ }
+        } catch (error) {
+            customActionMessageDiv.textContent = '❌ Serverfehler beim Erstellen der Aktion.';
+            customActionMessageDiv.className = 'message error';
+        }
     });
 
     // --- INITIALISIERUNG ---
     async function initDashboard() {
         try {
             await loadTeams();
-            const teamLoadText = teamListDiv.querySelector('p');
-            if (teamLoadText && teamLoadText.textContent.includes('Lade Mannschaften')) {
-                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
-            }
+            // Standard-Tab für "Spiel anlegen" setzen
+            switchGameCategory('Testspiel');
         } catch (error) {
-            console.error("Dashboard-Initialisierungsfehler:", error);
             teamListDiv.innerHTML = '<p class="error">FEHLER beim Laden der Teams.</p>';
         }
     }

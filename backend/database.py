@@ -27,8 +27,7 @@ class Trainer(Base):
 
     # Beziehungen
     teams = relationship("Team", back_populates="trainer", cascade="all, delete-orphan")
-    # custom_actions-Beziehung wurde entfernt
-
+    # custom_actions-Beziehung wurde entfernt (ist jetzt an Team gebunden)
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
@@ -67,6 +66,7 @@ class Player(Base):
 
 # ---------------------------------
 # 4. Game (Spiel) Modell
+# --- HIER SIND DIE ÄNDERUNGEN ---
 # ---------------------------------
 class Game(Base):
     __tablename__ = "games"
@@ -75,6 +75,13 @@ class Game(Base):
     opponent = Column(String)
     date = Column(String)
     team_id = Column(Integer, ForeignKey("teams.id"))
+    
+    # --- NEUE SPALTEN ---
+    # Kategorie: 'Saison', 'Testspiel', 'Turnier'
+    game_category = Column(String, default="Testspiel", nullable=False)
+    # Name des Turniers (nur relevant, wenn Kategorie 'Turnier' ist)
+    tournament_name = Column(String, nullable=True) 
+    # --- ENDE NEUE SPALTEN ---
 
     # Beziehungen
     team = relationship("Team", back_populates="games")
