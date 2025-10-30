@@ -93,7 +93,6 @@
         .btn-error { background: #f44336; color: white; }
         .btn-save-opp { background: #00bcd4; color: white; } /* Parade */
         .btn-opp-goal { background: #9e9e9e; color: white; } /* Gegner Tor */
-        .btn-custom { background: #505050; color: white; }
 
         /* NEU: Tab-Navigation */
         .tab-nav {
@@ -163,9 +162,8 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 0.9em;
         }
-        /* Button-Stil für das Löschen im Protokoll */
         .btn-delete-log {
-            background: #f44336; /* Rot (wie Tech. Fehler) */
+            background: #f44336;
             color: white;
             padding: 4px 8px;
             font-size: 0.9em;
@@ -181,7 +179,7 @@
             <h2>{{ team_name }} vs. {{ opponent }}</h2>
             <p>Spiel-ID: {{ game_id }}</p>
         </div>
-        <div class="score-info">
+        <div classs="score-info">
             <p id="score-board" class="score-board-display">0 - 0</p>
         </div>
         <button onclick="updateAllStats()">🔄 Aktualisieren</button>
@@ -214,11 +212,6 @@
             <button class="btn-save-opp" onclick="handleGoalieAction('SEVEN_METER_SAVE')">🧱 7m Gehalten</button>
 
             <button class="btn-opp-goal" onclick="logAction('OppGoal', null, false)">🟡 Gegner Tor</button>
-            
-            <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
-            
-            <div id="custom-action-buttons">
-                </div>
         </div>
 
         <div class="right-column-area">
@@ -228,10 +221,17 @@
             </div>
 
             <div id="stats-tab" class="tab-content active">
-                <h3>Live-Statistik (Wurfquoten & Fehler)</h3>
-                <div id="stats-table-container">
+                
+                <h3>Feldspieler-Statistik</h3>
+                <div id="stats-table-container-field">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
+                
+                <h3 style="margin-top: 20px;">Torwart-Statistik</h3>
+                <div id="stats-table-container-goalie">
+                    <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
+                </div>
+
             </div>
 
             <div id="log-tab" class="tab-content">
@@ -249,11 +249,10 @@
         const PLAYER_BUTTONS_CONTAINER = document.getElementById('player-buttons-container');
         const SCORE_BOARD = document.getElementById('score-board');
         const SELECTED_PLAYER_INFO = document.getElementById('selected-player-info');
-        const CUSTOM_ACTION_BUTTONS = document.getElementById('custom-action-buttons');
-        const STATS_TABLE_CONTAINER = document.getElementById('stats-table-container');
+        const STATS_TABLE_CONTAINER_FIELD = document.getElementById('stats-table-container-field');
+        const STATS_TABLE_CONTAINER_GOALIE = document.getElementById('stats-table-container-goalie');
 
         let players = []; 
-        let customActions = []; 
         let selectedPlayerId = null; 
 
         // Hilfsfunktionen
@@ -263,7 +262,7 @@
             window.location.href = "/app/dashboard"; 
         }
         
-        // NEU: Tab-Umschaltfunktion
+        // Tab-Umschaltfunktion
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -275,17 +274,16 @@
             if (tabName === 'stats') {
                 document.getElementById('stats-tab').classList.add('active');
                 document.querySelector('.tab-button[onclick="showTab(\'stats\')"]').classList.add('active');
-                loadStats(); // Statistik neu laden, wenn Tab gezeigt wird
+                loadStats(); 
             } else {
                 document.getElementById('log-tab').classList.add('active');
                 document.querySelector('.tab-button[onclick="showTab(\'log\')"]').classList.add('active');
-                loadActionLog(); // Protokoll neu laden
+                loadActionLog(); 
             }
         }
         
-        // NEU: Kombinierte Aktualisierungsfunktion
+        // Kombinierte Aktualisierungsfunktion
         function updateAllStats() {
-            // Aktualisiert immer Score und den aktuell sichtbaren Tab
             updateScoreDisplay();
             if (document.getElementById('stats-tab').classList.contains('active')) {
                 loadStats();
@@ -308,7 +306,7 @@
         }
 
         
-        // --- Aktion verarbeiten: Feldspieler (Goal, Miss, TechError) ---
+        // --- Aktion verarbeiten: Feldspieler ---
         function handleAction(actionType, isGoalieAction) {
             if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
@@ -367,7 +365,7 @@
                 });
 
                 if (response.ok) {
-                    updateAllStats(); // Aktualisiert beide Tabs und den Score
+                    updateAllStats(); 
                 } else if (response.status === 401 || response.status === 403) {
                     leaveProtocol();
                 } else {
@@ -378,7 +376,7 @@
             }
         }
         
-        // NEU: Aktion löschen
+        // Aktion löschen
         async function deleteAction(actionId) {
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
             
@@ -392,7 +390,7 @@
                 });
                 
                 if (response.ok) {
-                    updateAllStats(); // Lade alles neu
+                    updateAllStats(); 
                 } else {
                     alert('Aktion konnte nicht gelöscht werden.');
                 }
@@ -462,8 +460,6 @@
                                     <tbody>`;
 
                 actions.forEach(action => {
-                    const customActionMap = Object.fromEntries(customActions.map(ca => [ca.key, ca.name]));
-
                     const actionText = {
                         'Goal': '⚽ TOR (Feld)',
                         'Miss': '💨 Fehlwurf (Feld)',
@@ -475,7 +471,6 @@
                         'SEVEN_METER_CAUSED': '🚨 7m verursacht',
                         'SEVEN_METER_SAVE': '🧱 7m Gehalten',
                         'Timeout': '⏱️ Timeout',
-                        ...customActionMap
                     }[action.action_type] || action.action_type;
 
                     const playerInfo = action.player_name || 'TEAM';
@@ -487,7 +482,7 @@
                             <td>${playerInfo}</td>
                             <td>${playerNumber}</td>
                             <td>
-                                <button class"btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button>
+                                <button class="btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button>
                             </td>
                         </tr>`;
                 });
@@ -539,62 +534,14 @@
                 console.error(error);
             }
         }
-        
-        // --- Custom Actions laden und Buttons generieren ---
-        async function loadCustomActions() {
-            const token = getToken();
-            if (!token) return;
 
-            try {
-                const response = await fetch('/custom-actions/list', {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Failed to load custom actions');
-                
-                customActions = await response.json(); 
-                
-                CUSTOM_ACTION_BUTTONS.innerHTML = '';
-                
-                // Filtere die Standard-Aktionen heraus (die bereits oben hart codiert sind)
-                const standardKeys = [
-                    'Goal', 'Miss', 'TechError', 'Goal_7m', 'Miss_7m', 
-                    'Save', 'OppGoal', 'Timeout', 
-                    'SEVEN_METER_CAUSED', 'SEVEN_METER_SAVE'
-                ];
-                
-                const filteredCustomActions = customActions.filter(ca => !standardKeys.includes(ca.key));
-
-
-                if (filteredCustomActions.length === 0) {
-                    CUSTOM_ACTION_BUTTONS.innerHTML = '<p style="opacity: 0.7;">Keine zusätzlichen Aktionen definiert.</p>';
-                    return;
-                }
-                
-                filteredCustomActions.forEach(ca => {
-                    const button = document.createElement('button');
-                    button.textContent = `⭐ ${ca.name}`;
-                    button.className = 'btn-custom';
-                    
-                    button.onclick = () => {
-                        const actionFunction = ca.is_goalkeeper_action ? handleGoalieAction : handleAction;
-                        actionFunction(ca.key); 
-                    };
-                    
-                    CUSTOM_ACTION_BUTTONS.appendChild(button);
-                });
-
-            } catch (error) {
-                console.error('Fehler beim Laden der Custom Actions:', error);
-            }
-        }
-
-        // --- Statistik-Tabelle laden ---
+        // --- Statistik-Tabelle laden (KOMPLETT ÜBERARBEITET) ---
         async function loadStats() {
             const token = getToken();
             if (!token) return;
 
-            STATS_TABLE_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
+            STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
+            STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
 
             try {
                 const response = await fetch(`/actions/stats/${GAME_ID}`, {
@@ -607,86 +554,124 @@
                 const stats = await response.json();
                 
                 if (stats.length === 0) {
-                    STATS_TABLE_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Daten zum Anzeigen verfügbar.</p>';
+                    STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
+                    STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
                     return;
                 }
 
-                // Generiere dynamische Header
-                let headers = [
+                // --- KORREKTUR FELD FELDPIELER ---
+                // Header für Feldspieler (7m angepasst)
+                let fieldHeaders = [
                     { key: 'player_name', name: 'Spieler', isFixed: true },
                     { key: 'player_number', name: '#', isFixed: true },
                     { key: 'goals', name: 'Tore (Quote)' },
                     { key: 'misses', name: 'Fehlwürfe' },
                     { key: 'tech_errors', name: 'Tech. Fehler' },
-                    { key: 'seven_meter_goals', name: '7m Tor' },
-                    { key: 'seven_meter_misses', name: '7m Fehl' },
+                    { key: 'seven_meter_stats', name: '7M (T/V | QUOTE)' }, // NEU
+                    { key: 'seven_meter_caused', name: '7m Verursacht' },
                 ];
                 
-                // Füge Custom Actions als Header hinzu
-                customActions.forEach(ca => {
-                    // Ignoriere die Standard-Aktionen, da sie bereits als separate Spalten existieren
-                    const standardKeys = [
-                        'Goal', 'Miss', 'TechError', 'Goal_7m', 'Miss_7m', 
-                        'Save', 'OppGoal', 'Timeout', 
-                        'SEVEN_METER_CAUSED', 'SEVEN_METER_SAVE'
-                    ];
-                    
-                    if (!standardKeys.includes(ca.key)) {
-                        headers.push({ key: ca.key, name: ca.name.replace(' ', '\u00a0') });
-                    }
-                });
+                // Header für Torwart (Namen angepasst)
+                let goalieHeaders = [
+                    { key: 'player_name', name: 'Spieler', isFixed: true },
+                    { key: 'player_number', name: '#', isFixed: true },
+                    { key: 'saves', name: 'Paraden (QUOTE)' },          // NEU
+                    { key: 'seven_meter_saves', name: '7m Gehalten (QUOTE)' }, // NEU
+                    { key: 'opponent_goals', name: 'Gegentore' }, 
+                ];
                 
-                let tableHtml = `<table class="stats-table"><thead><tr>`;
-                headers.forEach(h => {
-                    tableHtml += `<th>${h.name}</th>`;
-                });
-                tableHtml += `</tr></thead><tbody>`;
+                let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
+                fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
+                fieldTableHtml += `</tr></thead><tbody>`;
+
+                let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
+                goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
+                goalieTableHtml += `</tr></thead><tbody>`;
+
+                let fieldPlayersFound = false;
+                let goaliesFound = false;
 
                 stats.forEach(player => {
-                    tableHtml += `<tr>`;
-                    headers.forEach(h => {
-                        let value;
+                    if (player.position === 'Torwart') {
+                        // --- TORWART-TABELLE ---
+                        goaliesFound = true;
+                        goalieTableHtml += `<tr>`;
                         
-                        if (h.isFixed) {
-                            value = player[h.key];
-                        } else if (h.key.startsWith('custom_')) { // Fallback für ältere Keys
-                            value = player.custom_counts[h.key] || 0;
-                        } else {
-                            // Verwende den Header-Key, um die Zählung aus custom_counts abzurufen
-                            value = player.custom_counts[h.key] || 0;
-                        }
+                        goalieHeaders.forEach(h => {
+                            let value = player[h.key] !== undefined ? player[h.key] : 0;
+                            
+                            // NEU: Quote für Paraden
+                            if (h.key === 'saves') {
+                                const saves = player.saves || 0;
+                                const opp_goals = player.opponent_goals || 0; // Kommt jetzt vom Backend
+                                const total_shots = saves + opp_goals;
+                                const quote = total_shots > 0 ? ((saves / total_shots) * 100).toFixed(0) + '%' : '—';
+                                value = `${saves} (${quote})`;
+                            }
+                            // NEU: Quote für 7m Gehalten
+                            else if (h.key === 'seven_meter_saves') {
+                                const sm_saves = player.seven_meter_saves || 0;
+                                // Backend liefert Gesamtzahl 7m (aus 7m_verursacht) in diesem Feld für Torhüter
+                                const sm_faced = player.seven_meter_caused || 0; 
+                                const quote = sm_faced > 0 ? ((sm_saves / sm_faced) * 100).toFixed(0) + '%' : '—';
+                                value = `${sm_saves} (${quote})`;
+                            }
+                            
+                            goalieTableHtml += `<td>${value}</td>`;
+                        });
+                        goalieTableHtml += `</tr>`;
                         
-                        // Spezielle Behandlung für Tore/Quote
-                        if (h.name === 'Tore (Quote)') {
-                            const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                            const totalGoals = player.goals + player.seven_meter_goals;
-                            const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                            value = `${totalGoals} (${quote})`;
-                        }
+                    } else {
+                        // --- FELDSPIELER-TABELLE ---
+                        fieldPlayersFound = true;
+                        fieldTableHtml += `<tr>`;
                         
-                        tableHtml += `<td>${value}</td>`;
-                    });
-                    tableHtml += `</tr>`;
+                        fieldHeaders.forEach(h => {
+                            let value = player[h.key] !== undefined ? player[h.key] : 0;
+                            
+                            // Spezielle Behandlung für Tore/Quote (Gesamt)
+                            if (h.key === 'goals') {
+                                const totalShots = (player.goals || 0) + (player.misses || 0) + (player.seven_meter_goals || 0) + (player.seven_meter_misses || 0);
+                                const totalGoals = (player.goals || 0) + (player.seven_meter_goals || 0);
+                                const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+                                value = `${totalGoals} (${quote})`;
+                            }
+                            // NEU: Spezielle Behandlung für 7m (T/V | Quote)
+                            else if (h.key === 'seven_meter_stats') {
+                                const sm_goals = player.seven_meter_goals || 0;
+                                const sm_misses = player.seven_meter_misses || 0;
+                                const sm_total = sm_goals + sm_misses;
+                                const quote = sm_total > 0 ? ((sm_goals / sm_total) * 100).toFixed(0) + '%' : '—';
+                                // Format: T / V (Quote)
+                                value = `${sm_goals} / ${sm_misses} (${quote})`;
+                            }
+                            
+                            fieldTableHtml += `<td>${value}</td>`;
+                        });
+                        fieldTableHtml += `</tr>`;
+                    }
                 });
 
-                tableHtml += `</tbody></table>`;
-                STATS_TABLE_CONTAINER.innerHTML = tableHtml;
+                fieldTableHtml += `</tbody></table>`;
+                goalieTableHtml += `</tbody></table>`;
+                
+                STATS_TABLE_CONTAINER_FIELD.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
+                STATS_TABLE_CONTAINER_GOALIE.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
 
             } catch (error) {
-                STATS_TABLE_CONTAINER.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
+                STATS_TABLE_CONTAINER_FIELD.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
+                STATS_TABLE_CONTAINER_GOALIE.innerHTML = '';
                 console.error("Statistikfehler:", error);
             }
         }
+        // --- ENDE KORREKTUR ---
         
         // --- Seite initialisieren ---
         async function initializeProtocol() {
             await loadPlayers();
-            await loadCustomActions(); // Lade Custom Actions
             
             // Lade den Rest
-            loadActionLog();
-            updateScoreDisplay();
-            loadStats();
+            updateAllStats(); // Ruft loadStats und loadActionLog auf
         }
         
         initializeProtocol();
