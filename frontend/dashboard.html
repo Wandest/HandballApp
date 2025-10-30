@@ -29,12 +29,13 @@
       justify-content: space-between;
       align-items: center;
     }
+    /* KORRIGIERT: 3 Spalten Layout */
     .dashboard-layout {
         width: 90%;
         max-width: 1200px;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr; 
         gap: 20px;
     }
     .card {
@@ -180,7 +181,6 @@
         border-radius: 5px;
         cursor: pointer;
     }
-
   </style>
 </head>
 <body>
@@ -215,7 +215,10 @@
 
             <label for="team-league">Spielklasse / Liga:</label><br>
             <select id="team-league" required>
-                <option value="" disabled selected>Ligen werden geladen...</option>
+                <option value="" disabled selected>Wählen Sie eine Klasse</option>
+                {% for league in leagues %}
+                    <option value="{{ league }}">{{ league }}</option>
+                {% endfor %}
             </select><br>
 
             <button type="submit" class="btn-primary">Mannschaft erstellen</button>
@@ -243,6 +246,9 @@
             <label for="player-position">Position (optional):</label><br>
             <select id="player-position">
                 <option value="">(Keine Position)</option>
+                {% for position in positions %}
+                    <option value="{{ position }}">{{ position }}</option>
+                {% endfor %}
             </select><br>
             
             <button type="submit" class="btn-primary" id="add-player-button" disabled>Spieler hinzufügen</button>
@@ -250,7 +256,22 @@
         <div id="player-message" class="message"></div>
     </div>
     
-    <div class="card">
+    </div>
+
+  <div class="detail-area" style="grid-template-columns: 1fr 1fr 1fr; max-width: 1200px; width: 90%; margin: 30px auto 0 auto;">
+    <div class="card" style="grid-column: span 1;">
+        <h2>Kader Übersicht für <span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+        <div id="player-list-container">
+            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
+        </div>
+    </div>
+    <div class="card" style="grid-column: span 1;">
+        <h2>Spielplan für <span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
+        <div id="game-list-container">
+            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
+        </div>
+    </div>
+    <div class="card" style="grid-column: span 1;">
         <h2>Spiel anlegen</h2>
         <form id="add-game-form">
             <label for="game-opponent">Gegner:</label><br>
@@ -262,22 +283,6 @@
             <button type="submit" class="btn-primary" id="add-game-button" disabled>Spiel erstellen</button>
         </form>
         <div id="game-message" class="message"></div>
-    </div>
-
-  </div>
-
-  <div class="detail-area">
-    <div class="card">
-        <h2>Kader Übersicht für <span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
-        <div id="player-list-container">
-            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
-        </div>
-    </div>
-    <div class="card">
-        <h2>Spielplan für <span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h2>
-        <div id="game-list-container">
-            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
-        </div>
     </div>
   </div>
   </div> <script>
@@ -293,6 +298,7 @@
     let selectedTeamId = null;
     let selectedTeamName = "";
 
+    // DOM Elemente (aktualisiert)
     const teamListDiv = document.getElementById('team-list');
     const teamMessageDiv = document.getElementById('team-message');
     const teamLeagueSelect = document.getElementById('team-league');
@@ -311,43 +317,7 @@
         return localStorage.getItem('access_token');
     }
     
-    // --- Ligen und Positionen Laden (unverändert) ---
-
-    async function loadLeagues() {
-        try {
-            const response = await fetch('/teams/leagues'); 
-            const leagues = await response.json();
-            
-            teamLeagueSelect.innerHTML = '<option value="" disabled selected>Wählen Sie eine Klasse</option>';
-
-            leagues.forEach(league => {
-                const option = document.createElement('option');
-                option.value = league;
-                option.textContent = league;
-                teamLeagueSelect.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Fehler beim Laden der Ligen:', error);
-        }
-    }
-
-    async function loadPositions() {
-        try {
-            const response = await fetch('/players/positions'); 
-            const positions = await response.json();
-            
-            playerPositionSelect.innerHTML = '<option value="">(Keine Position)</option>';
-
-            positions.forEach(position => {
-                const option = document.createElement('option');
-                option.value = position;
-                option.textContent = position;
-                playerPositionSelect.appendChild(option);
-            });
-        } catch (error) {
-            console.error('Fehler beim Laden der Positionen:', error);
-        }
-    }
+    // --- Ligen und Positionen Laden (ENTFERNT, da synchron geladen) ---
 
     // --- Team-Logik ---
     function selectTeam(teamId, teamName) {
@@ -371,7 +341,7 @@
     
     async function loadTeams() {
         const token = getToken();
-        if (!token) return;
+        if (!token) { teamListDiv.innerHTML = '<p class="error">Token fehlt.</p>'; return; }
 
         try {
             const response = await fetch('/teams/list', {
@@ -379,7 +349,13 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
+            if (response.status === 401 || response.status === 403) {
+                 logout(); 
+            }
+            if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
+
             const teams = await response.json();
+            
             teamListDiv.innerHTML = '';
             
             selectedTeamId = null;
@@ -410,6 +386,7 @@
 
         } catch (error) {
             console.error('Fehler beim Laden der Teams:', error);
+            teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams.</p>`;
         }
     }
     
@@ -608,8 +585,8 @@
                 logout();
             } else {
                 const data = await response.json();
-                gameMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
-                gameMessageDiv.className = 'message error';
+                playerMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
+                playerMessageDiv.className = 'message error';
             }
         } catch (error) {
             gameMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spiels.';
@@ -673,10 +650,9 @@
 
 
     function startProtocol(gameId, opponent) {
-    localStorage.setItem('protocol_game_id', gameId);
-    // WICHTIG: Leite zur ungeschützten Loader-Seite um, damit der Token gelesen wird!
-    window.location.href = `/app/protocol/${gameId}`; 
-}
+        localStorage.setItem('protocol_game_id', gameId);
+        window.location.href = `/app/protocol/${gameId}`; 
+    }
 
 
     async function loadGames(teamId) {
@@ -727,11 +703,30 @@
         }
     }
 
+    // --- KORRIGIERTE INITIALISIERUNG ---
+    async function initDashboard() {
+        try {
+            // Ligen und Positionen sind bereits im HTML (via Jinja2 geladen)
+            
+            // Lade nur noch Teams (asynchron)
+            await loadTeams();
+            
+            // Status setzen (falls Listen leer sind)
+            const teamLoadText = teamListDiv.querySelector('p');
+            if (teamLoadText && teamLoadText.textContent.includes('Lade Mannschaften')) {
+                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
+            }
 
-    // Beim Laden des Dashboards starten
-    loadLeagues();
-    loadPositions(); 
-    loadTeams();
+        } catch (error) {
+            console.error("Dashboard-Initialisierungsfehler:", error);
+            teamListDiv.innerHTML = '<p class="error">FEHLER beim Laden der Teams.</p>';
+        }
+    }
+    
+    // Starte das Dashboard nur, wenn es im HTML gerendert wird
+    if (document.getElementById('app-features')) {
+        initDashboard();
+    }
     {% endif %}
   </script>
 

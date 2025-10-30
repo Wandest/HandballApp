@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 # SQLite Datenbank (wird im Hauptverzeichnis der App erstellt)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./handballapp.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./handball.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -27,25 +27,10 @@ class Trainer(Base):
 
     # Beziehungen
     teams = relationship("Team", back_populates="trainer", cascade="all, delete-orphan")
-    custom_actions = relationship("CustomAction", back_populates="trainer", cascade="all, delete-orphan")
+    # KEINE CustomAction-Beziehung
 
 # ---------------------------------
-# 2. CustomAction Modell
-# ---------------------------------
-class CustomAction(Base):
-    __tablename__ = "custom_actions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    trainer_id = Column(Integer, ForeignKey("trainers.id"))
-    
-    name = Column(String)
-    key = Column(String)
-    is_goalkeeper_action = Column(Boolean, default=False)
-    
-    trainer = relationship("Trainer", back_populates="custom_actions")
-
-# ---------------------------------
-# 3. Team (Mannschaft) Modell
+# 2. Team (Mannschaft) Modell
 # ---------------------------------
 class Team(Base):
     __tablename__ = "teams"
@@ -62,7 +47,7 @@ class Team(Base):
 
 
 # ---------------------------------
-# 4. Player (Spieler) Modell
+# 3. Player (Spieler) Modell
 # ---------------------------------
 class Player(Base):
     __tablename__ = "players"
@@ -78,7 +63,7 @@ class Player(Base):
     actions = relationship("Action", back_populates="player", cascade="all, delete-orphan") 
 
 # ---------------------------------
-# 5. Game (Spiel) Modell
+# 4. Game (Spiel) Modell
 # ---------------------------------
 class Game(Base):
     __tablename__ = "games"
@@ -94,7 +79,7 @@ class Game(Base):
 
 
 # ---------------------------------
-# 6. Action (Aktion/Event) Modell
+# 5. Action (Aktion/Event) Modell
 # ---------------------------------
 class Action(Base):
     __tablename__ = "actions"

@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 
-# Explizite Imports
 from backend.database import SessionLocal, Trainer, Team, Player
 from backend.auth import get_current_trainer 
 
@@ -13,6 +12,7 @@ router = APIRouter()
 # Pydantic Modelle für Spieler
 # -----------------------------
 
+# WICHTIG: Liste der Positionen für den synchronen Ladevorgang
 POSITIONS = ["Torwart", "Rückraum Mitte", "Rückraum Links", "Rückraum Rechts", "Linksaußen", "Rechtsaußen", "Kreisläufer", "Universal"]
 
 class PlayerCreate(BaseModel):
@@ -110,7 +110,7 @@ def delete_player(
     return {"message": "Spieler erfolgreich gelöscht."}
 
 
-# SPIELER-LISTE EINES TEAMS LADEN (Unverändert für Dashboard)
+# SPIELER-LISTE EINES TEAMS LADEN
 @router.get("/list/{team_id}", response_model=List[PlayerResponse])
 def list_players(
     team_id: int,

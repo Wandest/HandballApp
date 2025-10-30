@@ -3,69 +3,37 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 
-# Explizite Imports
 from backend.database import SessionLocal, Trainer, Team
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
 
 # -----------------------------
-# NEU: Liste der verfügbaren Ligen (Detailliert nach Geschlecht und Alter)
+# Liste der verfügbaren Ligen (Exportierbare Funktion)
 # -----------------------------
-AVAILABLE_LEAGUES = [
-    # MÄNNER & FRAUEN (Aktive)
-    "Männer - 1. Bundesliga",
-    "Männer - 2. Bundesliga",
-    "Männer - 3. Liga Nord",
-    "Männer - Regionalliga West",
-    "Männer - Oberliga",
-    "Männer - Verbandsliga",
-    "Männer - Landesliga",
-    "Männer - Bezirksliga",
-    "Männer - Kreisliga",
-    
-    "Frauen - 1. Bundesliga",
-    "Frauen - 2. Bundesliga",
-    "Frauen - 3. Liga Nord",
-    "Frauen - Regionalliga West",
-    "Frauen - Oberliga",
-    "Frauen - Verbandsliga",
-    "Frauen - Landesliga",
-    "Frauen - Bezirksliga",
-    "Frauen - Kreisliga",
-
-    # JUGEND MÄNNLICH
-    "A-Jugend männlich - 1. Bundesliga",
-    "A-Jugend männlich - 2. Bundesliga",
-    "A-Jugend männlich - Regionalliga",
-    "A-Jugend männlich - Oberliga",
-    "A-Jugend männlich - Kreisliga",
-    
-    "B-Jugend männlich - Bundesliga",
-    "B-Jugend männlich - Regionalliga",
-    "B-Jugend männlich - Oberliga",
-    "B-Jugend männlich - Kreisliga",
-
-    "C-Jugend männlich - Regionalliga",
-    "C-Jugend männlich - Oberliga",
-    "C-Jugend männlich - Kreisliga",
-    
-    # JUGEND WEIBLICH
-    "A-Jugend weiblich - 1. Bundesliga",
-    "A-Jugend weiblich - 2. Bundesliga",
-    "A-Jugend weiblich - Regionalliga",
-    "A-Jugend weiblich - Oberliga",
-    "A-Jugend weiblich - Kreisliga",
-    
-    "B-Jugend weiblich - Bundesliga",
-    "B-Jugend weiblich - Regionalliga",
-    "B-Jugend weiblich - Oberliga",
-    "B-Jugend weiblich - Kreisliga",
-
-    "C-Jugend weiblich - Regionalliga",
-    "C-Jugend weiblich - Oberliga",
-    "C-Jugend weiblich - Kreisliga",
-]
+def get_league_list(): 
+    return [
+        "Männer - 1. Bundesliga", "Männer - 2. Bundesliga", "Männer - 3. Liga Nord",
+        "Männer - Regionalliga West", "Männer - Oberliga", "Männer - Verbandsliga",
+        "Männer - Landesliga", "Männer - Bezirksliga", "Männer - Kreisliga",
+        "Frauen - 1. Bundesliga", "Frauen - 2. Bundesliga", "Frauen - 3. Liga Nord",
+        "Frauen - Regionalliga West", "Frauen - Oberliga", "Frauen - Verbandsliga",
+        "Frauen - Landesliga", "Frauen - Bezirksliga", "Frauen - Kreisliga",
+        "A-Jugend männlich - 1. Bundesliga", "A-Jugend männlich - 2. Bundesliga",
+        "A-Jugend männlich - Regionalliga", "A-Jugend männlich - Oberliga",
+        "A-Jugend männlich - Kreisliga",
+        "B-Jugend männlich - Bundesliga", "B-Jugend männlich - Regionalliga",
+        "B-Jugend männlich - Oberliga", "B-Jugend männlich - Kreisliga",
+        "C-Jugend männlich - Regionalliga", "C-Jugend männlich - Oberliga",
+        "C-Jugend männlich - Kreisliga",
+        "A-Jugend weiblich - 1. Bundesliga", "A-Jugend weiblich - 2. Bundesliga",
+        "A-Jugend weiblich - Regionalliga", "A-Jugend weiblich - Oberliga",
+        "A-Jugend weiblich - Kreisliga",
+        "B-Jugend weiblich - Bundesliga", "B-Jugend weiblich - Regionalliga",
+        "B-Jugend weiblich - Oberliga", "B-Jugend weiblich - Kreisliga",
+        "C-Jugend weiblich - Regionalliga", "C-Jugend weiblich - Oberliga",
+        "C-Jugend weiblich - Kreisliga",
+    ]
 
 # -----------------------------
 # Pydantic Modelle für Teams
@@ -95,24 +63,22 @@ def get_db():
 # Endpunkte
 # -----------------------------
 
-# ENDPUNKT ZUM LADEN DER LIGEN (Ungeschützt)
+# ENDPUNKT ZUM LADEN DER LIGEN
 @router.get("/leagues", response_model=List[str])
 def get_available_leagues():
-    return AVAILABLE_LEAGUES
+    return get_league_list()
 
 
-# TEAM HINZUFÜGEN (Geschützt)
+# TEAM HINZUFÜGEN
 @router.post("/add", response_model=TeamResponse)
 def create_team(
     team: TeamCreate,
     current_trainer: Trainer = Depends(get_current_trainer), 
     db: Session = Depends(get_db)
 ):
-    # Prüfen, ob die gewählte Liga existiert
-    if team.league not in AVAILABLE_LEAGUES:
+    if team.league not in get_league_list():
         raise HTTPException(status_code=400, detail="Ungültige Spielklasse.")
 
-    # Prüfen, ob der Trainer bereits ein Team mit diesem Namen hat
     existing_team = db.query(Team).filter(
         Team.trainer_id == current_trainer.id,
         Team.name == team.name
@@ -132,7 +98,7 @@ def create_team(
 
     return new_team
 
-# TEAM-LISTE LADEN (Geschützt)
+# TEAM-LISTE LADEN
 @router.get("/list", response_model=List[TeamResponse])
 def list_teams(
     current_trainer: Trainer = Depends(get_current_trainer),

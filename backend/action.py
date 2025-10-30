@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import re
 
-from backend.database import SessionLocal, Trainer, Team, Player, Game, Action, CustomAction
+# KORRIGIERT: CustomAction Import entfernt
+from backend.database import SessionLocal, Trainer, Team, Player, Game, Action
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
@@ -32,7 +33,7 @@ class ActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Statistik-Modell
+# Statistik-Modell (Ohne Custom Counts, mit 7m-Statistik)
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
@@ -42,7 +43,10 @@ class PlayerStats(BaseModel):
     tech_errors: int
     seven_meter_goals: int
     seven_meter_misses: int
-    custom_counts: Dict[str, int]
+    seven_meter_caused: int
+    seven_meter_saves: int
+    saves: int
+    opponent_goals: int
 
 # Datenbanksession
 def get_db():
@@ -53,37 +57,9 @@ def get_db():
         db.close()
 
 # -----------------------------
-# Standard-Aktionen erstellen
+# Standard-Aktionen erstellen (ENTFERNT - Nicht mehr nötig)
 # -----------------------------
-def create_default_actions(trainer_id: int, db: Session):
-    """
-    Stellt sicher, dass die Standard-Aktionen (7m Gehalten, 7m verursacht) 
-    in der CustomAction-Tabelle für den Trainer existieren.
-    """
-    
-    default_actions_to_create = [
-        {"name": "7m Gehalten", "key": "SEVEN_METER_SAVE", "is_goalkeeper_action": True},
-        {"name": "7m verursacht", "key": "SEVEN_METER_CAUSED", "is_goalkeeper_action": False},
-        {"name": "Timeout", "key": "TIMEOUT", "is_goalkeeper_action": False},
-    ]
-
-    for action_data in default_actions_to_create:
-        existing = db.query(CustomAction).filter(
-            CustomAction.trainer_id == trainer_id,
-            CustomAction.key == action_data['key']
-        ).first()
-
-        if not existing:
-            new_action = CustomAction(
-                trainer_id=trainer_id,
-                name=action_data['name'],
-                key=action_data['key'],
-                is_goalkeeper_action=action_data['is_goalkeeper_action']
-            )
-            db.add(new_action)
-    
-    db.commit()
-
+# def create_default_actions... (Diese Funktion ist jetzt entfernt)
 
 # -----------------------------
 # Endpunkte
@@ -176,7 +152,7 @@ def list_actions(
         
     return response_list
 
-# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN
+# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (KORRIGIERT)
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
@@ -193,8 +169,8 @@ def get_game_stats(
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
         
-    custom_actions = db.query(CustomAction).filter(CustomAction.trainer_id == current_trainer.id).all()
     
+    # Aggregierte Abfrage (Zählt alle Aktionen, die wir wollen)
     stats_query = db.query(
         Player.id,
         Player.name,
@@ -204,6 +180,10 @@ def get_game_stats(
         func.count(case((Action.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
         func.count(case((Action.action_type == 'Goal_7m', 1), else_=None)).label('seven_meter_goals'),
         func.count(case((Action.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
+        func.count(case((Action.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
+        func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
+        func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
+        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
     ).select_from(Player).outerjoin(Action, (Action.player_id == Player.id) & (Action.game_id == game_id))\
     .filter(Player.team_id == team.id)\
     .group_by(Player.id, Player.name, Player.number)\
@@ -211,32 +191,28 @@ def get_game_stats(
 
     stats_results = stats_query.all()
     
-    all_actions_for_game = db.query(Action).filter(Action.game_id == game_id, Action.player_id.isnot(None)).all()
-    
     final_stats = []
     
-    for player_id, name, number, goals, misses, tech_errors, sm_goals, sm_misses in stats_results:
-        custom_counts = {}
-        for ca in custom_actions:
-            count = sum(1 for action in all_actions_for_game if action.player_id == player_id and action.action_type == ca.key)
-            if count > 0:
-                custom_counts[ca.key] = count
-                
+    for row in stats_results:
         final_stats.append(PlayerStats(
-            player_id=player_id,
-            player_name=name,
-            player_number=number,
-            goals=goals,
-            misses=misses,
-            tech_errors=tech_errors,
-            seven_meter_goals=sm_goals,
-            seven_meter_misses=sm_misses,
-            custom_counts=custom_counts
+            player_id=row.id,
+            player_name=row.name,
+            player_number=row.number,
+            goals=row.goals,
+            misses=row.misses,
+            tech_errors=row.tech_errors,
+            seven_meter_goals=row.seven_meter_goals,
+            seven_meter_misses=row.seven_meter_misses,
+            seven_meter_caused=row.seven_meter_caused,
+            seven_meter_saves=row.seven_meter_saves,
+            saves=row.saves,
+            opponent_goals=row.opponent_goals,
+            custom_counts={} # Leer, da Custom Actions entfernt wurden
         ))
 
     return final_stats
 
-# NEU: ENDPUNKT ZUM LÖSCHEN EINER AKTION
+# ENDPUNKT ZUM LÖSCHEN EINER AKTION
 @router.delete("/delete/{action_id}")
 def delete_action(
     action_id: int,
@@ -247,7 +223,6 @@ def delete_action(
     if not action:
         raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
 
-    # Prüfen, ob der Trainer das Spiel besitzt, zu dem die Aktion gehört
     game = db.query(Game).filter(Game.id == action.game_id).first()
     team = db.query(Team).filter(
         Team.id == game.team_id,

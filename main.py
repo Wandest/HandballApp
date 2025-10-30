@@ -6,11 +6,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from backend.auth import router as auth_router, get_current_trainer
-from backend.team import router as team_router 
-from backend.player import router as player_router
+from backend.team import router as team_router, get_league_list 
+from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
 from backend.action import router as action_router
-from backend.custom_action import router as custom_action_router
+# KEIN Custom Action Import
 from backend.database import init_db, Trainer, Game, Team, SessionLocal
 
 app = FastAPI(title="HandballApp Backend")
@@ -21,7 +21,7 @@ app.include_router(team_router, prefix="/teams", tags=["Teams"])
 app.include_router(player_router, prefix="/players", tags=["Players"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
-app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"])
+# KEIN Custom Action Router
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -44,53 +44,61 @@ def app_dashboard(request: Request):
         {"request": request, "title": "Lade Dashboard"}
     )
 
-# NEU HIER EINGEFÜGT: Ungeschützte Route, die den Protokoll-Loader lädt
 @app.get("/app/protocol/{game_id}", response_class=HTMLResponse)
 def app_protocol_loader(game_id: int, request: Request):
     return templates.TemplateResponse(
         "protocol_loader.html",
         {"request": request, "title": "Lade Protokoll"}
     )
-# ENDE NEU
 
 # Geschützte Route: Der eigentliche Dashboard-Inhalt
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
-    trainer_data = db.query(Trainer).filter(Trainer.id == current_trainer.id).first()
-    db.close()
-
-    if not trainer_data:
-        raise HTTPException(status_code=404, detail="Trainer nicht gefunden.")
     
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "title": "Dashboard", 
-         "trainer_name": trainer_data.username,
-         "is_verified": trainer_data.is_verified 
-        }
-    )
+    try:
+        trainer_data = db.query(Trainer).filter(Trainer.id == current_trainer.id).first()
+
+        if not trainer_data:
+            raise HTTPException(status_code=404, detail="Trainer nicht gefunden.")
+        
+        # Ligen und Positionen synchron abrufen
+        leagues = get_league_list()
+        positions = POSITIONS 
+
+        return templates.TemplateResponse(
+            "dashboard.html",
+            {"request": request, "title": "Dashboard", 
+             "trainer_name": trainer_data.username,
+             "is_verified": trainer_data.is_verified,
+             "leagues": leagues,    
+             "positions": positions 
+            }
+        )
+    finally:
+        db.close() 
 
 # Geschützte Route: Protokoll-Oberfläche
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal() 
     
-    game = db.query(Game).filter(Game.id == game_id).first()
-    if not game:
-        db.close()
-        raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
-    
-    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
-    db.close()
-    
-    if not team:
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
+    try:
+        game = db.query(Game).filter(Game.id == game_id).first()
+        if not game:
+            raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
         
-    return templates.TemplateResponse(
-        "protocol.html",
-        {"request": request, "title": "Spielprotokoll", "game_id": game_id, "opponent": game.opponent, "team_name": team.name}
-    )
+        team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+        
+        if not team:
+            raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
+            
+        return templates.TemplateResponse(
+            "protocol.html",
+            {"request": request, "title": "Spielprotokoll", "game_id": game_id, "opponent": game.opponent, "team_name": team.name}
+        )
+    finally:
+        db.close()
 
 
 # ------------------------------------
