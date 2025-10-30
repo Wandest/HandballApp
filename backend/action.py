@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import re
 
-from backend.database import SessionLocal, Trainer, Team, Player, Game, Action
+from backend.database import SessionLocal, Trainer, Team, Player, Game, Action, CustomAction
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
@@ -18,7 +18,7 @@ class ActionCreate(BaseModel):
     time_in_game: Optional[str] = "N/A" 
     game_id: int 
     player_id: Optional[int] = None 
-    is_seven_meter: Optional[bool] = False # Für 7m-Tore/Fehlwürfe
+    is_seven_meter: Optional[bool] = False
 
 class ActionResponse(BaseModel):
     id: int
@@ -32,13 +32,12 @@ class ActionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Statistik-Modell
+# Statistik-Modell (ERWEITERT FÜR CUSTOM COUNTS)
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
     player_number: Optional[int]
-    position: Optional[str] 
-    # Feste Aktionen
+    position: Optional[str]
     goals: int
     misses: int
     tech_errors: int
@@ -46,10 +45,12 @@ class PlayerStats(BaseModel):
     seven_meter_misses: int
     seven_meter_caused: int
     seven_meter_saves: int
+    seven_meter_received: int 
     saves: int
     opponent_goals: int
-    # Dynamische Aktionen
-    custom_counts: Dict[str, int] # Hier kommen die Custom Actions rein
+    # NEU: Ein Dictionary für variable Zählungen, z.B. {"Gute Abwehr": 2, "Block": 1}
+    custom_counts: Dict[str, int] = {}
+
 
 # Datenbanksession
 def get_db():
@@ -82,14 +83,17 @@ def log_action(
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung, Aktionen für dieses Spiel zu protokollieren.")
     
+    player_name_for_action = None
+    player_number_for_action = None
+    
     if action_data.player_id:
         player = db.query(Player).filter(Player.id == action_data.player_id).first()
         if not player or player.team_id != game.team_id:
             raise HTTPException(status_code=400, detail="Ungültige Spieler-ID oder Spieler gehört nicht zu diesem Team.")
+        player_name_for_action = player.name
+        player_number_for_action = player.number
 
     action_key = action_data.action_type
-    
-    # Spezielle 7m-Logik
     if action_data.is_seven_meter:
         if action_data.action_type == 'Goal':
             action_key = 'Goal_7m'
@@ -97,7 +101,7 @@ def log_action(
             action_key = 'Miss_7m'
 
     new_action = Action(
-        action_type=action_key, # Speichert "Goal_7m" oder "Gute Abwehr"
+        action_type=action_key,
         time_in_game=action_data.time_in_game,
         game_id=action_data.game_id,
         player_id=action_data.player_id
@@ -106,19 +110,17 @@ def log_action(
     db.commit()
     db.refresh(new_action)
     
-    # Fülle Antwort aus
-    player_name_resp = player.name if action_data.player_id and player else None
-    player_number_resp = player.number if action_data.player_id and player else None
-
-    return ActionResponse(
+    response_data = ActionResponse(
         id=new_action.id,
         action_type=new_action.action_type,
         time_in_game=new_action.time_in_game,
         game_id=new_action.game_id,
         player_id=new_action.player_id,
-        player_name=player_name_resp,
-        player_number=player_number_resp
+        player_name=player_name_for_action,
+        player_number=player_number_for_action
     )
+
+    return response_data
 
 # ALLE AKTIONEN EINES SPIELS LADEN
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
@@ -164,13 +166,14 @@ def list_actions(
         
     return response_list
 
-# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (Platzhalter für Custom Actions)
+# LIVE STATISTIKEN FÜR EIN SPIEL ABFRAGEN (STARK ÜBERARBEITET)
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # 1. Spiel und Berechtigung prüfen
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
@@ -182,14 +185,14 @@ def get_game_stats(
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
         
     
-    # HINWEIS: Diese Abfrage zählt NOCH KEINE Custom Actions.
-    # Sie zählt nur die festen Typen.
+    # 2. Alle Custom Actions für dieses Team laden
+    custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
+    custom_action_names = [ca.name for ca in custom_actions]
+
+    # 3. Dynamische Zähl-Anweisungen (case statements) erstellen
     
-    stats_query = db.query(
-        Player.id,
-        Player.name,
-        Player.number,
-        Player.position, 
+    # Feste Aktionen
+    case_statements = [
         func.count(case((Action.action_type == 'Goal', 1), else_=None)).label('goals'),
         func.count(case((Action.action_type == 'Miss', 1), else_=None)).label('misses'),
         func.count(case((Action.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
@@ -197,8 +200,26 @@ def get_game_stats(
         func.count(case((Action.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
         func.count(case((Action.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
         func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
+        func.count(case((Action.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
         func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
         func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
+    ]
+    
+    # Dynamische Aktionen hinzufügen
+    for name in custom_action_names:
+        # Erstellt ein Label, das wir sicher abfragen können (z.B. "custom_Gute Abwehr")
+        safe_label = f"custom_{name}" 
+        case_statements.append(
+            func.count(case((Action.action_type == name, 1), else_=None)).label(safe_label)
+        )
+
+    # 4. Aggregierte Abfrage (mit dynamischen case statements)
+    stats_query = db.query(
+        Player.id,
+        Player.name,
+        Player.number,
+        Player.position,
+        *case_statements # Entpackt die Liste aller Zähl-Anweisungen
     ).select_from(Player).outerjoin(Action, (Action.player_id == Player.id) & (Action.game_id == game_id))\
     .filter(Player.team_id == team.id)\
     .group_by(Player.id, Player.name, Player.number, Player.position)\
@@ -206,24 +227,36 @@ def get_game_stats(
 
     stats_results = stats_query.all()
     
+    # 5. Ergebnisse verarbeiten
     final_stats = []
     
     for row in stats_results:
+        # Konvertiert das Row-Objekt in ein Dictionary, damit wir dynamisch zugreifen können
+        row_data = row._asdict()
+        
+        # Erstellt das Dictionary für die Custom Counts
+        custom_counts_dict = {}
+        for name in custom_action_names:
+            safe_label = f"custom_{name}"
+            custom_counts_dict[name] = row_data.get(safe_label, 0)
+
+        # Erstellt das finale Pydantic-Objekt
         final_stats.append(PlayerStats(
-            player_id=row.id,
-            player_name=row.name,
-            player_number=row.number,
-            position=row.position,
-            goals=row.goals,
-            misses=row.misses,
-            tech_errors=row.tech_errors,
-            seven_meter_goals=row.seven_meter_goals,
-            seven_meter_misses=row.seven_meter_misses,
-            seven_meter_caused=row.seven_meter_caused,
-            seven_meter_saves=row.seven_meter_saves,
-            saves=row.saves,
-            opponent_goals=row.opponent_goals,
-            custom_counts={} # TODO: Muss noch implementiert werden
+            player_id=row_data.get('id'),
+            player_name=row_data.get('name'),
+            player_number=row_data.get('number'),
+            position=row_data.get('position'),
+            goals=row_data.get('goals', 0),
+            misses=row_data.get('misses', 0),
+            tech_errors=row_data.get('tech_errors', 0),
+            seven_meter_goals=row_data.get('seven_meter_goals', 0),
+            seven_meter_misses=row_data.get('seven_meter_misses', 0),
+            seven_meter_caused=row_data.get('seven_meter_caused', 0),
+            seven_meter_saves=row_data.get('seven_meter_saves', 0),
+            seven_meter_received=row_data.get('seven_meter_received', 0),
+            saves=row_data.get('saves', 0),
+            opponent_goals=row_data.get('opponent_goals', 0),
+            custom_counts=custom_counts_dict # Fügt das dynamische Dictionary hinzu
         ))
 
     return final_stats
@@ -252,3 +285,4 @@ def delete_action(
     db.commit()
 
     return {"message": "Aktion erfolgreich gelöscht."}
+
