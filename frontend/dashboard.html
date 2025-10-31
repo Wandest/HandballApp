@@ -50,7 +50,7 @@
         max-width: 1400px; 
         margin: 30px auto 50px auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr; 
+        grid-template-columns: 3fr 1fr; /* ANGEPASST: 3:1 für Saison-Stats und Liga-Scouting */
         gap: 20px;
     }
     .card {
@@ -61,6 +61,8 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      /* Übergangsweise Fix für Scouting-Karte */
+      min-height: 400px; 
     }
     .card-content {
         flex-grow: 1;
@@ -117,12 +119,19 @@
     .team-list-item {
         background: rgba(255, 255, 255, 0.1);
         padding: 10px; margin-bottom: 8px; border-radius: 4px;
-        display: flex; justify-content: space-between; align-items: center;
+        display: flex; flex-direction: column;
+        justify-content: space-between; align-items: flex-start;
         cursor: pointer; transition: background-color 0.2s;
     }
     .team-list-item:hover { background: rgba(255, 255, 255, 0.2); }
     .team-list-item.selected {
         background: #ffcc00; color: #1e3c72; font-weight: bold;
+    }
+    .team-info-line {
+        display: flex; justify-content: space-between; width: 100%;
+    }
+    .team-public-control {
+        margin-top: 8px; font-size: 0.9em;
     }
     .player-list-item, .custom-action-list-item {
         background: rgba(255, 255, 255, 0.05);
@@ -259,6 +268,57 @@
         text-align: center;
         font-weight: bold;
         font-size: 1.2em;
+    }
+
+    /* NEU: Liga Scouting Styles */
+    .league-team-item {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px; margin-bottom: 8px; border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .league-team-item:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    .league-team-item strong {
+        display: block;
+        font-size: 1.1em;
+    }
+    .league-team-item small {
+        opacity: 0.8;
+    }
+
+    /* NEU: Modal Styles */
+    .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1000; 
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.7); 
+    }
+    .modal-content {
+        background-color: #1e3c72;
+        margin: 5% auto; 
+        padding: 30px;
+        border-radius: 10px;
+        width: 80%; 
+        max-width: 900px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
+    .close-btn {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .close-btn:hover, .close-btn:focus {
+        color: white;
+        text-decoration: none;
+        cursor: pointer;
     }
   </style>
 </head>
@@ -410,9 +470,9 @@
     </div>
   </div>
   
-  <!-- REIHE: SAISON-STATISTIK (ANGEPASST für Phase 6.3) -->
+  <!-- REIHE: SAISON-STATISTIK & LIGA-SCOUTING (PHASE 6) -->
   <div class="stats-area">
-    <div class="card" style="grid-column: span 4;"> 
+    <div class="card" style="grid-column: span 1;"> 
       <div class="card-content">
         <h2>Saison-Statistik (Aggregiert)</h2>
         <h3><span id="season-stats-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
@@ -439,7 +499,7 @@
         <h3 style="margin-top: 20px;">Team-Aktionen Statistik (Saison)</h3>
         <div class="stats-table-container" id="stats-table-container-custom-season"></div>
 
-        <!-- BEREICH: SAISON-ARCHIVIERUNG (Unverändert) -->
+        <!-- BEREICH: SAISON-ARCHIVIERUNG -->
         <hr style="border-color: rgba(255,255,255,0.2); margin: 30px 0;">
         <h3>Saison-Archivierung (Reset)</h3>
         <p style="opacity: 0.8; font-size: 0.9em;">
@@ -457,9 +517,47 @@
         <div id="archive-message" class="message"></div>
       </div>
     </div>
-  </div>
+    
+    <!-- NEU: LIGA-SCOUTING KARTE (PHASE 6) -->
+    <div class="card">
+        <div class="card-content">
+            <h2>Liga-Scouting</h2>
+            <label for="public-league-select">Öffentliche Liga auswählen:</label>
+            <select id="public-league-select" onchange="loadPublicTeams(this.value)">
+                <option value="" disabled selected>Fehler beim Laden.</option>
+            </select>
+            <p style="font-weight: bold; margin-top: 10px; color: #ffcc00;">Teams in dieser Liga:</p>
+            <div id="public-teams-list" style="max-height: 300px; overflow-y: auto;">
+                <p style="opacity: 0.6;">Bitte eine Liga auswählen.</p>
+            </div>
+        </div>
+    </div>
+    <!-- ENDE LIGA-SCOUTING KARTE -->
+  </div> <!-- Ende stats-area -->
   
   </div> <!-- Ende app-features -->
+
+  <!-- NEU: SCOUTING MODAL (PHASE 6) -->
+  <div id="scouting-modal" class="modal" onclick="if(event.target.id === 'scouting-modal') closeModal()">
+      <div class="modal-content">
+          <span class="close-btn" onclick="closeModal()">&times;</span>
+          <h2 id="scouting-team-name" style="color: #38E838;"></h2>
+          <p style="opacity: 0.8; margin-bottom: 20px;">Aggregierte Saison-Statistik (Öffentlich)</p>
+
+          <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
+          <div class="stats-table-container" id="public-stats-table-field">
+              <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
+          </div>
+          
+          <h3 style="margin-top: 20px;">Torwart-Statistik</h3>
+          <div class="stats-table-container" id="public-stats-table-goalie"></div>
+
+          <h3 style="margin-top: 20px;">Team-Aktionen Statistik</h3>
+          <div class="stats-table-container" id="public-stats-table-custom"></div>
+          
+      </div>
+  </div>
+  <!-- ENDE SCOUTING MODAL -->
   
   <script>
     function logout() {
@@ -506,12 +604,22 @@
     const archiveNameInput = document.getElementById('archive-name-input');
     const archiveSeasonBtn = document.getElementById('archive-season-btn');
     const archiveMessageDiv = document.getElementById('archive-message');
+    
+    // NEU: Phase 6 Elemente
+    const publicLeagueSelect = document.getElementById('public-league-select');
+    const publicTeamsList = document.getElementById('public-teams-list');
+    const scoutingModal = document.getElementById('scouting-modal');
+    const scoutingTeamName = document.getElementById('scouting-team-name');
+    const publicStatsField = document.getElementById('public-stats-table-field');
+    const publicStatsGoalie = document.getElementById('public-stats-table-goalie');
+    const publicStatsCustom = document.getElementById('public-stats-table-custom');
+
 
     function getToken() {
         return localStorage.getItem('access_token');
     }
     
-    // --- (Unveränderte Funktionen: switchGameCategory, selectTeam, loadTeams, add-team-form) ---
+    // --- (Unveränderte Funktionen: switchGameCategory) ---
     function switchGameCategory(category) {
         activeGameCategoryInput.value = category;
         [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.classList.remove('active'));
@@ -537,7 +645,42 @@
             newTournamentGroup.style.display = 'none';
         }
     });
+    
+    // --- TEAM WAHL (GEÄNDERT: Neue Checkbox-Logik) ---
+    async function toggleTeamPublic(teamId, teamName, isPublic) {
+        const token = getToken();
+        if (!token) { return; }
+        
+        const messageElement = document.getElementById(`team-public-message-${teamId}`);
+        messageElement.textContent = 'Aktualisiere...';
+        messageElement.className = 'message';
 
+        try {
+            const response = await fetch(`/teams/toggle-public/${teamId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ is_public: isPublic }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                messageElement.textContent = `✅ Team '${teamName}' ist jetzt ${isPublic ? 'öffentlich sichtbar.' : 'privat.'}`;
+                messageElement.className = 'message success';
+                loadPublicLeagues(); // Ligenliste im Scouting aktualisieren
+            } else {
+                const checkbox = document.getElementById(`public-checkbox-${teamId}`);
+                checkbox.checked = !isPublic; // Rollback bei Fehler
+                messageElement.textContent = `❌ Fehler: ${data.detail || 'Fehler beim Ändern der Sichtbarkeit.'}`;
+                messageElement.className = 'message error';
+            }
+        } catch (error) {
+            const checkbox = document.getElementById(`public-checkbox-${teamId}`);
+            checkbox.checked = !isPublic; // Rollback bei Fehler
+            messageElement.textContent = '❌ Serverfehler bei der Aktualisierung.';
+            messageElement.className = 'message error';
+            console.error('Toggle Public Fehler:', error);
+        }
+    }
+    
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
@@ -585,6 +728,8 @@
             if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
             const teams = await response.json();
             teamListDiv.innerHTML = '';
+            
+            // UI Reset
             selectedTeamId = null;
             selectedTeamInfo.textContent = "";
             kaderTeamName.textContent = "(Team wählen)";
@@ -608,6 +753,8 @@
             statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>';
             statsContainerGoalieSeason.innerHTML = '';
             statsContainerCustomSeason.innerHTML = '';
+
+
             if (teams.length === 0) {
                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
                 return;
@@ -616,8 +763,31 @@
                 const teamItem = document.createElement('div');
                 teamItem.className = 'team-list-item';
                 teamItem.id = `team-${team.id}`;
-                teamItem.innerHTML = `<span><strong>${team.name}</strong> (${team.league})</span>`;
-                teamItem.addEventListener('click', () => selectTeam(team.id, team.name));
+                
+                const teamInfoLine = document.createElement('div');
+                teamInfoLine.className = 'team-info-line';
+                teamInfoLine.innerHTML = `<span><strong>${team.name}</strong> (${team.league})</span>`;
+
+                const publicControl = document.createElement('div');
+                publicControl.className = 'team-public-control';
+                publicControl.innerHTML = `
+                    <input type="checkbox" id="public-checkbox-${team.id}" ${team.is_public ? 'checked' : ''}>
+                    <label for="public-checkbox-${team.id}">Öffentlich sichtbar (Liga-Scouting)</label>
+                    <div id="team-public-message-${team.id}" class="message" style="margin-top: 5px;"></div>
+                `;
+                publicControl.querySelector(`#public-checkbox-${team.id}`).addEventListener('change', function() {
+                    toggleTeamPublic(team.id, team.name, this.checked);
+                });
+
+                teamItem.appendChild(teamInfoLine);
+                teamItem.appendChild(publicControl);
+                teamItem.addEventListener('click', (e) => {
+                    // Ignoriere Klicks auf Checkbox und Label
+                    if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'label') {
+                        return;
+                    }
+                    selectTeam(team.id, team.name);
+                });
                 teamListDiv.appendChild(teamItem);
             });
         } catch (error) {
@@ -958,15 +1128,15 @@
             newOption.value = 'NEW';
             newOption.textContent = '[ Neues Turnier anlegen ]';
             tournamentSelect.appendChild(newOption);
-            if (tournaments.length > 0) {
+            if (tournamentSelect.options.length > 0 && tournamentSelect.value === "") {
                  tournamentSelect.selectedIndex = 0;
-            } else {
+            } else if (tournamentSelect.options.length === 1) {
                 tournamentSelect.value = 'NEW';
             }
             tournamentSelect.dispatchEvent(new Event('change'));
         } catch (error) {
             console.error('Fehler beim Laden der Turniere:', error);
-            tournamentSelect.innerHTML = '<option value="" disabled selected>Fehler</Möglichkeit>';
+            tournamentSelect.innerHTML = '<option value="" disabled selected>Fehler</option>';
             const newOption = document.createElement('option');
             newOption.value = 'NEW';
             newOption.textContent = '[ Neues Turnier anlegen ]';
@@ -1092,13 +1262,13 @@
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`/actions/stats/season/opponent/${selectedTeamId}`, { // NEUER AUFRUF
+                fetch(`/actions/stats/season/opponent/${selectedTeamId}`, { 
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
-            if (playerStatsResponse.status === 401 || playerStatsResponse.status === 403) { logout(); }
+            if (playerStatsResponse.status === 401 || playerStatsResponse.status === 403 || opponentStatsResponse.status === 401 || opponentStatsResponse.status === 403) { logout(); }
             if (!playerStatsResponse.ok) throw new Error('Spieler-Statistikdaten konnten nicht abgerufen werden.');
             if (!opponentStatsResponse.ok) throw new Error('Gegner-Statistikdaten konnten nicht abgerufen werden.');
             
@@ -1141,14 +1311,23 @@
     }
 
     // --- ANGEPASST (PHASE 6.3) ---
-    function displaySeasonPlayerStats(stats) {
-        // Definiere Spalten-Header, inklusive der Neuen
+    function displaySeasonPlayerStats(stats, containerPrefix = 'stats-table-container-') {
+        
+        const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
+        const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
+        const customContainer = document.getElementById(`${containerPrefix}custom-season`);
+
+        if (!fieldContainer || !goalieContainer || !customContainer) {
+             console.error("Statistik-Container nicht gefunden. Präfix:", containerPrefix);
+             return;
+        }
+
         let fieldHeaders = [
             { key: 'player_name', name: 'Spieler', isFixed: true }, 
             { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, // NEU
+            { key: 'games_played', name: 'Spiele' }, 
             { key: 'goals', name: 'Tore (Quote)' }, 
-            { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, // NEU
+            { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, 
             { key: 'misses', name: 'Fehlwürfe' },
             { key: 'tech_errors', name: 'Tech. Fehler' }, 
             { key: 'seven_meter_goals', name: '7m Tor' },
@@ -1159,7 +1338,7 @@
         let goalieHeaders = [
             { key: 'player_name', name: 'Spieler', isFixed: true }, 
             { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, // NEU
+            { key: 'games_played', name: 'Spiele' }, 
             { key: 'saves', name: 'Paraden Ges. (Quote)' }, 
             { key: 'seven_meter_saves', name: '7m-Quote' },
         ];
@@ -1175,9 +1354,9 @@
         let goaliesFound = false;
         
         if (stats.length === 0) {
-             statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
-             statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
-             statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
+             fieldContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
+             goalieContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
+             customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
              return;
         }
         
@@ -1189,25 +1368,26 @@
                 goalieHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
                     if (h.name === 'Paraden Ges. (Quote)') {
-                        const totalSaves = player.saves + player.seven_meter_saves;
-                        const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
-                        const totalShotsOnGoal = totalSaves + totalGoalsReceived;
-                        const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalSaves} (${quote})`;
+                        // Da OpponentGoals nicht mehr im PublicStats-Objekt ist, müssen wir dies überdenken.
+                        // Fürs Scouting lassen wir die Quote erstmal weg, wenn OpponentGoals fehlt.
+                        // Im privaten Dashboard wird OpponentGoals aus actions.py geladen.
+                        if (h.key === 'saves' && player.opponent_goals !== undefined) {
+                            const totalSaves = player.saves + player.seven_meter_saves;
+                            // Hier muss man aufpassen, dass man nur die OpponentGoals des Teams nutzt
+                            const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
+                            const totalShotsOnGoal = totalSaves + totalGoalsReceived;
+                            const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
+                            value = `${totalSaves} (${quote})`;
+                        } else if (h.key === 'saves' && containerPrefix === 'public-stats-table-') {
+                            // Wenn OpponentGoals fehlt (im Public Scouting), zeigen wir nur die Paraden
+                            value = player.saves + player.seven_meter_saves;
+                        }
                     }
                     if (h.name === '7m-Quote') {
                         const totalSevenMeters = player.seven_meter_received; 
                         const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
                         value = `${player.seven_meter_saves} (${quote})`;
                     }
-                    goalieTableHtml += `<td>${value}</td>`;
-                });
-                goalieTableHtml += `</tr>`;
-            } else {
-                fieldPlayersFound = true;
-                fieldTableHtml += `<tr>`;
-                fieldHeaders.forEach(h => {
-                    let value = player[h.key] !== undefined ? player[h.key] : 0;
                     if (h.name === 'Tore (Quote)') {
                         const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
                         const totalGoals = player.goals + player.seven_meter_goals;
@@ -1220,10 +1400,34 @@
                             const totalGoals = player.goals + player.seven_meter_goals;
                             value = (totalGoals / player.games_played).toFixed(1);
                         } else {
-                            value = '0.0'; // Zeige 0.0 statt '—' wenn 0 Spiele
+                            value = '0.0'; 
                         }
                     }
                     // --- ENDE NEUE BERECHNUNG ---
+
+                    goalieTableHtml += `<td>${value}</td>`;
+                });
+                goalieTableHtml += `</tr>`;
+            } else {
+                fieldPlayersFound = true;
+                fieldTableHtml += `<tr>`;
+                fieldHeaders.forEach(h => {
+                    let value = player[h.key] !== undefined ? player[h.key] : 0;
+
+                    if (h.name === 'Tore (Quote)') {
+                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
+                        const totalGoals = player.goals + player.seven_meter_goals;
+                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+                        value = `${totalGoals} (${quote})`;
+                    }
+                    if (h.name === 'Tore/Spiel') {
+                        if (player.games_played > 0) {
+                            const totalGoals = player.goals + player.seven_meter_goals;
+                            value = (totalGoals / player.games_played).toFixed(1);
+                        } else {
+                            value = '0.0'; 
+                        }
+                    }
                     fieldTableHtml += `<td>${value}</td>`;
                 });
                 fieldTableHtml += `</tr>`;
@@ -1231,27 +1435,26 @@
         });
         fieldTableHtml += `</tbody></table>`;
         goalieTableHtml += `</tbody></table>`;
-        statsContainerFieldSeason.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
-        statsContainerGoalieSeason.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
+        fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
+        goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
         
-        // Team-Aktionen (ANGEPASST für Phase 6.3)
+        // Team-Aktionen 
         const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
         if (customActionNames.length === 0) {
-            statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
+            customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
         } else {
             let customTableHtml = `<table class="stats-table"><thead><tr>`;
-            customTableHtml += `<th>Spieler</th><th>#</th><th>Spiele</th>`; // NEU: Spiele
+            customTableHtml += `<th>Spieler</th><th>#</th><th>Spiele</th>`; 
             customActionNames.forEach(name => {
                 customTableHtml += `<th>${name}</th>`; 
             });
             customTableHtml += `</tr></thead><tbody>`;
             stats.forEach(player => {
-                // Zeige Team-Aktionen nur für Feldspieler (optional, aber oft sauberer)
-                if (player.position !== 'Torwart') {
+                if (player.position !== 'Torwart' && player.games_played > 0) {
                     customTableHtml += `<tr>`;
                     customTableHtml += `<td>${player.player_name}</td>`;
                     customTableHtml += `<td>${player.player_number || ''}</td>`;
-                    customTableHtml += `<td>${player.games_played}</td>`; // NEU
+                    customTableHtml += `<td>${player.games_played}</td>`; 
                     customActionNames.forEach(name => {
                         const count = player.custom_counts[name] || 0;
                         customTableHtml += `<td>${count}</td>`;
@@ -1260,9 +1463,10 @@
                 }
             });
             customTableHtml += `</tbody></table>`;
-            statsContainerCustomSeason.innerHTML = customTableHtml;
+            customContainer.innerHTML = customTableHtml;
         }
     }
+
 
     // --- (Unveränderte Archivierungs-Funktion: handleArchiveSeason) ---
     archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
@@ -1305,14 +1509,104 @@
             console.error("Archiv-Fehler:", error);
         }
     }
+    
+    // --- LIGA-SCOUTING FUNKTIONEN (PHASE 6) ---
+    
+    function closeModal() {
+        scoutingModal.style.display = 'none';
+        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
+        publicStatsGoalie.innerHTML = '';
+        publicStatsCustom.innerHTML = '';
+    }
+    
+    async function loadPublicLeagues() {
+        publicLeagueSelect.innerHTML = '<option value="" disabled selected>Lade Ligen...</option>';
+        try {
+            const response = await fetch('/public/leagues');
+            const leagues = await response.json();
+            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Öffentliche Liga auswählen</option>';
+            if (leagues.length === 0) {
+                 publicLeagueSelect.innerHTML = '<option value="" disabled selected>Keine öffentlichen Ligen gefunden.</option>';
+                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine Teams in öffentlichen Ligen.</p>';
+                 return;
+            }
+            leagues.forEach(league => {
+                const option = document.createElement('option');
+                option.value = league;
+                option.textContent = league;
+                publicLeagueSelect.appendChild(option);
+            });
+            publicLeagueSelect.selectedIndex = 0; // Wählt die erste Liga aus
+            loadPublicTeams(publicLeagueSelect.value);
+        } catch (error) {
+            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden.</option>';
+            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Ligen.</p>`;
+            console.error('Public Leagues Error:', error);
+        }
+    }
+    
+    async function loadPublicTeams(leagueName) {
+        if (!leagueName) return;
+        publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Lade Teams...</p>';
+        try {
+            const response = await fetch(`/public/teams/${encodeURIComponent(leagueName)}`);
+            const teams = await response.json();
+            publicTeamsList.innerHTML = '';
 
-    // --- (Unveränderte Initialisierungs-Funktion: initDashboard) ---
+            teams.forEach(team => {
+                const teamItem = document.createElement('div');
+                teamItem.className = 'league-team-item';
+                teamItem.innerHTML = `
+                    <strong>${team.name}</strong>
+                    <small>Trainer: ${team.trainer_username}</small>
+                `;
+                teamItem.onclick = () => showPublicTeamStats(team.id, team.name);
+                publicTeamsList.appendChild(teamItem);
+            });
+            if (teams.length === 0) {
+                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine öffentlichen Teams in dieser Liga.</p>';
+            }
+
+        } catch (error) {
+            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Teams.</p>`;
+            console.error('Public Teams Error:', error);
+        }
+    }
+    
+    async function showPublicTeamStats(teamId, teamName) {
+        scoutingTeamName.textContent = teamName;
+        scoutingModal.style.display = 'block';
+
+        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
+        publicStatsGoalie.innerHTML = '';
+        publicStatsCustom.innerHTML = '';
+
+        try {
+            const response = await fetch(`/public/stats/season/${teamId}`);
+            if (!response.ok) throw new Error('Öffentliche Statistik konnte nicht geladen werden.');
+            const stats = await response.json();
+            
+            // Re-use der Funktion displaySeasonPlayerStats, aber mit dem Public-Präfix
+            displaySeasonPlayerStats(stats.player_stats, 'public-stats-table-');
+            
+        } catch (error) {
+            publicStatsField.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
+            publicStatsGoalie.innerHTML = '';
+            publicStatsCustom.innerHTML = '';
+            console.error('Public Stats Error:', error);
+        }
+    }
+
+    // --- Initialisierung ---
     async function initDashboard() {
         try {
+            // Lade private Teams (und löst damit alle abhängigen Ladevorgänge aus)
             await loadTeams(); 
+            // Lade öffentliche Ligen (unabhängig vom privaten Team)
+            await loadPublicLeagues(); 
             switchGameCategory('Testspiel');
         } catch (error) {
-            teamListDiv.innerHTML = '<p class="error">FEHLER beim Laden der Teams.</p>';
+            // Wenn loadTeams fehlschlägt, wird die Fehlermeldung bereits von loadTeams gesetzt.
             console.error("Init-Fehler:", error);
         }
     }
@@ -1325,4 +1619,3 @@
 
 </body>
 </html>
-

@@ -30,12 +30,17 @@ class Trainer(Base):
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
+# --- HIER SIND DIE ÄNDERUNGEN (PHASE 6) ---
 # ---------------------------------
 class Team(Base):
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     league = Column(String)
+    
+    # NEU (PHASE 6): Steuert, ob das Team in der öffentlichen Liga-Suche auftaucht
+    is_public = Column(Boolean, default=False, nullable=False) 
+    
     trainer_id = Column(Integer, ForeignKey("trainers.id"))
     trainer = relationship("Trainer", back_populates="teams")
     players = relationship("Player", back_populates="team", cascade="all, delete-orphan") 
@@ -43,20 +48,18 @@ class Team(Base):
     custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
 
 
-# --- NEUE TABELLE (PHASE 6) ---
-# Verknüpfungstabelle für Spieler-Teilnahme an Spielen (Many-to-Many)
+# --- Verknüpfungstabelle (Unverändert) ---
 game_participations_table = Table(
     "game_participations",
     Base.metadata,
     Column("game_id", Integer, ForeignKey("games.id"), primary_key=True),
     Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
 )
-# --- ENDE NEUE TABELLE ---
+# --- ENDE ---
 
 
 # ---------------------------------
 # 3. Player (Spieler) Modell
-# --- HIER SIND DIE ÄNDERUNGEN ---
 # ---------------------------------
 class Player(Base):
     __tablename__ = "players"
@@ -68,7 +71,6 @@ class Player(Base):
     team = relationship("Team", back_populates="players")
     actions = relationship("Action", back_populates="player", cascade="all, delete-orphan") 
     
-    # NEUE BEZIEHUNG: An welchen Spielen hat der Spieler teilgenommen?
     games_participated = relationship(
         "Game",
         secondary=game_participations_table,
@@ -77,7 +79,6 @@ class Player(Base):
 
 # ---------------------------------
 # 4. Game (Spiel) Modell
-# --- HIER SIND DIE ÄNDERUNGEN ---
 # ---------------------------------
 class Game(Base):
     __tablename__ = "games"
@@ -90,7 +91,6 @@ class Game(Base):
     team = relationship("Team", back_populates="games")
     actions = relationship("Action", back_populates="game", cascade="all, delete-orphan") 
 
-    # NEUE BEZIEHUNG: Welche Spieler haben an diesem Spiel teilgenommen?
     participating_players = relationship(
         "Player",
         secondary=game_participations_table,

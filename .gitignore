@@ -1,0 +1,26 @@
+# Python Cache-Dateien
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtuelle Umgebung (falls du eine nutzt)
+venv/
+.venv/
+env/
+.env
+
+# Datenbank-Dateien
+# WICHTIG: Deine Datenbank wird hiermit ignoriert!
+*.db
+*.sqlite
+*.sqlite3
+handball.db
+
+# OS-spezifische Dateien
+.DS_Store
+Thumbs.db
+
+# IDE-spezifische Konfiguration
+.vscode/
+.idea/

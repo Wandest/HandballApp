@@ -37,6 +37,7 @@ def get_league_list():
 
 # -----------------------------
 # Pydantic Modelle für Teams
+# --- HIER SIND DIE ÄNDERUNGEN (PHASE 6) ---
 # -----------------------------
 class TeamCreate(BaseModel):
     name: str
@@ -47,9 +48,16 @@ class TeamResponse(BaseModel):
     name: str
     league: str
     trainer_id: int
+    is_public: bool # NEU (PHASE 6)
 
     class Config:
         from_attributes = True
+
+# NEUES MODELL (PHASE 6)
+class TeamPublicToggleResponse(BaseModel):
+    team_id: int
+    is_public: bool
+    message: str
 
 # Datenbanksession
 def get_db():
@@ -63,13 +71,13 @@ def get_db():
 # Endpunkte
 # -----------------------------
 
-# ENDPUNKT ZUM LADEN DER LIGEN
+# ENDPUNKT ZUM LADEN DER LIGEN (Unverändert)
 @router.get("/leagues", response_model=List[str])
 def get_available_leagues():
     return get_league_list()
 
 
-# TEAM HINZUFÜGEN
+# TEAM HINZUFÜGEN (Unverändert)
 @router.post("/add", response_model=TeamResponse)
 def create_team(
     team: TeamCreate,
@@ -90,7 +98,8 @@ def create_team(
     new_team = Team(
         name=team.name,
         league=team.league,
-        trainer_id=current_trainer.id
+        trainer_id=current_trainer.id,
+        is_public=False # Standardmäßig Privat
     )
     db.add(new_team)
     db.commit()
@@ -98,7 +107,7 @@ def create_team(
 
     return new_team
 
-# TEAM-LISTE LADEN
+# TEAM-LISTE LADEN (Unverändert, `is_public` wird durch Pydantic automatisch hinzugefügt)
 @router.get("/list", response_model=List[TeamResponse])
 def list_teams(
     current_trainer: Trainer = Depends(get_current_trainer),
@@ -110,3 +119,31 @@ def list_teams(
     
     return teams
 
+# --- NEUER ENDPUNKT (PHASE 6) ---
+# TEAM-SICHTBARKEIT UMSCHALTEN
+@router.post("/toggle-public/{team_id}", response_model=TeamPublicToggleResponse)
+def toggle_team_public(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.trainer_id == current_trainer.id
+    ).first()
+
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+    
+    # Den Boolean-Wert umkehren
+    team.is_public = not team.is_public
+    db.commit()
+    db.refresh(team)
+    
+    message = "sichtbar" if team.is_public else "privat"
+    
+    return TeamPublicToggleResponse(
+        team_id=team.id,
+        is_public=team.is_public,
+        message=f"Team '{team.name}' ist jetzt öffentlich {message}."
+    )

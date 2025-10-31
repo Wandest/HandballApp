@@ -11,6 +11,9 @@ from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
 from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
+# --- HIER IST DIE WICHTIGE ZEILE ---
+from backend.public import router as public_router 
+# --- ENDE ---
 from backend.database import init_db, Trainer, Game, Team, SessionLocal
 
 # Kategorien für Aktionen
@@ -25,6 +28,11 @@ app.include_router(player_router, prefix="/players", tags=["Players"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
+
+# --- HIER IST DIE ZWEITE WICHTIGE ZEILE ---
+# Dieser Router benötigt KEINEN Login
+app.include_router(public_router, prefix="/public", tags=["Public API"])
+# --- ENDE ---
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -55,7 +63,6 @@ def app_protocol_loader(game_id: int, request: Request):
         {"request": request, "title": "Lade Protokoll", "game_id_to_load": game_id}
     )
 
-# --- HIER SIND DIE ÄNDERUNGEN ---
 # Geschützte Route: Der eigentliche Dashboard-Inhalt
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
@@ -110,7 +117,7 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
             {"request": request, 
              "title": "Spielprotokoll", 
              "game_id": game_id, 
-             "team_id": team.id, # NEU: Übergibt die Team-ID an das Protokoll
+             "team_id": team.id,
              "opponent": game.opponent, 
              "team_name": team.name}
         )
