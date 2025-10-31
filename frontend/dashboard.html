@@ -29,26 +29,30 @@
       justify-content: space-between;
       align-items: center;
     }
-    
-    /* Layout obere Reihe */
     .dashboard-layout {
         width: 90%;
         max-width: 1400px; 
         margin: 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr; /* 3 Spalten */
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 20px;
     }
-    /* Layout untere Reihe */
     .detail-area {
         width: 90%;
         max-width: 1400px; 
         margin: 30px auto 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr; /* 4 Spalten */
+        grid-template-columns: 1fr 1fr 1fr 1fr;
         gap: 20px;
     }
-    
+    .stats-area {
+        width: 90%;
+        max-width: 1400px; 
+        margin: 30px auto 50px auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr; 
+        gap: 20px;
+    }
     .card {
       background: rgba(255, 255, 255, 0.15);
       padding: 20px;
@@ -61,12 +65,10 @@
     .card-content {
         flex-grow: 1;
     }
-    
     h1 { color: #ffcc00; font-size: 2em; margin: 0; }
     .greeting { font-size: 1em; margin-top: 5px; }
     h2 { margin-top: 0; }
     h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
-    
     button {
       padding: 10px 15px;
       border: none;
@@ -74,6 +76,10 @@
       font-size: 0.9em;
       cursor: pointer;
       transition: 0.2s;
+    }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     .btn-logout { background: #ff6666; color: white; }
     .btn-primary { background: #38E838; color: #1e3c72; margin-top: 10px; }
@@ -86,22 +92,28 @@
         background: #00bcd4; color: white;
         padding: 5px 10px; margin-left: 10px;
     }
-    
-    /* Allgemeine Formular-Stile */
+    .btn-load-stats {
+        background: #ff9800;
+        color: white;
+        font-weight: bold;
+        padding: 12px;
+        width: 100%;
+        max-width: 300px;
+        margin-bottom: 15px;
+    }
     input[type="text"], input[type="number"], input[type="datetime-local"], select {
-      width: calc(100% - 16px); /* Anpassung für Padding */
+      width: calc(100% - 16px);
       padding: 8px;
       margin-bottom: 10px;
       border-radius: 4px;
       border: 1px solid #ccc;
-      box-sizing: border-box; /* Wichtig */
+      box-sizing: border-box;
     }
     label {
         display: block;
         margin-bottom: 5px;
         font-weight: bold;
     }
-    
     .team-list-item {
         background: rgba(255, 255, 255, 0.1);
         padding: 10px; margin-bottom: 8px; border-radius: 4px;
@@ -112,15 +124,12 @@
     .team-list-item.selected {
         background: #ffcc00; color: #1e3c72; font-weight: bold;
     }
-    
     .player-list-item, .custom-action-list-item {
         background: rgba(255, 255, 255, 0.05);
         padding: 8px; margin-bottom: 4px; border-radius: 4px;
         display: flex; justify-content: space-between; align-items: center;
         font-size: 0.9em; width: 100%;
     }
-    
-    /* --- Spielplan-Liste --- */
     .game-list-header {
         color: #ffcc00;
         font-size: 1.1em;
@@ -144,8 +153,6 @@
     }
     .game-info span { margin-bottom: 3px; }
     .game-actions { display: flex; gap: 5px; }
-    
-    /* --- NEU: Spiel anlegen Kachel --- */
     .game-category-tabs {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -171,26 +178,21 @@
         opacity: 0.5;
         cursor: not-allowed;
     }
-    
     .form-section {
-        display: none; /* Alle Sektionen standardmäßig ausblenden */
+        display: none; 
     }
     .form-section.active {
-        display: block; /* Nur die aktive Sektion anzeigen */
+        display: block; 
     }
-    
     #new-tournament-group {
-        display: none; /* Standardmäßig ausgeblendet */
+        display: none; 
         margin-top: 10px;
         border-top: 1px solid rgba(255,255,255,0.2);
         padding-top: 10px;
     }
-    /* --- Ende: Spiel anlegen Kachel --- */
-
     .message { margin-top: 10px; font-weight: bold; }
     .success { color: #38E838; }
     .error { color: #FF6666; }
-    
     .verification-warning {
         width: 90%; max-width: 800px;
         margin: 50px auto; padding: 30px;
@@ -203,6 +205,60 @@
         padding: 10px 20px; margin-top: 15px;
         font-weight: bold; border: none;
         border-radius: 5px; cursor: pointer;
+    }
+    .stats-table-container {
+        overflow-x: auto;
+    }
+    .stats-table {
+        width: 100%;
+        min-width: 600px; 
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .stats-table th, .stats-table td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .stats-table th {
+        color: #ffcc00;
+        border-bottom: 2px solid #ffcc00;
+        font-size: 0.9em;
+        text-transform: uppercase;
+    }
+    .stats-table td:first-child, .stats-table th:first-child {
+        text-align: left;
+    }
+    .opponent-stats-table {
+        width: 100%;
+        max-width: 400px; 
+        margin-top: 10px;
+        border-collapse: collapse;
+    }
+    .opponent-stats-table td {
+        padding: 12px;
+        font-size: 1.1em;
+        background: rgba(0,0,0,0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .opponent-stats-table tr:first-child td {
+         border-top-left-radius: 5px;
+         border-top-right-radius: 5px;
+    }
+    .opponent-stats-table tr:last-child td {
+         border-bottom: none;
+         border-bottom-left-radius: 5px;
+         border-bottom-right-radius: 5px;
+    }
+    .opponent-stats-table td:first-child {
+        font-weight: bold;
+        color: #ffcc00;
+        width: 70%;
+    }
+    .opponent-stats-table td:last-child {
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2em;
     }
   </style>
 </head>
@@ -228,9 +284,8 @@
 
   <div id="app-features" {% if not is_verified %}style="display:none;"{% endif %}>
 
-  <!-- OBERE REIHE -->
+  <!-- OBERE REIHE (Unverändert) -->
   <div class="dashboard-layout">
-    
     <div class="card">
       <div class="card-content">
         <h2>Mannschaft hinzufügen</h2>
@@ -249,7 +304,6 @@
         <div id="team-message" class="message"></div>
       </div>
     </div>
-
     <div class="card">
       <div class="card-content">
         <h2>Meine Mannschaften (Auswahl)</h2>
@@ -259,7 +313,6 @@
         <p id="selected-team-info" style="margin-top: 15px; font-weight: bold; color: #ffcc00;"></p>
       </div>
     </div>
-
     <div class="card">
       <div class="card-content">
         <h2>Spieler hinzufügen</h2>
@@ -282,7 +335,7 @@
     </div>
   </div>
   
-  <!-- UNTERE REIHE -->
+  <!-- MITTLERE REIHE (Unverändert) -->
   <div class="detail-area">
     <div class="card" style="grid-column: span 1;">
       <div class="card-content">
@@ -293,46 +346,37 @@
         </div>
       </div>
     </div>
-    
     <div class="card" style="grid-column: span 1;">
       <div class="card-content">
         <h2>Spiel anlegen</h2>
-        
         <div class="game-category-tabs">
             <button class="tab-button" id="tab-btn-saison" onclick="switchGameCategory('Saison')" disabled>Saison</button>
             <button class="tab-button active" id="tab-btn-testspiel" onclick="switchGameCategory('Testspiel')" disabled>Testspiel</button>
             <button class="tab-button" id="tab-btn-turnier" onclick="switchGameCategory('Turnier')" disabled>Turnier</button>
         </div>
-        
         <form id="add-game-form">
             <input type="hidden" id="active-game-category" value="Testspiel">
-            
             <div class="form-section active" id="common-game-fields">
                 <label for="game-opponent">Gegner:</label>
                 <input type="text" id="game-opponent" required>
                 <label for="game-date">Datum & Uhrzeit:</label>
                 <input type="datetime-local" id="game-date" required>
             </div>
-
             <div class="form-section" id="tournament-game-fields">
                  <label for="tournament-select">Turnier auswählen:</label>
                  <select id="tournament-select">
                      <option value="" disabled selected>Lade Turniere...</option>
                  </select>
-                 
                  <div id="new-tournament-group">
                      <label for="new-tournament-name">Neuer Turniername:</label>
                      <input type="text" id="new-tournament-name">
                  </div>
             </div>
-
             <button type="submit" class="btn-primary" id="add-game-button" disabled>Spiel erstellen</button>
         </form>
         <div id="game-message" class="message"></div>
-        
       </div>
     </div>
-    
     <div class="card" style="grid-column: span 1;">
       <div class="card-content">
         <h2>Spielplan</h2>
@@ -342,7 +386,6 @@
         </div>
       </div>
     </div>
-    
     <div class="card" style="grid-column: span 1;">
       <div class="card-content">
         <h2>Aktionen</h2>
@@ -366,22 +409,70 @@
       </div>
     </div>
   </div>
-  </div> 
+  
+  <!-- REIHE: SAISON-STATISTIK (ANGEPASST für Phase 6.3) -->
+  <div class="stats-area">
+    <div class="card" style="grid-column: span 4;"> 
+      <div class="card-content">
+        <h2>Saison-Statistik (Aggregiert)</h2>
+        <h3><span id="season-stats-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
+        
+        <button class="btn-load-stats" id="load-season-stats-btn" disabled>
+            Saison-Statistik laden
+        </button>
+        
+        <div id="season-stats-message" class="message"></div>
+        
+        <h3 style="margin-top: 20px;">Gegner-Statistik (Saison)</h3>
+        <div id="stats-table-container-opponent-season">
+            <p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>
+        </div>
+        
+        <h3 style="margin-top: 20px;">Feldspieler-Statistik (Saison)</h3>
+        <div class="stats-table-container" id="stats-table-container-field-season">
+            <p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>
+        </div>
+        
+        <h3 style="margin-top: 20px;">Torwart-Statistik (Saison)</h3>
+        <div class="stats-table-container" id="stats-table-container-goalie-season"></div>
+
+        <h3 style="margin-top: 20px;">Team-Aktionen Statistik (Saison)</h3>
+        <div class="stats-table-container" id="stats-table-container-custom-season"></div>
+
+        <!-- BEREICH: SAISON-ARCHIVIERUNG (Unverändert) -->
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 30px 0;">
+        <h3>Saison-Archivierung (Reset)</h3>
+        <p style="opacity: 0.8; font-size: 0.9em;">
+            Hiermit werden alle Spiele der Kategorie "Saison" in ein Archiv verschoben.
+            Die Saison-Statistik wird dadurch zurückgesetzt.
+        </p>
+        <div class="form-section active">
+            <label for="archive-name-input">Name für das Archiv (z.B. "Saison 2024/25"):</label>
+            <input type="text" id="archive-name-input" placeholder="Name des Archivs" required>
+        </div>
+        <button id="archive-season-btn" disabled
+                style="background-color: #ff6666; color: white; width: 100%; max-width: 300px; margin-top: 10px;">
+            Aktive Saison jetzt archivieren
+        </button>
+        <div id="archive-message" class="message"></div>
+      </div>
+    </div>
+  </div>
+  
+  </div> <!-- Ende app-features -->
   
   <script>
-    // --- Globale Logout Funktion ---
     function logout() {
       localStorage.removeItem('access_token');
       window.location.href = "/"; 
     }
     
-    // Führe die Logik nur aus, wenn der Trainer verifiziert ist
     {% if is_verified %} 
     
     let selectedTeamId = null;
     let selectedTeamName = "";
 
-    // DOM Elemente (aktualisiert)
+    // --- DOM Elemente (aktualisiert) ---
     const teamListDiv = document.getElementById('team-list');
     const teamMessageDiv = document.getElementById('team-message');
     const playerMessageDiv = document.getElementById('player-message');
@@ -398,8 +489,6 @@
     const customActionMessageDiv = document.getElementById('custom-action-message');
     const customActionListContainer = document.getElementById('custom-action-list-container');
     const addCustomActionForm = document.getElementById('add-custom-action-form');
-    
-    // NEU: DOM Elemente für "Spiel anlegen"
     const tabBtnSaison = document.getElementById('tab-btn-saison');
     const tabBtnTestspiel = document.getElementById('tab-btn-testspiel');
     const tabBtnTurnier = document.getElementById('tab-btn-turnier');
@@ -407,25 +496,30 @@
     const tournamentGameFields = document.getElementById('tournament-game-fields');
     const tournamentSelect = document.getElementById('tournament-select');
     const newTournamentGroup = document.getElementById('new-tournament-group');
+    const seasonStatsTeamName = document.getElementById('season-stats-team-name');
+    const loadSeasonStatsBtn = document.getElementById('load-season-stats-btn');
+    const seasonStatsMessage = document.getElementById('season-stats-message');
+    const statsContainerFieldSeason = document.getElementById('stats-table-container-field-season');
+    const statsContainerGoalieSeason = document.getElementById('stats-table-container-goalie-season');
+    const statsContainerCustomSeason = document.getElementById('stats-table-container-custom-season');
+    const statsContainerOpponentSeason = document.getElementById('stats-table-container-opponent-season');
+    const archiveNameInput = document.getElementById('archive-name-input');
+    const archiveSeasonBtn = document.getElementById('archive-season-btn');
+    const archiveMessageDiv = document.getElementById('archive-message');
 
     function getToken() {
         return localStorage.getItem('access_token');
     }
     
-    // --- KORRIGIERTE Logik für "Spiel anlegen" Tabs ---
+    // --- (Unveränderte Funktionen: switchGameCategory, selectTeam, loadTeams, add-team-form) ---
     function switchGameCategory(category) {
         activeGameCategoryInput.value = category;
-
         [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.classList.remove('active'));
         if (category === 'Saison') tabBtnSaison.classList.add('active');
         if (category === 'Testspiel') tabBtnTestspiel.classList.add('active');
         if (category === 'Turnier') tabBtnTurnier.classList.add('active');
-
-        // --- KORREKTUR START ---
-        // Die Logik hier wurde vereinfacht und korrigiert
         if (category === 'Turnier') {
             tournamentGameFields.style.display = 'block';
-            // Prüfe den *aktuellen* Dropdown-Status, anstatt ihn zurückzusetzen
             if (tournamentSelect.value === 'NEW') {
                 newTournamentGroup.style.display = 'block';
             } else {
@@ -433,13 +527,9 @@
             }
         } else {
             tournamentGameFields.style.display = 'none';
-            // Verstecke auch die Turnier-spezifischen Unter-Felder
             newTournamentGroup.style.display = 'none';
         }
-        // --- KORREKTUR ENDE ---
     }
-    
-    // Event Listener für das Turnier-Dropdown
     tournamentSelect.addEventListener('change', function() {
         if (this.value === 'NEW') {
             newTournamentGroup.style.display = 'block';
@@ -448,68 +538,80 @@
         }
     });
 
-    // --- Team-Logik (Angepasst) ---
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
-
         document.querySelectorAll('.team-list-item').forEach(item => {
             item.classList.remove('selected');
         });
         document.getElementById(`team-${teamId}`).classList.add('selected');
-        
         selectedTeamInfo.textContent = `Ausgewählt: ${teamName}`;
         kaderTeamName.textContent = teamName;
         gameplanTeamName.textContent = teamName;
         customActionTeamName.textContent = teamName;
-        
+        seasonStatsTeamName.textContent = teamName; 
         addPlayerButton.disabled = false;
         addGameButton.disabled = false;
         addCustomActionButton.disabled = false;
+        loadSeasonStatsBtn.disabled = false;
+        archiveSeasonBtn.disabled = false; 
         [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = false);
-
         loadPlayers(teamId);
         loadGames(teamId);
         loadCustomActions(teamId);
-        loadTournaments(teamId); // NEU
+        loadTournaments(teamId);
+        
+        seasonStatsMessage.textContent = '';
+        archiveMessageDiv.textContent = ''; 
+        archiveNameInput.value = ''; 
+        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte "Saison-Statistik laden" klicken.</p>';
+        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte "Saison-Statistik laden" klicken.</p>';
+        statsContainerGoalieSeason.innerHTML = '';
+        statsContainerCustomSeason.innerHTML = '';
     }
     
     async function loadTeams() {
         const token = getToken();
         if (!token) { teamListDiv.innerHTML = '<p class="error">Token fehlt.</p>'; return; }
-
         try {
             const response = await fetch('/teams/list', {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (response.status === 401 || response.status === 403) { logout(); }
+            if (response.status === 401 || response.status === 403) { 
+                logout(); 
+                return;
+            }
             if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
-
             const teams = await response.json();
             teamListDiv.innerHTML = '';
-            
             selectedTeamId = null;
             selectedTeamInfo.textContent = "";
             kaderTeamName.textContent = "(Team wählen)";
             gameplanTeamName.textContent = "(Team wählen)";
             customActionTeamName.textContent = "(Team wählen)";
+            seasonStatsTeamName.textContent = "(Team wählen)"; 
             addPlayerButton.disabled = true;
             addGameButton.disabled = true;
             addCustomActionButton.disabled = true;
+            loadSeasonStatsBtn.disabled = true;
+            archiveSeasonBtn.disabled = true; 
             [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = true);
-            
             playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
             tournamentSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
-
+            seasonStatsMessage.textContent = '';
+            archiveMessageDiv.textContent = ''; 
+            archiveNameInput.value = ''; 
+            statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>';
+            statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>';
+            statsContainerGoalieSeason.innerHTML = '';
+            statsContainerCustomSeason.innerHTML = '';
             if (teams.length === 0) {
                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
                 return;
             }
-
             teams.forEach(team => {
                 const teamItem = document.createElement('div');
                 teamItem.className = 'team-list-item';
@@ -518,7 +620,6 @@
                 teamItem.addEventListener('click', () => selectTeam(team.id, team.name));
                 teamListDiv.appendChild(teamItem);
             });
-
         } catch (error) {
             console.error('Fehler beim Laden der Teams:', error);
             teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams.</p>`;
@@ -530,7 +631,7 @@
         const name = document.getElementById('team-name').value;
         const league = document.getElementById('team-league').value;
         const token = getToken();
-        if (!token) { /* ... */ return; }
+        if (!token) { return; }
         teamMessageDiv.textContent = 'Erstelle Mannschaft...';
         teamMessageDiv.className = 'message';
         try {
@@ -557,7 +658,7 @@
         }
     });
 
-    // --- Spieler-Logik (Unverändert) ---
+    // --- (Unveränderte Spieler-Funktionen: deletePlayer, add-player-form, loadPlayers) ---
     async function deletePlayer(playerId) {
         if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
         const token = getToken();
@@ -650,8 +751,7 @@
         }
     }
     
-    // --- Spiel-Logik (Angepasst) ---
-
+    // --- (Unveränderte Spiel-Funktionen: deleteGame, add-game-form, startProtocol, loadGames, loadTournaments) ---
     async function deleteGame(gameId) {
         if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
         const token = getToken();
@@ -675,23 +775,18 @@
             gameMessageDiv.className = 'message error';
         }
     }
-
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
         event.preventDefault();
-
         if (!selectedTeamId) {
             gameMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
             gameMessageDiv.className = 'message error';
             return;
         }
-
         const opponent = document.getElementById('game-opponent').value;
         const date = document.getElementById('game-date').value;
         const token = getToken();
-        
         const category = activeGameCategoryInput.value;
         let tournamentName = null;
-
         if (category === "Turnier") {
             const selectedTournament = tournamentSelect.value;
             if (selectedTournament === "NEW") {
@@ -709,10 +804,8 @@
                 tournamentName = selectedTournament;
             }
         }
-
         gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
         gameMessageDiv.className = 'message';
-        
         const payload = {
             opponent: opponent,
             date: date,
@@ -720,7 +813,6 @@
             game_category: category,
             tournament_name: tournamentName
         };
-
         try {
             const response = await fetch('/games/add', {
                 method: 'POST',
@@ -732,10 +824,10 @@
                 gameMessageDiv.textContent = `✅ Spiel gegen "${opponent}" erfolgreich angelegt.`;
                 gameMessageDiv.className = 'message success';
                 document.getElementById('add-game-form').reset();
-                switchGameCategory('Testspiel'); // Setze auf Standard zurück
+                switchGameCategory('Testspiel');
                 loadGames(selectedTeamId);
                 if (category === "Turnier") {
-                    loadTournaments(selectedTeamId); // Lade Turnierliste neu
+                    loadTournaments(selectedTeamId);
                 }
             } else if (response.status === 401 || response.status === 403) {
                 logout();
@@ -748,16 +840,13 @@
             gameMessageDiv.className = 'message error';
         }
     });
-
     function startProtocol(gameId) {
         localStorage.setItem('protocol_game_id', gameId);
         window.location.href = `/app/protocol/${gameId}`; 
     }
-
     async function loadGames(teamId) {
         const token = getToken();
         if (!token) return;
-
         gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         try {
             const response = await fetch(`/games/list/${teamId}`, {
@@ -766,25 +855,35 @@
             });
             const games = await response.json();
             gameListContainer.innerHTML = '';
-            
             if (games.length === 0) {
                 gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
                 return;
             }
-
-            const saisonGames = games.filter(g => g.game_category === 'Saison');
-            const testGames = games.filter(g => g.game_category === 'Testspiel');
-            const tournamentGames = games.filter(g => g.game_category === 'Turnier');
-            
-            const tournaments = {};
-            tournamentGames.forEach(game => {
-                const tourName = game.tournament_name || 'Unbenanntes Turnier';
-                if (!tournaments[tourName]) {
-                    tournaments[tourName] = [];
+            const groupedGames = {
+                'Saison': [],
+                'Testspiel': [],
+                'Turnier': {}
+            };
+            const archiveGroups = {}; 
+            games.forEach(game => {
+                if (game.game_category === 'Saison') {
+                    groupedGames.Saison.push(game);
+                } else if (game.game_category === 'Testspiel') {
+                    groupedGames.Testspiel.push(game);
+                } else if (game.game_category === 'Turnier') {
+                    const tourName = game.tournament_name || 'Unbenanntes Turnier';
+                    if (!groupedGames.Turnier[tourName]) {
+                        groupedGames.Turnier[tourName] = [];
+                    }
+                    groupedGames.Turnier[tourName].push(game);
+                } else {
+                    const archiveName = game.game_category;
+                    if (!archiveGroups[archiveName]) {
+                        archiveGroups[archiveName] = [];
+                    }
+                    archiveGroups[archiveName].push(game);
                 }
-                tournaments[tourName].push(game);
             });
-
             const renderGameList = (gameList) => {
                 let html = '';
                 gameList.forEach(game => {
@@ -807,49 +906,46 @@
                 });
                 return html;
             };
-
             let finalHtml = '';
-            if (saisonGames.length > 0) {
+            if (groupedGames.Saison.length > 0) {
                 finalHtml += '<h3 class="game-list-header">Saison (Liga)</h3>';
-                finalHtml += renderGameList(saisonGames);
+                finalHtml += renderGameList(groupedGames.Saison);
             }
-            if (testGames.length > 0) {
+            if (groupedGames.Testspiel.length > 0) {
                 finalHtml += '<h3 class="game-list-header">Testspiele</h3>';
-                finalHtml += renderGameList(testGames);
+                finalHtml += renderGameList(groupedGames.Testspiel);
             }
-            if (Object.keys(tournaments).length > 0) {
+            if (Object.keys(groupedGames.Turnier).length > 0) {
                 finalHtml += '<h3 class="game-list-header">Turniere</h3>';
-                for (const tourName in tournaments) {
+                for (const tourName in groupedGames.Turnier) {
                     finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ddd;">${tourName}</h4>`;
-                    finalHtml += renderGameList(tournaments[tourName]);
+                    finalHtml += renderGameList(groupedGames.Turnier[tourName]);
+                }
+            }
+            if (Object.keys(archiveGroups).length > 0) {
+                finalHtml += '<h3 class="game-list-header" style="color: #9e9e9e;">Archiv</h3>';
+                for (const archiveName in archiveGroups) {
+                    finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ccc;">${archiveName}</h4>`;
+                    finalHtml += renderGameList(archiveGroups[archiveName]);
                 }
             }
             gameListContainer.innerHTML = finalHtml;
-
         } catch (error) {
             gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
         }
     }
-    
-    // --- NEU: TURNIER-DROPDOWN LADEN ---
     async function loadTournaments(teamId) {
         const token = getToken();
         if (!token) return;
-        
         tournamentSelect.innerHTML = '<option value="" disabled selected>Lade Turniere...</option>';
-        
         try {
             const response = await fetch(`/games/tournaments/${teamId}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
             if (!response.ok) throw new Error('Turniere konnten nicht geladen werden.');
-            
             const tournaments = await response.json();
-            
             tournamentSelect.innerHTML = '';
-            
             if (tournaments.length > 0) {
                 tournaments.forEach(name => {
                     const option = document.createElement('option');
@@ -858,19 +954,16 @@
                     tournamentSelect.appendChild(option);
                 });
             }
-            
             const newOption = document.createElement('option');
             newOption.value = 'NEW';
             newOption.textContent = '[ Neues Turnier anlegen ]';
             tournamentSelect.appendChild(newOption);
-            
             if (tournaments.length > 0) {
                  tournamentSelect.selectedIndex = 0;
             } else {
                 tournamentSelect.value = 'NEW';
             }
             tournamentSelect.dispatchEvent(new Event('change'));
-
         } catch (error) {
             console.error('Fehler beim Laden der Turniere:', error);
             tournamentSelect.innerHTML = '<option value="" disabled selected>Fehler</Möglichkeit>';
@@ -883,13 +976,13 @@
         }
     }
 
-    // --- Custom Action Logik (Unverändert) ---
+    // --- (Unveränderte Custom-Action-Funktionen: deleteCustomAction, loadCustomActions, add-custom-action-form) ---
     async function deleteCustomAction(actionId) {
         if (!confirm("Sind Sie sicher, dass Sie diese Aktionsvorlage löschen möchten?")) return;
         const token = getToken();
         if (!token) return logout();
         try {
-            const response = await fetch(`/custom-actions/delete/${actionId}`, {
+            const response = await fetch(`/custom-actions/delete/${actionId}?team_id=${selectedTeamId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -977,15 +1070,250 @@
             customActionMessageDiv.className = 'message error';
         }
     });
+    
+    
+    // --- SAISON-STATISTIK LADEN (ANGEPASST für Gegner-Saison-Stats) ---
+    loadSeasonStatsBtn.addEventListener('click', loadSeasonStats);
 
-    // --- INITIALISIERUNG ---
+    async function loadSeasonStats() {
+        const token = getToken();
+        if (!token || !selectedTeamId) return;
+
+        seasonStatsMessage.textContent = 'Lade Saison-Statistik...';
+        seasonStatsMessage.className = 'message';
+        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Gegner-Statistik...</p>';
+        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Spieler-Statistik...</p>';
+        statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere TW-Statistik...</p>';
+        statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Team-Statistik...</p>';
+
+        try {
+            const [playerStatsResponse, opponentStatsResponse] = await Promise.all([
+                fetch(`/actions/stats/season/${selectedTeamId}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`/actions/stats/season/opponent/${selectedTeamId}`, { // NEUER AUFRUF
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            ]);
+
+            if (playerStatsResponse.status === 401 || playerStatsResponse.status === 403) { logout(); }
+            if (!playerStatsResponse.ok) throw new Error('Spieler-Statistikdaten konnten nicht abgerufen werden.');
+            if (!opponentStatsResponse.ok) throw new Error('Gegner-Statistikdaten konnten nicht abgerufen werden.');
+            
+            const playerStats = await playerStatsResponse.json();
+            const opponentStats = await opponentStatsResponse.json();
+            
+            seasonStatsMessage.textContent = '✅ Statistik erfolgreich geladen.';
+            seasonStatsMessage.className = 'message success';
+            
+            displaySeasonPlayerStats(playerStats);
+            displaySeasonOpponentStats(opponentStats); 
+
+        } catch (error) {
+            seasonStatsMessage.textContent = '❌ FEHLER beim Laden der Statistik.';
+            seasonStatsMessage.className = 'message error';
+            statsContainerFieldSeason.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
+            statsContainerOpponentSeason.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
+            statsContainerGoalieSeason.innerHTML = '';
+            statsContainerCustomSeason.innerHTML = '';
+            console.error("Saison-Statistikfehler:", error);
+        }
+    }
+    
+    function displaySeasonOpponentStats(stats) {
+        let tableHtml = `<table class="opponent-stats-table"><tbody>
+            <tr>
+                <td>🟡 Gegner Tore (Gesamt)</td>
+                <td>${stats.opponent_goals}</td>
+            </tr>
+            <tr>
+                <td>💨 Gegner Fehlwürfe</td>
+                <td>${stats.opponent_misses}</td>
+            </tr>
+            <tr>
+                <td>🚫 Gegner Tech. Fehler</td>
+                <td>${stats.opponent_tech_errors}</td>
+            </tr>
+        </tbody></table>`;
+        statsContainerOpponentSeason.innerHTML = tableHtml;
+    }
+
+    // --- ANGEPASST (PHASE 6.3) ---
+    function displaySeasonPlayerStats(stats) {
+        // Definiere Spalten-Header, inklusive der Neuen
+        let fieldHeaders = [
+            { key: 'player_name', name: 'Spieler', isFixed: true }, 
+            { key: 'player_number', name: '#', isFixed: true },
+            { key: 'games_played', name: 'Spiele' }, // NEU
+            { key: 'goals', name: 'Tore (Quote)' }, 
+            { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, // NEU
+            { key: 'misses', name: 'Fehlwürfe' },
+            { key: 'tech_errors', name: 'Tech. Fehler' }, 
+            { key: 'seven_meter_goals', name: '7m Tor' },
+            { key: 'seven_meter_misses', name: '7m Fehl' }, 
+            { key: 'seven_meter_caused', name: '7m Verursacht' },
+        ];
+        
+        let goalieHeaders = [
+            { key: 'player_name', name: 'Spieler', isFixed: true }, 
+            { key: 'player_number', name: '#', isFixed: true },
+            { key: 'games_played', name: 'Spiele' }, // NEU
+            { key: 'saves', name: 'Paraden Ges. (Quote)' }, 
+            { key: 'seven_meter_saves', name: '7m-Quote' },
+        ];
+        
+        // Initialisiere Tabellen-HTML
+        let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
+        fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
+        fieldTableHtml += `</tr></thead><tbody>`;
+        let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
+        goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
+        goalieTableHtml += `</tr></thead><tbody>`;
+        let fieldPlayersFound = false;
+        let goaliesFound = false;
+        
+        if (stats.length === 0) {
+             statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
+             statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
+             statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
+             return;
+        }
+        
+        // Fülle Tabellen-Reihen
+        stats.forEach(player => {
+            if (player.position === 'Torwart') {
+                goaliesFound = true;
+                goalieTableHtml += `<tr>`;
+                goalieHeaders.forEach(h => {
+                    let value = player[h.key] !== undefined ? player[h.key] : 0;
+                    if (h.name === 'Paraden Ges. (Quote)') {
+                        const totalSaves = player.saves + player.seven_meter_saves;
+                        const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
+                        const totalShotsOnGoal = totalSaves + totalGoalsReceived;
+                        const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
+                        value = `${totalSaves} (${quote})`;
+                    }
+                    if (h.name === '7m-Quote') {
+                        const totalSevenMeters = player.seven_meter_received; 
+                        const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
+                        value = `${player.seven_meter_saves} (${quote})`;
+                    }
+                    goalieTableHtml += `<td>${value}</td>`;
+                });
+                goalieTableHtml += `</tr>`;
+            } else {
+                fieldPlayersFound = true;
+                fieldTableHtml += `<tr>`;
+                fieldHeaders.forEach(h => {
+                    let value = player[h.key] !== undefined ? player[h.key] : 0;
+                    if (h.name === 'Tore (Quote)') {
+                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
+                        const totalGoals = player.goals + player.seven_meter_goals;
+                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+                        value = `${totalGoals} (${quote})`;
+                    }
+                    // --- NEUE BERECHNUNG (PHASE 6.3) ---
+                    if (h.name === 'Tore/Spiel') {
+                        if (player.games_played > 0) {
+                            const totalGoals = player.goals + player.seven_meter_goals;
+                            value = (totalGoals / player.games_played).toFixed(1);
+                        } else {
+                            value = '0.0'; // Zeige 0.0 statt '—' wenn 0 Spiele
+                        }
+                    }
+                    // --- ENDE NEUE BERECHNUNG ---
+                    fieldTableHtml += `<td>${value}</td>`;
+                });
+                fieldTableHtml += `</tr>`;
+            }
+        });
+        fieldTableHtml += `</tbody></table>`;
+        goalieTableHtml += `</tbody></table>`;
+        statsContainerFieldSeason.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
+        statsContainerGoalieSeason.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
+        
+        // Team-Aktionen (ANGEPASST für Phase 6.3)
+        const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
+        if (customActionNames.length === 0) {
+            statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
+        } else {
+            let customTableHtml = `<table class="stats-table"><thead><tr>`;
+            customTableHtml += `<th>Spieler</th><th>#</th><th>Spiele</th>`; // NEU: Spiele
+            customActionNames.forEach(name => {
+                customTableHtml += `<th>${name}</th>`; 
+            });
+            customTableHtml += `</tr></thead><tbody>`;
+            stats.forEach(player => {
+                // Zeige Team-Aktionen nur für Feldspieler (optional, aber oft sauberer)
+                if (player.position !== 'Torwart') {
+                    customTableHtml += `<tr>`;
+                    customTableHtml += `<td>${player.player_name}</td>`;
+                    customTableHtml += `<td>${player.player_number || ''}</td>`;
+                    customTableHtml += `<td>${player.games_played}</td>`; // NEU
+                    customActionNames.forEach(name => {
+                        const count = player.custom_counts[name] || 0;
+                        customTableHtml += `<td>${count}</td>`;
+                    });
+                    customTableHtml += `</tr>`;
+                }
+            });
+            customTableHtml += `</tbody></table>`;
+            statsContainerCustomSeason.innerHTML = customTableHtml;
+        }
+    }
+
+    // --- (Unveränderte Archivierungs-Funktion: handleArchiveSeason) ---
+    archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
+    async function handleArchiveSeason() {
+        const token = getToken();
+        if (!token || !selectedTeamId) return;
+        const archiveName = archiveNameInput.value.trim();
+        if (!archiveName) {
+            archiveMessageDiv.textContent = '❌ Bitte einen Namen für das Archiv eingeben.';
+            archiveMessageDiv.className = 'message error';
+            return;
+        }
+        if (!confirm(`Sind Sie sicher? \n\nAlle ${selectedTeamName}-Spiele der Kategorie "Saison" werden unwiderruflich in das Archiv "${archiveName}" verschoben. \n\nDie Saison-Statistik wird dadurch zurückgesetzt.`)) {
+            return;
+        }
+        archiveMessageDiv.textContent = 'Archiviere Saison...';
+        archiveMessageDiv.className = 'message';
+        try {
+            const response = await fetch(`/games/archive/season/${selectedTeamId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ archive_name: archiveName }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                archiveMessageDiv.textContent = `✅ ${data.message}`;
+                archiveMessageDiv.className = 'message success';
+                archiveNameInput.value = ''; 
+                await loadGames(selectedTeamId);
+                await loadSeasonStats(); 
+            } else if (response.status === 401 || response.status === 403) {
+                logout();
+            } else {
+                archiveMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
+                archiveMessageDiv.className = 'message error';
+            }
+        } catch (error) {
+            archiveMessageDiv.textContent = '❌ Serverfehler bei der Archivierung.';
+            archiveMessageDiv.className = 'message error';
+            console.error("Archiv-Fehler:", error);
+        }
+    }
+
+    // --- (Unveränderte Initialisierungs-Funktion: initDashboard) ---
     async function initDashboard() {
         try {
-            await loadTeams();
-            // Standard-Tab für "Spiel anlegen" setzen
+            await loadTeams(); 
             switchGameCategory('Testspiel');
         } catch (error) {
             teamListDiv.innerHTML = '<p class="error">FEHLER beim Laden der Teams.</p>';
+            console.error("Init-Fehler:", error);
         }
     }
     

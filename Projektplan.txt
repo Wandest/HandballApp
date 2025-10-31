@@ -1,0 +1,175 @@
+Projektplan: Handball-Auswertungs-App
+
+Dieses Dokument dient als Roadmap für die Entwicklung und listet abgeschlossene Meilensteine sowie zukünftige Phasen auf.
+
+Phase 1: Grundgerüst & MVP (Minimum Viable Product)
+
+Status: ✅ ABGESCHLOSSEN
+
+[x] Technologie-Setup: Projekt aufgesetzt (Python, FastAPI, SQLAlchemy).
+
+[x] App-Container: Desktop-App-Fenster mittels pywebview implementiert.
+
+[x] Datenbank: Grundlegende Modelle in database.py erstellt (Trainer, Team, Spieler).
+
+[x] Benutzerverwaltung: Vollständiger Registrierungs-, Login- und Verifizierungs-Flow (auth.py).
+
+[x] Dashboard-UI: Grundgerüst für dashboard.html erstellt, inklusive Lade-Logik (app_loader.html).
+
+[x] Verifizierungs-Banner: Dashboard zeigt Warnung an, wenn der Trainer nicht verifiziert ist.
+
+Phase 2: Kernfunktion: Team-Management
+
+Status: ✅ ABGESCHLOSSEN
+
+[x] Team-Management: Trainer kann Mannschaften erstellen, einer Liga zuweisen und auflisten.
+
+[x] Spieler-Management: Trainer kann Spieler erstellen (mit Nummer/Position), löschen und dem Team zuweisen.
+
+[x] Kader-Ansicht: Dashboard zeigt den Kader für das ausgewählte Team an.
+
+[x] "Eigene Aktionen": Trainer kann eigene Aktionen (Custom Actions) erstellen und verwalten.
+
+[x] Struktur-Update: "Eigene Aktionen" sind korrekt mit dem Team verknüpft (nicht mehr mit Trainer).
+
+Phase 3: Kernfunktion: Live-Spiel-Protokoll
+
+Status: ✅ ABGESCHLOSSEN
+
+[x] Protokoll-UI: Grundgerüst für protocol.html erstellt.
+
+[x] Spieler-Lade-Logik: Kader wird korrekt in das Protokoll geladen (Bugfix team_id vs. game_id).
+
+[x] Feste Aktionen: Protokollieren von festen Aktionen (Tor, Fehlwurf, 7m, Tech. Fehler, Parade).
+
+[x] Team-Aktionen: "Eigene Aktionen" werden als farbige Buttons (basierend auf Kategorie) im Protokoll geladen und können geloggt werden.
+
+[x] Live-Statistik (Feld): Zählung von Toren, Fehlwürfen, 7m (Tore/Fehl/Verursacht) pro Spieler.
+
+[x] Live-Statistik (Torwart): Zählung von Paraden, 7m Gehalten, 7m Bekommen.
+
+[x] Live-Statistik (Quoten): Korrekte Berechnung der Torwart-Gesamtquote und der 7m-Quote.
+
+[x] Live-Statistik (Team): Dynamische Erstellung einer separaten Statistik-Tabelle für alle "Eigenen Aktionen".
+
+Phase 4: Spiel-Kategorisierung & Saison-Logik
+
+Status: ✅ ABGESCHLOSSEN
+
+[x] Datenbank-Erweiterung: Game-Modell erweitert um game_category und tournament_name.
+
+[x] UI-Neugestaltung "Spiel anlegen": Alte Radio-Buttons durch ein sauberes Tab-Design (Saison, Testspiel, Turnier) ersetzt.
+
+[x] Turnier-Logik: Bei Auswahl von "Turnier" wird ein Dropdown-Menü mit existierenden Turniernamen (via GET /tournaments) geladen.
+
+[x] Turnier-Logik: UI erlaubt die Auswahl eines existierenden oder das Eintragen eines neuen Turniernamens (Bugfix für fehlendes Textfeld).
+
+[x] UI "Spielplan": Spielplan-Ansicht im Dashboard gruppiert Spiele jetzt korrekt nach Kategorie (Saison, Testspiel, Turniere).
+
+Phase 5: Saison-Auswertung (Nächste Schritte)
+
+Status: ⬜ ZU TUN
+
+[ ] Tore Pro Spiel pro Spieler und gesamt erstellen. Dabei muss ein Aktiver kader gesetzt werden, also nicht jeder spieler macht bei jedem Spiel mit, und nur die Spiele wo er mit macht taucht dann für die Person in der Saison statistik auf.
+
+[ ] Neue API für Saison-Statistik:
+
+[ ] Erstelle einen neuen API-Endpunkt (z.B. in action.py): GET /stats/season/{team_id}.
+
+[ ] Diese API soll alle Aktionen von allen Spielen der Kategorie "Saison" für das Team aggregieren und eine Gesamtstatistik (ähnlich der Live-Statistik, aber summiert) zurückgeben.
+
+[ ] Neue UI für Saison-Statistik:
+
+[ ] Erstelle einen neuen Bereich im Dashboard (z.B. eine neue Kachel oder einen neuen Tab "Saison-Auswertung").
+
+[ ] Diese UI ruft den neuen API-Endpunkt auf und zeigt die Gesamt-Saison-Statistik (Wurfquoten, Paradenquoten etc. über alle Ligaspiele) an.
+
+[ ] Archiv-Logik (Reset):
+
+[ ] Plane eine Funktion (z.B. "Saison beenden"), die alle Spiele der Kategorie "Saison" in "Archiv (Saison 24/25)" ändert, damit die neue Saison bei null beginnt, die alten Daten aber einsehbar bleiben.
+
+Phase 6: Das "Liga"-Feature (Zukünftiger Plan)
+
+Status: ⬜ ZU TUN
+
+[ ] Öffentliche API-Endpunkte:
+
+[ ] Erstelle neue API-Endpunkte (z.B. GET /public/teams/{league_name}), die ohne Token-Authentifizierung (Login) funktionieren.
+
+[ ] Diese Endpunkte dürfen NUR Lesezugriff auf Saison-Spiele gewähren.
+
+[ ] Neue UI "Liga-Ansicht":
+
+[ ] Erstelle einen neuen Bereich im Dashboard (z.B. "Liga-Statistik").
+
+[ ] Der Trainer kann seine Liga auswählen.
+
+[ ] Die UI lädt alle Teams dieser Liga und zeigt ein öffentliches Ranking (basierend auf den Saison-Spielen).
+
+[ ] Öffentliche Team-Seite:
+
+[ ] Eine Ansicht, auf der ein Trainer die (aggregierte) Saison-Statistik eines fremden Teams aus seiner Liga einsehen kann.
+
+Phase 7: UI/UX Professionalisierung (Redesign)
+
+Status: ⬜ ZU TUN (Dein Punkt von heute)
+
+[ ] Navigation überarbeiten: Ersetze das "Alles-auf-einem-Fleck"-Dashboard durch eine saubere Navigationsstruktur (z.B. eine feste Sidebar/Seitenleiste).
+
+[ ] Neue Seitenstruktur:
+
+[ ] Eigene Seite für "Team-Management" (Auswahl, Spieler, Eigene Aktionen).
+
+[ ] Eigene Seite für "Saison-Dashboard" (Spielplan, Statistik).
+
+[ ] Eigene Seite für "Liga-Scouting" (Phase 6).
+
+[ ] Visuelles Design modernisieren: Fokus auf schnelle, intuitive Bedienung auf Tablets (größere Klickflächen, klarere Kontraste).
+
+Phase 8: Pro-Level / Bundesliga-Features (Vision)
+
+Status: ⬜ ZU PLANEN
+
+[ ] Wurfbild-Analyse (Shot Charts):
+
+[ ] Protokoll-UI (Tor): Statt "Tor"-Button ein klickbares Tor-Grafik (oben links, unten rechts, 7m, etc.) implementieren.
+
+[ ] Protokoll-UI (Feld): Klickbares Spielfeld, um den Ort von Aktionen (Wurf, Fehlwurf, Tech. Fehler) zu speichern.
+
+[ ] Datenbank: Action-Modell erweitern um x_coordinate und y_coordinate.
+
+[ ] Statistik-UI: Neue Ansicht "Wurfbilder" erstellen, die Wurfzonen und Trefferquoten pro Spieler und Team visualisiert.
+
+[ ] Video-Integration (DAS Pro-Feature):
+
+[ ] Verknüpfung: App erlauben, eine lokale Videodatei (z.B. spiel.mp4) mit einem Spiel-Protokoll zu verknüpfen.
+
+[ ] Zeitstempel: Jede protokollierte Aktion (z.B. "Tor, 10:24") als Zeitstempel (Spielzeit und/oder Videozeit) speichern.
+
+[ ] UI-Feature "Video-Schnitt": Trainer klickt auf "Alle Paraden von Spieler X" oder "Alle Tech. Fehler Team Y". Die App generiert eine Schnitt-Liste (Edit Decision List) oder Playlist, die nur diese Szenen aus dem Video abspielt.
+
+[ ] Detailliertes Gegner-Scouting:
+
+[ ] Das Protokoll-System "umkehren", sodass ein Trainer ein volles Protokoll (inkl. Wurfbilder) für den Gegner führen kann (wichtig für die Spielvorbereitung).
+
+[ ] Integration mit Phase 6: Die "öffentlichen" Liga-Daten nutzen, um Wurfbilder und Tendenzen von Gegnern zu analysieren.
+
+[ ] Echtzeit-Kollaboration (Multi-Gerät):
+
+[ ] Backend (FastAPI) erweitern, um mehrere verbundene Clients (Tablets) für ein Spiel zu verwalten (z.B. über WebSockets statt nur HTTP).
+
+[ ] Ermöglichen, dass ein Co-Trainer die Abwehr und ein anderer den Angriff in Echtzeit auf verschiedenen Geräten trackt, während der Chef-Trainer die Live-Statistik sieht.
+
+[ ] Belastungssteuerung & Athletik-Tracking:
+
+[ ] Spielzeit pro Spieler automatisch aus den Protokolldaten berechnen (z.B. durch Ein-/Auswechslungs-Buttons).
+
+[ ] Einfaches "Wellness"-Tracking: Spieler-Feedback (RPE - Rate of Perceived Exertion) nach Spielen und Trainingseinheiten erfassen, um Belastung zu steuern.
+
+Phase 9: "Polish" & Weitere Ideen
+
+Status: ⬜ ZU TUN
+
+[ ] Spieler-Detailseite: Eine Ansicht, die die Statistik eines einzelnen Spielers über alle Spiele hinweg zeigt.
+
+[ ] Daten-Export: Exportieren von Spiel- oder Saison-Statistiken als PDF oder CSV.

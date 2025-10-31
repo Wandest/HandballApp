@@ -19,164 +19,96 @@
             justify-content: space-between;
             align-items: center;
         }
-        .match-info h2 {
-            margin: 0 0 5px 0;
-            color: #ffcc00;
-        }
-        .match-info p {
-            margin: 0;
-            font-size: 0.9em;
-        }
+        .match-info h2 { margin: 0 0 5px 0; color: #ffcc00; }
+        .match-info p { margin: 0; font-size: 0.9em; }
         .header-button {
-            background: #00bcd4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            padding: 10px 15px;
-            transition: background-color 0.2s;
+            background: #00bcd4; color: white; border: none;
+            border-radius: 5px; cursor: pointer; font-weight: bold;
+            padding: 10px 15px; transition: background-color 0.2s;
         }
-        .header-button:hover {
-            background: #0097a7;
-        }
-        
-        .score-board-display {
-            font-size: 2em;
-            font-weight: bold;
-            color: #38E838;
-        }
-
+        .header-button:hover { background: #0097a7; }
+        .score-board-display { font-size: 2em; font-weight: bold; color: #38E838; }
         .protocol-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr 3fr;
-            gap: 20px;
-            max-width: 1400px;
-            margin: 0 auto;
+            display: grid; grid-template-columns: 2fr 1fr 3fr;
+            gap: 20px; max-width: 1400px; margin: 0 auto;
         }
         .player-list, .action-controls, .right-column-area {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            min-height: 70vh;
+            background: rgba(255, 255, 255, 0.1); padding: 15px;
+            border-radius: 8px; min-height: 70vh;
         }
-        
         .player-list button {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: #00bcd4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
+            width: 100%; padding: 12px; margin-bottom: 10px;
+            background: #00bcd4; color: white; border: none;
+            border-radius: 5px; cursor: pointer; font-weight: bold;
             transition: background-color 0.2s;
         }
-        .player-list button:hover {
-            background: #0097a7;
+        .player-list button:hover { background: #0097a7; }
+        .player-list button.goalkeeper { background: #ffcc00; color: #333; }
+        .player-list button.selected { background: #ff6666; }
+        
+        /* NEU: Eigener Stil für Gegner-Button */
+        .player-list button.opponent {
+            background: #9e9e9e; /* Grau */
+            color: white;
+            border: 2px dashed white;
         }
-        .player-list button.goalkeeper {
-            background: #ffcc00;
-            color: #333;
-        }
-        .player-list button.selected {
-            background: #ff6666;
+        .player-list button.opponent.selected {
+            background: #ff6666; /* Rot, wenn ausgewählt */
+            border-color: #ff6666;
         }
 
-        .action-controls h3 {
-            color: #ffcc00;
-            margin-top: 0;
-            text-align: center;
-        }
+        .action-controls h3 { color: #ffcc00; margin-top: 0; text-align: center; }
         .action-controls button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 8px;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.1em;
+            width: 100%; padding: 10px; margin-bottom: 8px;
+            border: none; border-radius: 5px; font-weight: bold;
+            cursor: pointer; font-size: 1.1em;
         }
         .btn-goal { background: #38E838; color: #333; }
         .btn-miss { background: #ff6666; color: white; }
         .btn-error { background: #f44336; color: white; }
         .btn-save-opp { background: #00bcd4; color: white; }
         .btn-opp-goal { background: #9e9e9e; color: white; }
-        
-        /* Basis-Stil für Team-Aktionen (Fallback) */
+        .btn-opp-miss { background: #795548; color: white; }
+        .btn-opp-error { background: #616161; color: white; }
         .btn-custom { background: #673ab7; color: white; }
-        
-        /* NEUE KATEGORIE-FARBEN */
-        .btn-custom-Offensiv { background: #ff9800; color: white; } /* Orange */
-        .btn-custom-Defensiv { background: #00bcd4; color: white; } /* Hellblau (wie Parade) */
-        .btn-custom-Torwart { background: #ffcc00; color: #333; } /* Gelb (wie TW-Spieler) */
-        .btn-custom-Sonstiges { background: #607d8b; color: white; } /* Grau */
-
-        hr.divider {
-             border-color: rgba(255,255,255,0.2); 
-             margin: 20px 0;
-        }
-
+        .btn-custom-Offensiv { background: #ff9800; color: white; }
+        .btn-custom-Defensiv { background: #00bcd4; color: white; }
+        .btn-custom-Torwart { background: #ffcc00; color: #333; }
+        .btn-custom-Sonstiges { background: #607d8b; color: white; }
+        hr.divider { border-color: rgba(255,255,255,0.2); margin: 20px 0; }
         .tab-nav {
-            display: flex;
-            border-bottom: 2px solid #ffcc00;
+            display: flex; border-bottom: 2px solid #ffcc00;
             margin-bottom: 15px;
         }
         .tab-button {
-            padding: 10px 15px;
-            cursor: pointer;
-            background: none;
-            border: none;
-            color: white;
-            font-weight: bold;
-            opacity: 0.7;
-            font-size: 1.1em;
+            padding: 10px 15px; cursor: pointer; background: none;
+            border: none; color: white; font-weight: bold;
+            opacity: 0.7; font-size: 1.1em;
         }
         .tab-button.active {
-            background: rgba(255, 255, 255, 0.2);
-            opacity: 1;
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
+            background: rgba(255, 255, 255, 0.2); opacity: 1;
+            border-top-left-radius: 5px; border-top-right-radius: 5px;
         }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
+            width: 100%; border-collapse: collapse; margin-top: 15px;
         }
         .stats-table th, .stats-table td {
-            padding: 10px;
-            text-align: center;
+            padding: 10px; text-align: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         .stats-table th {
-            color: #ffcc00;
-            border-bottom: 2px solid #ffcc00;
-            font-size: 0.9em;
-            text-transform: uppercase;
+            color: #ffcc00; border-bottom: 2px solid #ffcc00;
+            font-size: 0.9em; text-transform: uppercase;
         }
-        .stats-table td:first-child, .stats-table th:first-child {
-            text-align: left;
-        }
-
+        .stats-table td:first-child, .stats-table th:first-child { text-align: left; }
         .log-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
+            width: 100%; border-collapse: collapse; margin-top: 10px;
         }
         .log-table th {
-            text-align: left;
-            padding: 8px 10px;
-            border-bottom: 2px solid #ffcc00;
-            font-size: 0.9em;
+            text-align: left; padding: 8px 10px;
+            border-bottom: 2px solid #ffcc00; font-size: 0.9em;
         }
         .log-table td {
             padding: 8px 10px;
@@ -184,15 +116,31 @@
             font-size: 0.9em;
         }
         .btn-delete-log {
-            background: #f44336;
-            color: white;
-            padding: 4px 8px;
-            font-size: 0.9em;
-            margin: 0;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            background: #f44336; color: white; padding: 4px 8px;
+            font-size: 0.9em; margin: 0; border: none;
+            border-radius: 4px; cursor: pointer;
         }
+        #roster-checklist-container {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-bottom: 20px;
+        }
+        .roster-player-item {
+            background: rgba(255, 255, 255, 0.1); padding: 10px;
+            border-radius: 4px; display: flex; align-items: center;
+        }
+        /* NEU: Eigener Stil für Gegner-Checkbox */
+        .roster-player-item.opponent {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed #9e9e9e;
+        }
+        .roster-player-item input[type="checkbox"] {
+            width: 18px; height: 18px; margin-right: 10px; cursor: pointer;
+        }
+        .roster-player-item label { cursor: pointer; font-size: 1.1em; }
+        #save-roster-btn { background: #38E838; color: #333; width: 100%; }
+        .message { margin-top: 10px; font-weight: bold; }
+        .success { color: #38E838; }
+        .error { color: #FF6666; }
     </style>
 </head>
 <body>
@@ -212,7 +160,7 @@
     <div class="protocol-grid">
         
         <div class="player-list">
-            <h3>Spieler (Aktion zuordnen)</h3>
+            <h3>Teilnehmende Spieler</h3>
             <p style="font-weight: bold;">Ausgewählt: <span id="selected-player-info" style="color: #ffcc00;">Keiner</span></p>
             <div id="player-buttons-container">
                 <p style="text-align: center;">Lade Kader...</p>
@@ -220,22 +168,19 @@
         </div>
 
         <div class="action-controls">
-            
-            <h3>Feste Aktionen</h3>
+            <!-- Die "Gegner-Aktionen"-Buttons sind entfernt (gemäß Phase 8) -->
+            <h3>Meine Aktionen</h3>
             <button class="btn-goal" onclick="handleShotAction('Goal', false)">🥅 Tor erzielt</button>
             <button class="btn-miss" onclick="handleShotAction('Miss', false)">❌ Wurf verworfen</button>
             <button class="btn-goal" onclick="handleShotAction('Goal', true)">🎯 7m Tor</button>
             <button class="btn-miss" onclick="handleShotAction('Miss', true)">🧱 7m verworfen</button>
             <button class="btn-error" onclick="handleAction('TechError')">⚠️ Technischer Fehler</button>
             <button class="btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
-            <button class="btn-opp-goal" onclick="logAction('OppGoal', null, false)">🟡 Gegner Tor</button>
-
             <hr class="divider">
             <h3>Team-Aktionen</h3>
             <div id="custom-action-buttons">
                 <p style="opacity: 0.6; text-align: center;">Lade Aktionen...</p>
             </div>
-
             <hr class="divider">
             <h3>Torwart-Aktionen</h3>
             <button class="btn-save-opp" onclick="handleGoalieAction('Save')">🧤 Parade Torwart</button>
@@ -247,11 +192,12 @@
             <div class="tab-nav">
                 <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
                 <button class="tab-button" onclick="showTab('log')">Protokoll</button>
+                <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
             </div>
 
+            <!-- HTML FÜR GEGNER-STATISTIK ENTFERNT (Phase 8 Feature) -->
             <div id="stats-tab" class="tab-content active">
-                
-                <h3>Feldspieler-Statistik</h3>
+                <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
                 <div id="stats-table-container-field">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
@@ -261,21 +207,27 @@
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
 
-                <!-- NEUER CONTAINER FÜR TEAM-STATISTIK -->
                 <h3 style="margin-top: 20px;">Team-Aktionen Statistik</h3>
                 <div id="stats-table-container-custom">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
-
             </div>
 
             <div id="log-tab" class="tab-content">
                 <h3>Protokoll Tabelle (Letzte Aktionen zuerst)</h3>
-                <div id="action-log-container">
-                    </div>
+                <div id="action-log-container"></div>
+            </div>
+            
+            <div id="roster-tab" class="tab-content">
+                <h3>Spielberichtsbogen</h3>
+                <p style="font-size: 0.9em; opacity: 0.8;">Wähle alle Spieler aus, die an diesem Spiel teilnehmen. Nur ausgewählte Spieler erscheinen links zur Aktions-Zuweisung.</p>
+                <div id="roster-checklist-container">
+                    <p style="opacity: 0.6; text-align: center; grid-column: span 2;">Lade Team-Kader...</p>
+                </div>
+                <button id="save-roster-btn" class="header-button">Kader speichern</button>
+                <div id="roster-message" class="message"></div>
             </div>
         </div>
-        
     </div>
 
     <script>
@@ -283,30 +235,34 @@
         const GAME_ID = {{ game_id }};
         const TEAM_ID = {{ team_id }}; 
         
+        // DOM Elemente
         const ACTION_LOG_CONTAINER = document.getElementById('action-log-container');
         const PLAYER_BUTTONS_CONTAINER = document.getElementById('player-buttons-container');
         const SCORE_BOARD = document.getElementById('score-board');
         const SELECTED_PLAYER_INFO = document.getElementById('selected-player-info');
         const STATS_TABLE_CONTAINER_FIELD = document.getElementById('stats-table-container-field');
         const STATS_TABLE_CONTAINER_GOALIE = document.getElementById('stats-table-container-goalie');
-        const STATS_TABLE_CONTAINER_CUSTOM = document.getElementById('stats-table-container-custom'); // NEU
+        const STATS_TABLE_CONTAINER_CUSTOM = document.getElementById('stats-table-container-custom');
         const CUSTOM_ACTION_BUTTONS_CONTAINER = document.getElementById('custom-action-buttons');
+        const ROSTER_CHECKLIST_CONTAINER = document.getElementById('roster-checklist-container');
+        const ROSTER_MESSAGE = document.getElementById('roster-message');
+        const SAVE_ROSTER_BTN = document.getElementById('save-roster-btn');
+        // const STATS_TABLE_CONTAINER_OPPONENT = document.getElementById('stats-table-container-opponent'); // Entfernt
 
-        let players = []; 
-        let customActions = [];
+        let fullTeamRoster = []; 
+        let participatingPlayers = []; 
+        let customActions = []; // Wichtig: Wird von loadCustomActions() befüllt
         let selectedPlayerId = null; 
 
         // --- Hilfsfunktionen ---
         function getToken() { return localStorage.getItem('access_token'); }
-        
-        function leaveProtocol() {
-            window.location.href = "/app/dashboard"; 
-        }
+        function leaveProtocol() { window.location.href = "/app/dashboard"; }
         
         function updateAllStats() {
             updateScoreDisplay();
             if (document.getElementById('stats-tab').classList.contains('active')) {
                 loadStats();
+               // loadOpponentStats(); // Bleibt auskommentiert
             }
             if (document.getElementById('log-tab').classList.contains('active')) {
                 loadActionLog();
@@ -320,19 +276,16 @@
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.classList.remove('active');
             });
-
-            if (tabName === 'stats') {
-                document.getElementById('stats-tab').classList.add('active');
-                document.querySelector('.tab-button[onclick="showTab(\'stats\')"]').classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+            
+            if (tabName === 'stats') { 
                 loadStats(); 
-            } else {
-                document.getElementById('log-tab').classList.add('active');
-                document.querySelector('.tab-button[onclick="showTab(\'log\')"]').classList.add('active');
-                loadActionLog(); 
-            }
+              //  loadOpponentStats(); // Bleibt auskommentiert
+            } 
+            else if (tabName === 'log') { loadActionLog(); }
         }
         
-        // --- Spieler-Auswahl ---
         function selectPlayer(playerId, playerName, isGoalie) {
             selectedPlayerId = playerId;
             SELECTED_PLAYER_INFO.textContent = playerName;
@@ -342,54 +295,85 @@
             document.getElementById(`player-btn-${playerId}`).classList.add('selected');
         }
 
-        // --- Aktion verarbeiten: Feldspieler ---
+        // --- Aktion verarbeiten ---
+        
+        // Normale Aktion (z.B. Tech. Fehler)
         function handleAction(actionType) {
             if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
                  return;
             }
-            logAction(actionType, selectedPlayerId, false);
+            
+            if (selectedPlayerId === 0) { // 0 ist unsere ID für "GEGNER"
+                if (actionType === 'TechError') {
+                    logAction('OppTechError', null, false);
+                } else {
+                    alert("Diese Aktion ist für den 'GEGNER'-Spieler nicht vorgesehen.");
+                }
+            } else {
+                // Normaler Spieler
+                logAction(actionType, selectedPlayerId, false);
+            }
         }
         
-        // --- Aktion verarbeiten: Eigene Aktionen ---
+        // Team-Aktion
         function handleCustomAction(actionName) {
              if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
                  return;
             }
-            // Loggt die Aktion unter ihrem NAMEN (z.B. "Gute Abwehr")
+            if (selectedPlayerId === 0) {
+                alert("Team-Aktionen können nicht dem 'GEGNER'-Spieler zugewiesen werden.");
+                return;
+            }
             logAction(actionName, selectedPlayerId, false);
         }
 
-        // Aktion verarbeiten: Wurfaktionen
+        // Wurf-Aktion (z.B. Tor, Fehlwurf)
         function handleShotAction(actionType, isSevenMeter) {
             if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
                  return;
             }
-            logAction(actionType, selectedPlayerId, isSevenMeter);
+            
+            if (selectedPlayerId === 0) { // 0 ist "GEGNER"
+                if (actionType === 'Goal') {
+                    logAction('OppGoal', null, false);
+                } else if (actionType === 'Miss') {
+                    logAction('OppMiss', null, false);
+                }
+                // 7m-Aktionen werden für den Gegner-Spieler ignoriert
+            } else {
+                // Normaler Spieler
+                logAction(actionType, selectedPlayerId, isSevenMeter);
+            }
         }
         
-        // Aktion verarbeiten: Torwart
+        // Torwart-Aktion
         function handleGoalieAction(actionType) {
-            const selectedPlayer = players.find(p => p.id === selectedPlayerId);
+            if (selectedPlayerId === null) {
+                 alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
+                 return;
+            }
+            if (selectedPlayerId === 0) {
+                 alert("Torwart-Aktionen können nicht dem 'GEGNER'-Spieler zugewiesen werden.");
+                 return;
+            }
+            const selectedPlayer = participatingPlayers.find(p => p.id === selectedPlayerId);
             if (!selectedPlayer || selectedPlayer.position !== 'Torwart') {
-                alert("Bitte wähle zuerst einen Torwart für diese Aktion aus.");
+                alert("Bitte wähle zuerst einen Torwart (der am Spiel teilnimmt) für diese Aktion aus.");
                 return;
             }
             logAction(actionType, selectedPlayerId, false);
         }
 
-        // --- Aktion protokollieren (Sendet an Backend) ---
+        // Aktion protokollieren (Sendet an Backend)
         async function logAction(actionType, playerId = null, isSevenMeter = false) {
             const token = getToken();
             if (!token) return leaveProtocol();
             const payload = {
-                action_type: actionType,
-                time_in_game: "N/A", 
-                game_id: GAME_ID,
-                player_id: playerId,
-                is_seven_meter: isSevenMeter
+                action_type: actionType, time_in_game: "N/A", 
+                game_id: GAME_ID, player_id: playerId, is_seven_meter: isSevenMeter
             };
             try {
                 const response = await fetch('/actions/add', {
@@ -397,13 +381,9 @@
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(payload),
                 });
-                if (response.ok) {
-                    updateAllStats();
-                } else if (response.status === 401 || response.status === 403) {
-                    leaveProtocol();
-                } else {
-                    alert('Fehler beim Protokollieren der Aktion.');
-                }
+                if (response.ok) { updateAllStats(); } 
+                else if (response.status === 401 || response.status === 403) { leaveProtocol(); } 
+                else { alert('Fehler beim Protokollieren der Aktion.'); }
             } catch (error) { console.error('Protokollfehler:', error); }
         }
         
@@ -414,36 +394,27 @@
             if (!token) return leaveProtocol();
             try {
                 const response = await fetch(`/actions/delete/${actionId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (response.ok) {
-                    updateAllStats(); 
-                } else {
-                    alert('Aktion konnte nicht gelöscht werden.');
-                }
+                if (response.ok) { updateAllStats(); } 
+                else { alert('Aktion konnte nicht gelöscht werden.'); }
             } catch (error) { console.error('Löschfehler:', error); }
         }
-
-        // --- Score aktualisieren ---
+        
+        // Score aktualisieren
         async function updateScoreDisplay() {
             const token = getToken();
             if (!token) return;
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET', headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error('Score-Daten nicht gefunden');
                 const actions = await response.json();
-                let ownGoals = 0;
-                let opponentGoals = 0;
+                let ownGoals = 0; let opponentGoals = 0;
                 actions.forEach(action => {
-                    if (action.action_type === 'Goal' || action.action_type === 'Goal_7m') {
-                        ownGoals++;
-                    } else if (action.action_type === 'OppGoal') {
-                        opponentGoals++;
-                    }
+                    if (action.action_type === 'Goal' || action.action_type === 'Goal_7m') { ownGoals++; } 
+                    else if (action.action_type === 'OppGoal') { opponentGoals++; }
                 });
                 SCORE_BOARD.textContent = `${ownGoals} - ${opponentGoals}`;
             } catch (error) {
@@ -452,7 +423,7 @@
             }
         }
 
-        // --- Protokoll laden (Als Tabelle) ---
+        // Protokoll laden
         async function loadActionLog() {
             const token = getToken();
             if (!token) return;
@@ -471,17 +442,22 @@
                     'Goal': '⚽ TOR (Feld)', 'Miss': '💨 Fehlwurf (Feld)',
                     'Goal_7m': '🎯 TOR (7m)', 'Miss_7m': '🧱 Fehlwurf (7m)', 
                     'TechError': '🚫 Technischer Fehler', 'Save': '🛑 Parade',
-                    'OppGoal': '🟡 Gegner Tor', 'SEVEN_METER_CAUSED': '🚨 7m verursacht',
+                    'SEVEN_METER_CAUSED': '🚨 7m verursacht',
                     'SEVEN_METER_SAVE': '🧱 7m Gehalten',
-                    'SEVEN_METER_RECEIVED': '🟡 7m Bekommen'
+                    'SEVEN_METER_RECEIVED': '🟡 7m Bekommen',
+                    'OppGoal': '🟡 Gegner Tor',
+                    'OppMiss': '💨 Gegner Fehlwurf',
+                    'OppTechError': '🚫 Gegner Tech. Fehler'
                 };
                 let tableHtml = `<table class="log-table"><thead><tr>
                                     <th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
                 actions.forEach(action => {
-                    // Zeigt "⭐ [Aktionsname]" an, wenn es keine feste Aktion ist
                     const actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
-                    const playerInfo = action.player_name || 'TEAM';
+                    let playerInfo = action.player_name || 'TEAM';
+                    if (action.action_type.startsWith('Opp') && !action.player_name) {
+                        playerInfo = 'GEGNER';
+                    }
                     const playerNumber = action.player_number !== null ? action.player_number : '';
                     tableHtml += `<tr>
                             <td>${actionText}</td><td>${playerInfo}</td><td>${playerNumber}</td>
@@ -496,232 +472,321 @@
             }
         }
         
-        // --- Kader laden und Buttons generieren ---
-        async function loadPlayers() {
-            const token = getToken();
-            if (!token) return leaveProtocol();
-            try {
-                // KORRIGIERT: Nutzt TEAM_ID zum Laden des Kaders
-                const response = await fetch(`/players/list/${TEAM_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!response.ok) throw new Error('Fehler beim Laden des Kaders.');
-                players = await response.json();
-                PLAYER_BUTTONS_CONTAINER.innerHTML = '';
-                if (players.length === 0) {
-                    PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center;">Kader ist leer. Bitte im Dashboard Spieler hinzufügen.</p>';
-                    return;
-                }
-                players.forEach(player => {
-                    const isGoalie = player.position === 'Torwart';
-                    const button = document.createElement('button');
-                    button.textContent = `#${player.number || '?'} ${player.name}`;
-                    button.className = isGoalie ? 'goalkeeper' : '';
-                    button.id = `player-btn-${player.id}`;
-                    button.onclick = () => selectPlayer(player.id, player.name, isGoalie); 
-                    PLAYER_BUTTONS_CONTAINER.appendChild(button);
-                });
-            } catch (error) {
-                PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; color: #ff6666;">Kader konnte nicht geladen werden.</p>';
-                console.error(error);
-            }
-        }
-        
-        // --- Custom Actions laden ---
+        // --- NEU: Custom Actions laden (WIEDERHERGESTELLT) ---
         async function loadCustomActions() {
             const token = getToken();
             if (!token) return;
+            
+            CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Aktionen...</p>';
+            
             try {
-                // KORRIGIERT: Nutzt ?team_id=... (Query-Parameter)
+                // Der Endpunkt erwartet team_id als Query-Parameter
                 const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`, {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) {
-                    throw new Error('Fehler beim Laden der Aktionen.');
-                }
-                customActions = await response.json();
+
+                if (response.status === 401 || response.status === 403) return leaveProtocol();
+                if (!response.ok) throw new Error('Fehler beim Laden der Custom Actions.');
+
+                customActions = await response.json(); // Store in global variable
                 CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '';
+
                 if (customActions.length === 0) {
-                    CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>';
+                    CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen erstellt.</p>';
                     return;
                 }
+
                 customActions.forEach(action => {
                     const button = document.createElement('button');
-                    button.textContent = action.name;
-                    
-                    // --- NEUE FARB-LOGIK ---
-                    // 1. Setzt die Basis-Klasse (Fallback-Lila)
-                    button.className = 'btn-custom'; 
-                    
-                    // 2. Fügt die spezifische Kategorie-Klasse hinzu (überschreibt die Farbe)
+                    // Standard-Klasse
+                    let categoryClass = 'btn-custom'; 
+                    // Spezifische Klasse basierend auf der Kategorie
                     if (action.category) {
-                        // Ersetzt Leerzeichen, falls vorhanden
-                        const categoryClass = action.category.replace(/\s+/g, '-'); 
-                        button.classList.add(`btn-custom-${categoryClass}`);
+                        // Ersetze Leerzeichen oder ungültige Zeichen für CSS-Klassen
+                        const safeCategory = action.category.replace(/\s+/g, '-');
+                        categoryClass = `btn-custom-${safeCategory}`;
                     }
-                    // --- ENDE FARB-LOGIK ---
-
-                    button.onclick = () => handleCustomAction(action.name); 
+                    
+                    button.className = categoryClass; // Z.B. btn-custom-Offensiv
+                    button.textContent = `⭐ ${action.name}`;
+                    button.onclick = () => handleCustomAction(action.name);
                     CUSTOM_ACTION_BUTTONS_CONTAINER.appendChild(button);
                 });
+
             } catch (error) {
-                CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p class="error">Team-Aktionen Ladefehler.</p>';
+                CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p class="error">Fehler beim Laden der Aktionen.</p>';
                 console.error(error);
             }
         }
 
-        // --- Statistik-Tabelle laden (STARK ÜBERARBEITET) ---
+        // --- NEU: Spieler-Statistik-Tabelle laden (WIEDERHERGESTELLT) ---
         async function loadStats() {
             const token = getToken();
             if (!token) return;
-            
-            // Container zurücksetzen
-            STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
-            STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>';
-            STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Statistiken...</p>'; // NEU
+
+            STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+            STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+            STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
 
             try {
                 const response = await fetch(`/actions/stats/${GAME_ID}`, {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Statistikdaten konnten nicht abgerufen werden.');
-                
+
+                if (response.status === 401 || response.status === 403) return leaveProtocol();
+                if (!response.ok) throw new Error('Statistik-Ladefehler.');
+
                 const stats = await response.json();
-                
+
                 if (stats.length === 0) {
-                    STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
-                    STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
-                    STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
+                    STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
+                    STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
+                    STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
                     return;
                 }
 
-                // --- Header Definitionen ---
-                let fieldHeaders = [
-                    { key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },
-                    { key: 'goals', name: 'Tore (Quote)' }, { key: 'misses', name: 'Fehlwürfe' },
-                    { key: 'tech_errors', name: 'Tech. Fehler' }, { key: 'seven_meter_goals', name: '7m Tor' },
-                    { key: 'seven_meter_misses', name: '7m Fehl' }, { key: 'seven_meter_caused', name: '7m Verursacht' },
-                ];
+                let fieldTableHtml = `<table class="stats-table"><thead><tr>
+                                        <th>Spieler</th><th>#</th>
+                                        <th>Tore (Quote)</th>
+                                        <th>Fehlwürfe</th>
+                                        <th>Tech. Fehler</th>
+                                        <th>7m (T/M)</th>
+                                        <th>7m Verurs.</th>
+                                      </tr></thead><tbody>`;
                 
-                let goalieHeaders = [
-                    { key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },
-                    { key: 'saves', name: 'Paraden Ges. (Quote)' }, { key: 'seven_meter_saves', name: '7m-Quote' },
-                ];
-                
-                // --- Tabellen-HTML initialisieren ---
-                let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
-                fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
-                fieldTableHtml += `</tr></thead><tbody>`;
-                
-                let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
-                goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
-                goalieTableHtml += `</tr></thead><tbody>`;
+                let goalieTableHtml = `<table class="stats-table"><thead><tr>
+                                        <th>Spieler</th><th>#</th>
+                                        <th>Paraden (Quote)</th>
+                                        <th>7m (Geh/Bek)</th>
+                                      </tr></thead><tbody>`;
 
-                let fieldPlayersFound = false;
+                // Dynamische Header for Custom-Tabelle
+                let customTableHtml = `<table class="stats-table"><thead><tr>
+                                        <th>Spieler</th><th>#</th>`;
+                const customActionNames = customActions.map(ca => ca.name); // Globale Variable von loadCustomActions()
+                customActionNames.forEach(name => {
+                    customTableHtml += `<th>${name}</th>`;
+                });
+                customTableHtml += `</tr></thead><tbody>`;
+
                 let goaliesFound = false;
+                let fieldPlayersFound = false;
 
-                // --- Spieler-Daten durchlaufen und Tabellen füllen ---
                 stats.forEach(player => {
                     if (player.position === 'Torwart') {
                         goaliesFound = true;
-                        goalieTableHtml += `<tr>`;
-                        goalieHeaders.forEach(h => {
-                            let value = player[h.key] !== undefined ? player[h.key] : 0;
-                            
-                            // KORRIGIERTE PARADEN-GESAMTQUOTE (Wunsch: Paraden / (Paraden + Gegentore))
-                            if (h.name === 'Paraden Ges. (Quote)') {
-                                const totalSaves = player.saves + player.seven_meter_saves;
-                                // Gegentore = (OppGoal) + (7m Bekommen - 7m Gehalten)
-                                const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
-                                const totalShotsOnGoal = totalSaves + totalGoalsReceived;
-                                const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
-                                value = `${totalSaves} (${quote})`;
-                            }
-                            
-                            // KORRIGIERTE 7m-Quote
-                            if (h.name === '7m-Quote') {
-                                const totalSevenMeters = player.seven_meter_received; // Gesamt 7m gegen TW
-                                const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
-                                value = `${player.seven_meter_saves} (${quote})`;
-                            }
+                        const totalSaves = player.saves + player.seven_meter_saves;
+                        // Bugfix: opponent_goals ist beim Torwart die Anzahl der Gegentore, die er erhalten hat
+                        // seven_meter_received ist die GESAMTZAHL der 7m (gehalten + rein)
+                        const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
+                        const totalShotsOnGoal = totalSaves + totalGoalsReceived;
+                        const saveQuote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
+                        
+                        const sevenMeterQuote = player.seven_meter_received > 0 ? ((player.seven_meter_saves / player.seven_meter_received) * 100).toFixed(0) + '%' : '—';
 
-                            goalieTableHtml += `<td>${value}</td>`;
-                        });
-                        goalieTableHtml += `</tr>`;
+                        goalieTableHtml += `<tr>
+                            <td>${player.player_name}</td>
+                            <td>${player.player_number || ''}</td>
+                            <td>${totalSaves} (${saveQuote})</td>
+                            <td>${player.seven_meter_saves} / ${player.seven_meter_received} (${sevenMeterQuote})</td>
+                        </tr>`;
                     } else {
                         fieldPlayersFound = true;
-                        fieldTableHtml += `<tr>`;
-                        fieldHeaders.forEach(h => {
-                            let value = player[h.key] !== undefined ? player[h.key] : 0;
-                            if (h.name === 'Tore (Quote)') {
-                                const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                                const totalGoals = player.goals + player.seven_meter_goals;
-                                const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                                value = `${totalGoals} (${quote})`;
-                            }
-                            fieldTableHtml += `<td>${value}</td>`;
+                        const totalGoals = player.goals + player.seven_meter_goals;
+                        const totalShots = totalGoals + player.misses + player.seven_meter_misses;
+                        const shotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+
+                        fieldTableHtml += `<tr>
+                            <td>${player.player_name}</td>
+                            <td>${player.player_number || ''}</td>
+                            <td>${totalGoals} (${shotQuote})</td>
+                            <td>${player.misses}</td>
+                            <td>${player.tech_errors}</td>
+                            <td>${player.seven_meter_goals} / ${player.seven_meter_goals + player.seven_meter_misses}</td>
+                            <td>${player.seven_meter_caused}</td>
+                        </tr>`;
+                        
+                        // Custom-Tabelle auch füllen
+                        customTableHtml += `<tr>
+                            <td>${player.player_name}</td>
+                            <td>${player.player_number || ''}</td>`;
+                        customActionNames.forEach(name => {
+                            customTableHtml += `<td>${player.custom_counts[name] || 0}</td>`;
                         });
-                        fieldTableHtml += `</tr>`;
+                        customTableHtml += `</tr>`;
                     }
                 });
 
                 fieldTableHtml += `</tbody></table>`;
                 goalieTableHtml += `</tbody></table>`;
-                
+                customTableHtml += `</tbody></table>`;
+
                 STATS_TABLE_CONTAINER_FIELD.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
                 STATS_TABLE_CONTAINER_GOALIE.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
-
-                // --- NEU: Dynamische Team-Aktionen-Tabelle erstellen ---
-                const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
-                
-                if (customActionNames.length === 0) {
-                    STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
-                } else {
-                    // Baue Header
-                    let customTableHtml = `<table class="stats-table"><thead><tr>`;
-                    customTableHtml += `<th>Spieler</th><th>#</th>`; // Feste Spalten
-                    customActionNames.forEach(name => {
-                        customTableHtml += `<th>${name}</th>`; // Dynamische Spalten
-                    });
-                    customTableHtml += `</tr></thead><tbody>`;
-
-                    // Baue Reihen (für ALLE Spieler)
-                    stats.forEach(player => {
-                        customTableHtml += `<tr>`;
-                        customTableHtml += `<td>${player.player_name}</td>`;
-                        customTableHtml += `<td>${player.player_number || ''}</td>`;
-                        
-                        customActionNames.forEach(name => {
-                            const count = player.custom_counts[name] || 0;
-                            customTableHtml += `<td>${count}</td>`;
-                        });
-                        customTableHtml += `</tr>`;
-                    });
-
-                    customTableHtml += `</tbody></table>`;
-                    STATS_TABLE_CONTAINER_CUSTOM.innerHTML = customTableHtml;
-                }
+                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = customActionNames.length > 0 ? customTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>';
 
             } catch (error) {
-                STATS_TABLE_CONTAINER_FIELD.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
-                STATS_TABLE_CONTAINER_GOALIE.innerHTML = '';
-                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = ''; // NEU
-                console.error("Statistikfehler:", error);
+                STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
+                STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
+                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
+                console.error(error);
             }
         }
         
+        // Gegner-Statistik-Tabelle laden (ENTFERNT)
+        // async function loadOpponentStats() { ... }
+        
+        
+        // --- Roster/Kader-Funktionen (Unverändert) ---
+        
+        async function loadFullTeamRoster() {
+            const token = getToken();
+            if (!token) return leaveProtocol();
+            try {
+                const response = await fetch(`/players/list/${TEAM_ID}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Fehler beim Laden des Team-Kaders.');
+                fullTeamRoster = await response.json();
+                buildRosterChecklist();
+            } catch (error) {
+                ROSTER_CHECKLIST_CONTAINER.innerHTML = '<p class="error">Team-Kader konnte nicht geladen werden.</p>';
+                console.error(error);
+            }
+        }
+        
+        function buildRosterChecklist() {
+            ROSTER_CHECKLIST_CONTAINER.innerHTML = '';
+            
+            fullTeamRoster.forEach(player => {
+                const item = document.createElement('div');
+                item.className = 'roster-player-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="roster-check-${player.id}" data-player-id="${player.id}">
+                    <label for="roster-check-${player.id}">
+                        #${player.number || '?'} ${player.name}
+                    </label>
+                `;
+                ROSTER_CHECKLIST_CONTAINER.appendChild(item);
+            });
+            
+            const opponentItem = document.createElement('div');
+            opponentItem.className = 'roster-player-item opponent';
+            opponentItem.innerHTML = `
+                <input type="checkbox" id="roster-check-0" data-player-id="0">
+                <label for="roster-check-0">
+                    #0 GEGNER (Simulation)
+                </label>
+            `;
+            ROSTER_CHECKLIST_CONTAINER.appendChild(opponentItem);
+        }
+        
+        async function loadGameRoster() {
+            const token = getToken();
+            if (!token) return leaveProtocol();
+            try {
+                const response = await fetch(`/games/roster/${GAME_ID}`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Fehler beim Laden des Spiel-Kaders.');
+                participatingPlayers = await response.json();
+                updateRosterChecklist();
+                buildActionPlayerButtons();
+            } catch (error) {
+                console.error('Fehler beim Laden des Spiel-Kaders:', error);
+                buildActionPlayerButtons(); 
+            }
+        }
+        
+        function updateRosterChecklist() {
+            const participatingIds = participatingPlayers.map(p => p.id);
+            ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                if (checkbox.dataset.playerId !== "0") {
+                    checkbox.checked = false;
+                }
+            });
+            participatingIds.forEach(id => {
+                const checkbox = document.getElementById(`roster-check-${id}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+        
+        function buildActionPlayerButtons() {
+            PLAYER_BUTTONS_CONTAINER.innerHTML = '';
+            
+            if (participatingPlayers.length === 0) {
+                PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Spieler für dieses Spiel ausgewählt. Bitte im Tab "Kader / Roster" festlegen.</p>';
+            }
+            participatingPlayers.forEach(player => {
+                const isGoalie = player.position === 'Torwart';
+                const button = document.createElement('button');
+                button.textContent = `#${player.number || '?'} ${player.name}`;
+                button.className = isGoalie ? 'goalkeeper' : '';
+                button.id = `player-btn-${player.id}`;
+                button.onclick = () => selectPlayer(player.id, player.name, isGoalie); 
+                PLAYER_BUTTONS_CONTAINER.appendChild(button);
+            });
+            
+            const opponentCheckbox = document.getElementById('roster-check-0');
+            if (opponentCheckbox && opponentCheckbox.checked) {
+                const button = document.createElement('button');
+                button.textContent = `#0 GEGNER`;
+                button.className = 'opponent';
+                button.id = `player-btn-0`;
+                button.onclick = () => selectPlayer(0, 'GEGNER', false); 
+                PLAYER_BUTTONS_CONTAINER.appendChild(button);
+            }
+        }
+        
+        async function handleSaveRoster() {
+            const token = getToken();
+            if (!token) return leaveProtocol();
+            ROSTER_MESSAGE.textContent = 'Speichere Kader...';
+            ROSTER_MESSAGE.className = 'message';
+            
+            const checkedBoxes = ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]:checked');
+            const player_ids = Array.from(checkedBoxes)
+                .map(box => parseInt(box.dataset.playerId))
+                .filter(id => id !== 0); // Filtert die 0 (Gegner) raus
+            
+            try {
+                const response = await fetch(`/games/roster/${GAME_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ player_ids: player_ids }),
+                });
+                
+                if (!response.ok) throw new Error('Fehler beim Speichern.');
+                
+                participatingPlayers = await response.json();
+                buildActionPlayerButtons();
+                
+                selectedPlayerId = null;
+                SELECTED_PLAYER_INFO.textContent = "Keiner";
+                ROSTER_MESSAGE.textContent = '✅ Kader erfolgreich gespeichert.';
+                ROSTER_MESSAGE.className = 'message success';
+            } catch (error) {
+                ROSTER_MESSAGE.textContent = '❌ Fehler beim Speichern des Kaders.';
+                ROSTER_MESSAGE.className = 'message error';
+                console.error(error);
+            }
+        }
+        SAVE_ROSTER_BTN.addEventListener('click', handleSaveRoster);
+
         // --- Seite initialisieren ---
         async function initializeProtocol() {
             try {
-                // Lädt Kader und Aktionen parallel
                 await Promise.all([
-                    loadPlayers(),
+                    loadFullTeamRoster(),
                     loadCustomActions()
                 ]);
-                // Lädt Statistik und Log, sobald das obere fertig ist
+                await loadGameRoster();
                 updateAllStats();
             } catch (error) {
                 console.error("Fehler bei der Initialisierung des Protokolls:", error);
@@ -732,7 +797,5 @@
         // Start
         initializeProtocol();
     </script>
-
 </body>
 </html>
-
