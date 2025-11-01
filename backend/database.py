@@ -1,7 +1,7 @@
-#
 # DATEI: backend/database.py
-#
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table
+# (KEINE ÄNDERUNGEN NÖTIG - Phase 8 Koordinaten sind bereits enthalten)
+
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float 
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -30,17 +30,13 @@ class Trainer(Base):
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
-# --- HIER SIND DIE ÄNDERUNGEN (PHASE 6) ---
 # ---------------------------------
 class Team(Base):
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     league = Column(String)
-    
-    # NEU (PHASE 6): Steuert, ob das Team in der öffentlichen Liga-Suche auftaucht
     is_public = Column(Boolean, default=False, nullable=False) 
-    
     trainer_id = Column(Integer, ForeignKey("trainers.id"))
     trainer = relationship("Trainer", back_populates="teams")
     players = relationship("Player", back_populates="team", cascade="all, delete-orphan") 
@@ -48,7 +44,7 @@ class Team(Base):
     custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
 
 
-# --- Verknüpfungstabelle (Unverändert) ---
+# --- Verknüpfungstabelle ---
 game_participations_table = Table(
     "game_participations",
     Base.metadata,
@@ -96,7 +92,7 @@ class Game(Base):
         secondary=game_participations_table,
         back_populates="games_participated"
     )
-
+    
 # ---------------------------------
 # 5. Action (Aktion/Event) Modell
 # ---------------------------------
@@ -107,6 +103,11 @@ class Action(Base):
     player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
     action_type = Column(String) 
     time_in_game = Column(String)
+    
+    # (PHASE 8) Koordinaten für Wurfbilder
+    x_coordinate = Column(Float, nullable=True)
+    y_coordinate = Column(Float, nullable=True)
+    
     game = relationship("Game", back_populates="actions")
     player = relationship("Player", back_populates="actions")
 

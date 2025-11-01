@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query # WICHTIG: Query ist importiert
+# DATEI: backend/custom_action.py
+# (KEINE ÄNDERUNGEN NÖTIG)
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -74,7 +77,7 @@ def create_custom_action(
 # EIGENE AKTIONEN AUFLISTEN
 @router.get("/list", response_model=List[CustomActionResponse])
 def list_custom_actions(
-    team_id: int = Query(...), # WICHTIG: Erwartet /list?team_id=...
+    team_id: int = Query(...), 
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -96,7 +99,7 @@ def list_custom_actions(
 @router.delete("/delete/{action_id}")
 def delete_custom_action(
     action_id: int,
-    team_id: int = Query(...), # WICHTIG: Erwartet ?team_id=...
+    team_id: int = Query(...), 
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -120,4 +123,3 @@ def delete_custom_action(
     db.commit()
 
     return {"message": "Aktion erfolgreich gelöscht."}
-

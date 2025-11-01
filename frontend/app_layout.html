@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(120deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+        }
+        .sidebar {
+            width: 250px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .sidebar h2 {
+            color: #ffcc00;
+            margin-top: 0;
+            text-align: center;
+        }
+        .sidebar a {
+            text-decoration: none;
+            color: white;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+            font-weight: bold;
+            display: block;
+            font-size: 1.1em;
+        }
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .sidebar a.active {
+            background: #00bcd4;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative; 
+        }
+        
+        .verification-banner {
+            background-color: #ffcc00;
+            color: #1e3c72;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none; /* Standardmäßig versteckt */
+            align-items: center;
+            justify-content: space-between;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            font-size: 1em;
+        }
+        .verification-banner.visible {
+            display: flex; /* Wird per JS sichtbar gemacht */
+        }
+        .verification-banner .btn-refresh {
+            background-color: #1e3c72;
+            color: #ffcc00;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 20px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .verification-banner .btn-refresh:hover {
+            background-color: #2a5298;
+            transform: translateY(-1px);
+        }
+        
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 20px;
+        }
+        .header-bar h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #ffcc00;
+        }
+        .greeting {
+            font-size: 1em;
+        }
+        .btn-logout {
+            background: #ff6666; 
+            color: white; 
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn-logout:hover {
+            background: #d32f2f;
+        }
+        
+        /* Grid-Layout für die Inhaltsseiten */
+        .management-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .dashboard-grid {
+             display: grid;
+             grid-template-columns: 1fr 2fr; /* Neu */
+             gap: 20px;
+        }
+        .card-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .analysis-grid {
+             display: grid;
+            grid-template-columns: 2fr 1fr; 
+            gap: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Allgemeine UI-Elemente für alle Seiten */
+        h2 { color: #fff; margin-top: 0; margin-bottom: 15px; }
+        h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
+        .message { margin-top: 10px; font-weight: bold; }
+        .success { color: #38E838; }
+        .error { color: #FF6666; }
+        
+        input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"], select {
+          width: 100%;
+          padding: 10px;
+          margin-bottom: 10px;
+          border-radius: 5px;
+          border: 1px solid #ccc;
+          box-sizing: border-box;
+          background: #f0f0f0;
+          color: #333;
+          font-size: 1em;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .btn {
+            /* KORREKTUR: width: 100% wurde entfernt, um Button-Größen flexibler zu machen */
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+            color: white;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        /* KORREKTUR: Eigene Klasse für Buttons, die die volle Breite haben sollen */
+        .btn.btn-full-width {
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .btn-primary { background: #38E838; color: #1e3c72; }
+        .btn-primary:hover:not(:disabled) { background: #50f050; }
+        
+        .btn-danger { background-color: #f44336; color: white; }
+        .btn-danger:hover:not(:disabled) { background-color: #d32f2f; }
+        
+        .btn-info { background-color: #00bcd4; color: white; }
+        .btn-info:hover:not(:disabled) { background-color: #0097a7; }
+        
+        .btn-secondary { background-color: #607d8b; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #78909c; }
+        
+        .btn-inline {
+            width: auto; 
+            padding: 8px 12px;
+            font-size: 0.9em;
+            margin: 0 5px;
+        }
+        
+        /* KORREKTUR: Neue Klasse für kleine Lösch-Buttons in Listen */
+        .btn-inline-delete {
+            width: auto;
+            padding: 6px 10px;
+            font-size: 0.85em;
+            margin-left: 10px;
+            flex-shrink: 0;
+            margin-top: 0; /* Überschreibt .btn margin-top */
+        }
+        
+        
+        /* Styles für Listen (Team-Management) */
+        .team-list-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px; margin-bottom: 8px; border-radius: 4px;
+            display: flex; flex-direction: column;
+            justify-content: space-between; align-items: flex-start;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        .team-list-item.selected {
+            background: #ffcc00; color: #1e3c72; font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+        .team-list-item:hover:not(.selected) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .team-info-line {
+            display: flex; justify-content: space-between; width: 100%;
+        }
+        .team-public-control {
+            margin-top: 10px; font-size: 0.9em;
+            display: flex; align-items: center;
+        }
+        .team-public-control input {
+            width: auto; margin: 0 10px 0 0;
+        }
+        
+        .player-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .player-list-item span {
+            font-size: 1.1em;
+        }
+        
+        .custom-action-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        /* Spielplan-Liste */
+        .game-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .game-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .game-info span:first-child {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .game-info span:last-child {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        .game-actions {
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        
+        /* Liga-Scouting Stile */
+        .league-team-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center; 
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .league-team-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .league-team-item strong {
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        /* Styles für Tabellen (Statistiken) */
+        .stats-table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .stats-table {
+            width: 100%;
+            min-width: 600px; 
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .stats-table th, .stats-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stats-table th {
+            color: #ffcc00;
+            border-bottom: 2px solid #ffcc00;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .stats-table td:first-child, .stats-table th:first-child { text-align: left; }
+        
+        .opponent-stats-table {
+            width: 100%; max-width: 400px;
+            margin-top: 15px;
+        }
+        .opponent-stats-table td {
+             padding: 10px;
+             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+             font-size: 1.1em;
+        }
+        .opponent-stats-table td:first-child {
+            font-weight: bold;
+            width: 80%;
+        }
+        .opponent-stats-table td:last-child {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7); 
+        }
+        .modal-content {
+            background-color: #1e3c72;
+            margin: 5% auto; 
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%; 
+            max-width: 900px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-btn:hover, .close-btn:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        /* Toast-Nachrichten */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1001;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 30px;
+            font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        .toast.error { background-color: #f44336; }
+        .toast.success { background-color: #38E838; color: #1e3c72; }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
+        }
+        
+        /* Tab-Buttons (z.B. Spiel anlegen) */
+        .game-category-tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            flex-grow: 1;
+            padding: 10px 15px;
+            cursor: pointer;
+            background: rgba(0,0,0,0.3);
+            border: none;
+            color: white;
+            font-weight: bold;
+            opacity: 0.7;
+            font-size: 1.0em;
+            transition: background-color 0.2s, opacity 0.2s;
+            border-bottom: 3px solid rgba(255,255,255,0.2);
+        }
+        .tab-button:hover:not(:disabled) {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .tab-button.active {
+            opacity: 1;
+            color: #ffcc00;
+            border-bottom: 3px solid #ffcc00;
+        }
+        .tab-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .form-section {
+            display: none;
+        }
+        .form-section.active {
+            display: block;
+        }
+        
+    </style>
+</head>
+<body>
+    
+    <div class="sidebar">
+        <h2>HandballApp</h2>
+        
+        <a id="nav-dashboard" href="/dashboard" class="nav-link">🏠 Dashboard</a>
+        <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
+        <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
+        <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
+
+        <div style="flex-grow: 1;"></div> 
+
+        <button onclick="logout()" class="btn-logout">Logout</button>
+        <p style="text-align: center; font-size: 0.8em; opacity: 0.7; margin-top: 15px;">Angemeldet als: {{ trainer_name }}</p>
+    </div>
+
+    <div class="main-content">
+        
+        <!-- 
+          Banner für Verifizierung (korrekt hier platziert)
+        --><div id="verification-banner" class="verification-banner">
+            <span>
+                ⚠️ Dein Konto ist nicht verifiziert. Bitte überprüfe dein E-Mail-Postfach (ggf. Spam).
+            </span>
+            <button class="btn-refresh" onclick="location.reload()">
+                Refresh
+            </button>
+        </div>
+
+        <div class="header-bar">
+            <h1>{{ title }}</h1>
+        </div>
+
+        <div id="page-content">
+             {# Hier wird der Inhalt der spezifischen Seite eingefügt #}
+             {% include page_content_template %}
+        </div>
+    </div>
+
+    <!-- Toast-Container --><div id="toast-message" class="toast"></div>
+
+    <script>
+        // --- Globale Navigations- und Token-Logik ---
+        
+        const isVerified = {{ is_verified | tojson }};
+        
+        // Wir speichern das, damit protocol.html (standalone) es lesen kann
+        localStorage.setItem('is_verified', isVerified); 
+        
+        if (!isVerified) {
+            document.getElementById('verification-banner').classList.add('visible');
+        }
+
+        function updateNavLinks() {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                const url = new URL(link.href);
+                // KEINE Query-Parameter für Tokens mehr nötig.
+                
+                if (url.pathname === window.location.pathname) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+        
+        function logout() {
+            // Sende einen Request an den /logout Endpunkt, um das HttpOnly Cookie zu löschen
+            fetch('/auth/logout', { 
+                method: 'POST' 
+            })
+            .finally(() => {
+                // Lösche alle lokalen Daten und gehe zur Login-Seite
+                localStorage.removeItem('is_verified');
+                localStorage.removeItem('selected_team_id');
+                localStorage.removeItem('selected_team_name');
+                window.location.href = "/"; 
+            });
+        }
+
+        updateNavLinks();
+        
+        // --- Globale Verifizierungs- und Toast-Logik ---
+        // KORREKTUR: showToast als globalShowToast definieren, damit protocol.html sie finden kann
+        const globalShowToast = function(message, type = 'info') {
+            const toast = document.getElementById('toast-message');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => {
+                toast.className = toast.className.replace('show', '');
+            }, 3000);
+        }
+        // Alte Referenz beibehalten
+        const showToast = globalShowToast;
+
+
+        function checkVerification() {
+            // Liest den Status aus dem LocalStorage (wird beim Laden dieser Seite gesetzt)
+            const currentIsVerified = localStorage.getItem('is_verified') === 'true';
+
+            if (currentIsVerified) {
+                return true;
+            } else {
+                showToast("Bitte verifiziere dein Konto, um diese Aktion auszuführen.", "error");
+                return false;
+            }
+        }
+        
+        // --- KORREKTUR: Zentraler Skript-Aufruf ---
+        // Diese Logik stellt sicher, dass die init-Funktion der jeweiligen Seite
+        // (z.B. initDashboard() in dashboard.html) aufgerufen wird,
+        // NACHDEM die Seite geladen wurde.
+        
+        const currentPage = "{{ page_content_template }}";
+        
+        // Wir warten, bis das Dokument (inkl. der Skripte aus den include-Dateien)
+        // vollständig geladen und verarbeitet wurde.
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // KORREKTUR: Stelle sicher, dass die Buttons die Klasse btn-full-width haben,
+            // wo sie 100% Breite benötigen (z.B. in Formularen)
+            document.querySelectorAll('form .btn').forEach(btn => {
+                if (!btn.classList.contains('btn-inline') && !btn.classList.contains('btn-inline-delete')) {
+                    btn.classList.add('btn-full-width');
+                }
+            });
+
+
+            if (currentPage === 'dashboard.html' && typeof initDashboard === 'function') {
+                initDashboard();
+            } else if (currentPage === 'team_management.html' && typeof initTeamManagement === 'function') {
+                initTeamManagement();
+            } else if (currentPage === 'game_planning.html' && typeof initGamePlanning === 'function') {
+                initGamePlanning();
+            } else if (currentPage === 'season_analysis.html' && typeof initSeasonAnalysis === 'function') {
+                initSeasonAnalysis();
+            } else if (currentPage === 'protocol.html' && typeof initProtocol === 'function') {
+                // protocol.html wird nicht über das Layout geladen,
+                // aber der Vollständigkeit halber hier drin
+                initProtocol();
+            }
+        });
+
+    </script>
+</body>
+</html>
+

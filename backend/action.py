@@ -1,3 +1,6 @@
+# DATEI: backend/action.py
+# (KEINE ÄNDERUNGEN NÖTIG - Importiert `get_current_trainer` aus dem jetzt korrekten auth.py)
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, distinct
@@ -5,8 +8,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import re
 
-# WICHTIG: game_participations_table importiert
 from backend.database import SessionLocal, Trainer, Team, Player, Game, Action, CustomAction, game_participations_table
+# Dieser Import funktioniert jetzt korrekt und nutzt die Cookie-Authentifizierung
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
@@ -20,6 +23,9 @@ class ActionCreate(BaseModel):
     game_id: int 
     player_id: Optional[int] = None 
     is_seven_meter: Optional[bool] = False
+    # NEU (PHASE 8): Koordinaten für Shot Charts
+    x_coordinate: Optional[float] = None
+    y_coordinate: Optional[float] = None
 
 class ActionResponse(BaseModel):
     id: int
@@ -29,17 +35,19 @@ class ActionResponse(BaseModel):
     player_number: Optional[int] = None
     game_id: int
     player_id: Optional[int]
+    # NEU (PHASE 8): Koordinaten für Shot Charts
+    x_coordinate: Optional[float] = None
+    y_coordinate: Optional[float] = None
 
     class Config:
         from_attributes = True
 
-# ANGEPASST (PHASE 6.3)
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
     player_number: Optional[int]
     position: Optional[str]
-    games_played: int # NEU: Für Tore/Spiel
+    games_played: int 
     goals: int
     misses: int
     tech_errors: int
@@ -49,7 +57,7 @@ class PlayerStats(BaseModel):
     seven_meter_saves: int
     seven_meter_received: int 
     saves: int
-    opponent_goals: int
+    opponent_goals_received: int # Umbenannt von opponent_goals für Klarheit
     custom_counts: Dict[str, int] = {}
 
 class OpponentStats(BaseModel):
@@ -65,11 +73,7 @@ def get_db():
     finally:
         db.close()
 
-# -----------------------------
-# Endpunkte
-# -----------------------------
-
-# AKTION HINZUFÜGEN
+# AKTION HINZUFÜGEN (Koordinaten hinzugefügt)
 @router.post("/add", response_model=ActionResponse)
 def log_action(
     action_data: ActionCreate,
@@ -107,7 +111,9 @@ def log_action(
         action_type=action_key,
         time_in_game=action_data.time_in_game,
         game_id=action_data.game_id,
-        player_id=action_data.player_id
+        player_id=action_data.player_id,
+        x_coordinate=action_data.x_coordinate,
+        y_coordinate=action_data.y_coordinate
     )
     db.add(new_action)
     db.commit()
@@ -120,12 +126,14 @@ def log_action(
         game_id=new_action.game_id,
         player_id=new_action.player_id,
         player_name=player_name_for_action,
-        player_number=player_number_for_action
+        player_number=player_number_for_action,
+        x_coordinate=new_action.x_coordinate,
+        y_coordinate=new_action.y_coordinate
     )
 
     return response_data
 
-# ALLE AKTIONEN EINES SPIELS LADEN (BUGFIX ANGEWENDET)
+# ALLE AKTIONEN EINES SPIELS LADEN
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
     game_id: int,
@@ -164,12 +172,14 @@ def list_actions(
             game_id=action.game_id,
             player_id=action.player_id,
             player_name=player_name,
-            player_number=player_number
+            player_number=player_number,
+            x_coordinate=action.x_coordinate,
+            y_coordinate=action.y_coordinate
         ))
         
     return response_list
 
-# LIVE STATISTIKEN FÜR SPIELER ABFRAGEN (BUGFIX ANGEWENDET)
+# LIVE STATISTIKEN FÜR SPIELER ABFRAGEN
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
@@ -192,10 +202,23 @@ def get_game_stats(
     participating_player_ids = [pid[0] for pid in participating_player_ids]
 
     if not participating_player_ids:
-        return [] 
+        # Selbst wenn niemand im Roster ist, zeige alle Spieler des Teams mit 0 Stats
+        all_players = db.query(Player).filter(Player.team_id == team.id).order_by(Player.number.asc()).all()
+        empty_stats = []
+        for p in all_players:
+             empty_stats.append(PlayerStats(
+                player_id=p.id, player_name=p.name, player_number=p.number, position=p.position,
+                games_played=0, goals=0, misses=0, tech_errors=0, seven_meter_goals=0,
+                seven_meter_misses=0, seven_meter_caused=0, seven_meter_saves=0,
+                seven_meter_received=0, saves=0, opponent_goals_received=0, custom_counts={}
+            ))
+        return empty_stats
+
 
     custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
     custom_action_names = [ca.name for ca in custom_actions]
+    
+    # Definiere Case-Statements für Aggregation
     case_statements = [
         func.count(case((Action.action_type == 'Goal', 1), else_=None)).label('goals'),
         func.count(case((Action.action_type == 'Miss', 1), else_=None)).label('misses'),
@@ -206,13 +229,19 @@ def get_game_stats(
         func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
         func.count(case((Action.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
         func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
-        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
+        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals_received')
     ]
+    
+    # Füge dynamisch Case-Statements für Custom Actions hinzu
+    safe_custom_labels = {}
     for name in custom_action_names:
-        safe_label = f"custom_{name}" 
+        # Erstelle einen sicheren Label-Namen (z.B. "Gute Abwehr" -> "custom_Gute_Abwehr")
+        safe_label = f"custom_{re.sub(r'[^A-Za-z0-9_]', '_', name)}"
+        safe_custom_labels[name] = safe_label
         case_statements.append(
             func.count(case((Action.action_type == name, 1), else_=None)).label(safe_label)
         )
+        
     stats_query = (
         db.query(
             Player.id,
@@ -224,7 +253,8 @@ def get_game_stats(
         .select_from(Player)
         .outerjoin(Action, (Action.player_id == Player.id) & (Action.game_id == game_id))
         .filter(Player.team_id == team.id)
-        .filter(Player.id.in_(participating_player_ids))
+        # WICHTIG: Zeige NUR die Spieler, die auch im Roster sind
+        .filter(Player.id.in_(participating_player_ids)) 
         .group_by(Player.id, Player.name, Player.number, Player.position)
         .order_by(Player.number.asc())
     )
@@ -235,8 +265,7 @@ def get_game_stats(
     for row in stats_results:
         row_data = row._asdict()
         custom_counts_dict = {}
-        for name in custom_action_names:
-            safe_label = f"custom_{name}"
+        for name, safe_label in safe_custom_labels.items():
             custom_counts_dict[name] = row_data.get(safe_label, 0)
 
         final_stats.append(PlayerStats(
@@ -254,7 +283,7 @@ def get_game_stats(
             seven_meter_saves=row_data.get('seven_meter_saves', 0),
             seven_meter_received=row_data.get('seven_meter_received', 0),
             saves=row_data.get('saves', 0),
-            opponent_goals=row_data.get('opponent_goals', 0),
+            opponent_goals_received=row_data.get('opponent_goals_received', 0),
             custom_counts=custom_counts_dict
         ))
     return final_stats
@@ -266,6 +295,7 @@ def get_opponent_stats(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Keine Änderungen)
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
@@ -292,18 +322,18 @@ def get_opponent_stats(
         opponent_tech_errors=stats_result.opponent_tech_errors
     )
 
-# SAISON-STATISTIK (SPIELER) (ANGEPASST FÜR PHASE 6.3)
+# SAISON-STATISTIK (SPIELER)
 @router.get("/stats/season/{team_id}", response_model=List[PlayerStats])
 def get_season_stats(
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Keine Änderungen)
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
         
-    # 1. Finde alle "Saison"-Spiele des Teams
     saison_games_query = db.query(Game.id).filter(
         Game.team_id == team_id,
         Game.game_category == 'Saison'
@@ -318,11 +348,10 @@ def get_season_stats(
                 player_id=p.id, player_name=p.name, player_number=p.number, position=p.position,
                 games_played=0, goals=0, misses=0, tech_errors=0, seven_meter_goals=0,
                 seven_meter_misses=0, seven_meter_caused=0, seven_meter_saves=0,
-                seven_meter_received=0, saves=0, opponent_goals=0, custom_counts={}
+                seven_meter_received=0, saves=0, opponent_goals_received=0, custom_counts={}
             ))
         return empty_stats
 
-    # 2. Zähle, an wie vielen dieser Saisonspiele jeder Spieler teilgenommen hat
     games_played_count = db.query(
         game_participations_table.c.player_id,
         func.count(game_participations_table.c.game_id).label('games_played')
@@ -332,7 +361,6 @@ def get_season_stats(
         game_participations_table.c.player_id
     ).subquery()
 
-    # 3. Zähle Aktionen
     custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
     custom_action_names = [ca.name for ca in custom_actions]
     case_statements = [
@@ -345,15 +373,17 @@ def get_season_stats(
         func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
         func.count(case((Action.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
         func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
-        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
+        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals_received')
     ]
+    
+    safe_custom_labels = {}
     for name in custom_action_names:
-        safe_label = f"custom_{name}" 
+        safe_label = f"custom_{re.sub(r'[^A-Za-z0-9_]', '_', name)}"
+        safe_custom_labels[name] = safe_label
         case_statements.append(
             func.count(case((Action.action_type == name, 1), else_=None)).label(safe_label)
         )
     
-    # 4. Kombinierte Abfrage (BUGFIX: Backslash entfernt)
     stats_query = db.query(
         Player.id,
         Player.name,
@@ -368,13 +398,7 @@ def get_season_stats(
         (Action.game_id.in_(saison_games_ids))
     )\
     .filter(Player.team_id == team.id)\
-    .group_by(
-        Player.id, 
-        Player.name, 
-        Player.number, 
-        Player.position, 
-        games_played_count.c.games_played
-    )\
+    .group_by(Player.id, Player.name, Player.number, Player.position, games_played_count.c.games_played)\
     .order_by(Player.number.asc())
     
     stats_results = stats_query.all()
@@ -383,15 +407,15 @@ def get_season_stats(
     for row in stats_results:
         row_data = row._asdict()
         custom_counts_dict = {}
-        for name in custom_action_names:
-            safe_label = f"custom_{name}"
+        for name, safe_label in safe_custom_labels.items():
             custom_counts_dict[name] = row_data.get(safe_label, 0)
+            
         final_stats.append(PlayerStats(
             player_id=row_data.get('id'),
             player_name=row_data.get('name'),
             player_number=row_data.get('number'),
             position=row_data.get('position'),
-            games_played=row_data.get('games_played', 0), # NEU
+            games_played=row_data.get('games_played', 0), 
             goals=row_data.get('goals', 0),
             misses=row_data.get('misses', 0),
             tech_errors=row_data.get('tech_errors', 0),
@@ -401,7 +425,7 @@ def get_season_stats(
             seven_meter_saves=row_data.get('seven_meter_saves', 0),
             seven_meter_received=row_data.get('seven_meter_received', 0),
             saves=row_data.get('saves', 0),
-            opponent_goals=row_data.get('opponent_goals', 0),
+            opponent_goals_received=row_data.get('opponent_goals_received', 0),
             custom_counts=custom_counts_dict
         ))
     return final_stats
@@ -413,6 +437,7 @@ def get_season_opponent_stats(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Keine Änderungen)
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
@@ -450,6 +475,7 @@ def delete_action(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Keine Änderungen)
     action = db.query(Action).filter(Action.id == action_id).first()
     if not action:
         raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
@@ -463,4 +489,3 @@ def delete_action(
     db.delete(action)
     db.commit()
     return {"message": "Aktion erfolgreich gelöscht."}
-

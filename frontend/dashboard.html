@@ -1,1034 +1,199 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ title }}</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: linear-gradient(120deg, #1e3c72, #2a5298);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-      margin: 0;
-      padding-top: 50px;
-      flex-direction: column;
-      text-align: center;
-      width: 100%;
-    }
-    .header {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 20px 30px;
-      border-radius: 10px;
-      width: 90%;
-      max-width: 1400px; 
-      margin: 0 auto 30px auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .dashboard-layout {
-        width: 90%;
-        max-width: 1400px; 
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
-    }
-    .detail-area {
-        width: 90%;
-        max-width: 1400px; 
-        margin: 30px auto 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        gap: 20px;
-    }
-    .stats-area {
-        width: 90%;
-        max-width: 1400px; 
-        margin: 30px auto 50px auto;
-        display: grid;
-        grid-template-columns: 3fr 1fr; /* ANGEPASST: 3:1 für Saison-Stats und Liga-Scouting */
-        gap: 20px;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.15);
-      padding: 20px;
-      border-radius: 10px;
-      text-align: left;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      /* Übergangsweise Fix für Scouting-Karte */
-      min-height: 400px; 
-    }
-    .card-content {
-        flex-grow: 1;
-    }
-    h1 { color: #ffcc00; font-size: 2em; margin: 0; }
-    .greeting { font-size: 1em; margin-top: 5px; }
-    h2 { margin-top: 0; }
-    h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 5px;
-      font-size: 0.9em;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    .btn-logout { background: #ff6666; color: white; }
-    .btn-primary { background: #38E838; color: #1e3c72; margin-top: 10px; }
-    .btn-delete {
-        background: transparent; color: #ff6666;
-        padding: 5px 10px; font-weight: bold;
-        margin: 0; margin-left: 10px;
-    }
-    .btn-protocol { 
-        background: #00bcd4; color: white;
-        padding: 5px 10px; margin-left: 10px;
-    }
-    .btn-load-stats {
-        background: #ff9800;
-        color: white;
-        font-weight: bold;
-        padding: 12px;
-        width: 100%;
-        max-width: 300px;
-        margin-bottom: 15px;
-    }
-    input[type="text"], input[type="number"], input[type="datetime-local"], select {
-      width: calc(100% - 16px);
-      padding: 8px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-    .team-list-item {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 10px; margin-bottom: 8px; border-radius: 4px;
-        display: flex; flex-direction: column;
-        justify-content: space-between; align-items: flex-start;
-        cursor: pointer; transition: background-color 0.2s;
-    }
-    .team-list-item:hover { background: rgba(255, 255, 255, 0.2); }
-    .team-list-item.selected {
-        background: #ffcc00; color: #1e3c72; font-weight: bold;
-    }
-    .team-info-line {
-        display: flex; justify-content: space-between; width: 100%;
-    }
-    .team-public-control {
-        margin-top: 8px; font-size: 0.9em;
-    }
-    .player-list-item, .custom-action-list-item {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 8px; margin-bottom: 4px; border-radius: 4px;
-        display: flex; justify-content: space-between; align-items: center;
-        font-size: 0.9em; width: 100%;
-    }
-    .game-list-header {
-        color: #ffcc00;
-        font-size: 1.1em;
-        font-weight: bold;
-        border-bottom: 1px solid #ffcc00;
-        padding-bottom: 5px;
-        margin-top: 15px;
-        margin-bottom: 10px;
-    }
-    .game-list-item {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 8px; margin-bottom: 4px; border-radius: 4px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        font-size: 0.9em;
-    }
-    .game-info {
-        display: flex; flex-direction: column;
-        align-items: flex-start; flex-grow: 1;
-    }
-    .game-info span { margin-bottom: 3px; }
-    .game-actions { display: flex; gap: 5px; }
-    .game-category-tabs {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 2px;
-        margin-bottom: 20px;
-    }
-    .tab-button {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 10px 5px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.9em;
-        font-weight: bold;
-        text-align: center;
-    }
-    .tab-button.active {
-        background: #ffcc00;
-        color: #1e3c72;
-    }
-    .tab-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    .form-section {
-        display: none; 
-    }
-    .form-section.active {
-        display: block; 
-    }
-    #new-tournament-group {
-        display: none; 
-        margin-top: 10px;
-        border-top: 1px solid rgba(255,255,255,0.2);
-        padding-top: 10px;
-    }
-    .message { margin-top: 10px; font-weight: bold; }
-    .success { color: #38E838; }
-    .error { color: #FF6666; }
-    .verification-warning {
-        width: 90%; max-width: 800px;
-        margin: 50px auto; padding: 30px;
-        background: #ffcc00; color: #333;
-        border-radius: 10px; font-size: 1.2em;
-        text-align: center;
-    }
-    .btn-reload {
-        background: #1e3c72; color: white;
-        padding: 10px 20px; margin-top: 15px;
-        font-weight: bold; border: none;
-        border-radius: 5px; cursor: pointer;
-    }
-    .stats-table-container {
-        overflow-x: auto;
-    }
-    .stats-table {
-        width: 100%;
-        min-width: 600px; 
-        border-collapse: collapse;
-        margin-top: 15px;
-    }
-    .stats-table th, .stats-table td {
-        padding: 10px;
-        text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .stats-table th {
-        color: #ffcc00;
-        border-bottom: 2px solid #ffcc00;
-        font-size: 0.9em;
-        text-transform: uppercase;
-    }
-    .stats-table td:first-child, .stats-table th:first-child {
-        text-align: left;
-    }
-    .opponent-stats-table {
-        width: 100%;
-        max-width: 400px; 
-        margin-top: 10px;
-        border-collapse: collapse;
-    }
-    .opponent-stats-table td {
-        padding: 12px;
-        font-size: 1.1em;
-        background: rgba(0,0,0,0.1);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .opponent-stats-table tr:first-child td {
-         border-top-left-radius: 5px;
-         border-top-right-radius: 5px;
-    }
-    .opponent-stats-table tr:last-child td {
-         border-bottom: none;
-         border-bottom-left-radius: 5px;
-         border-bottom-right-radius: 5px;
-    }
-    .opponent-stats-table td:first-child {
-        font-weight: bold;
-        color: #ffcc00;
-        width: 70%;
-    }
-    .opponent-stats-table td:last-child {
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.2em;
-    }
-
-    /* NEU: Liga Scouting Styles */
-    .league-team-item {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 10px; margin-bottom: 8px; border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .league-team-item:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    .league-team-item strong {
-        display: block;
-        font-size: 1.1em;
-    }
-    .league-team-item small {
-        opacity: 0.8;
-    }
-
-    /* NEU: Modal Styles */
-    .modal {
-        display: none; 
-        position: fixed; 
-        z-index: 1000; 
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.7); 
-    }
-    .modal-content {
-        background-color: #1e3c72;
-        margin: 5% auto; 
-        padding: 30px;
-        border-radius: 10px;
-        width: 80%; 
-        max-width: 900px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    }
-    .close-btn {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-    }
-    .close-btn:hover, .close-btn:focus {
-        color: white;
-        text-decoration: none;
-        cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="header">
-    <div>
-        <h1>Dashboard 📊</h1>
-        <p class="greeting">Angemeldet als: **{{ trainer_name }}**</p>
-    </div>
-    <button onclick="logout()" class="btn-logout">Logout</button>
-  </div>
-  
-  {% if not is_verified %}
-  <div id="verification-notice" class="verification-warning">
-    <p>⚠️ **Dein Account ist noch nicht verifiziert!**</p>
-    <p>Um Mannschaften, Spieler oder Spiele anzulegen, musst du deine E-Mail-Adresse bestätigen.</p>
-    <p>Bitte überprüfe dein Postfach (oder klicke auf **Token abrufen**).</p>
-    <button onclick="window.location.reload()" class="btn-reload">✅ Jetzt neu laden / Status prüfen</button>
-  </div>
-  {% endif %}
-
-
-  <div id="app-features" {% if not is_verified %}style="display:none;"{% endif %}>
-
-  <!-- OBERE REIHE (Unverändert) -->
-  <div class="dashboard-layout">
-    <div class="card">
-      <div class="card-content">
-        <h2>Mannschaft hinzufügen</h2>
-        <form id="add-team-form">
-            <label for="team-name">Name der Mannschaft:</label>
-            <input type="text" id="team-name" required><br>
-            <label for="team-league">Spielklasse / Liga:</label>
-            <select id="team-league" required>
-                <option value="" disabled selected>Wählen Sie eine Klasse</option>
-                {% for league in leagues %}
-                    <option value="{{ league }}">{{ league }}</option>
-                {% endfor %}
-            </select><br>
-            <button type="submit" class="btn-primary">Mannschaft erstellen</button>
-        </form>
-        <div id="team-message" class="message"></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-content">
-        <h2>Meine Mannschaften (Auswahl)</h2>
-        <div id="team-list">
-            <p style="opacity: 0.6;">Lade Mannschaften...</p>
-        </div>
-        <p id="selected-team-info" style="margin-top: 15px; font-weight: bold; color: #ffcc00;"></p>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-content">
-        <h2>Spieler hinzufügen</h2>
-        <form id="add-player-form">
-            <label for="player-name">Name:</label>
-            <input type="text" id="player-name" required><br>
-            <label for="player-number">Trikotnummer (optional):</label>
-            <input type="number" id="player-number" min="1" max="99"><br>
-            <label for="player-position">Position (optional):</label>
-            <select id="player-position">
-                <option value="">(Keine Position)</option>
-                {% for position in positions %}
-                    <option value="{{ position }}">{{ position }}</option>
-                {% endfor %}
-            </select><br>
-            <button type="submit" class="btn-primary" id="add-player-button" disabled>Spieler hinzufügen</button>
-        </form>
-        <div id="player-message" class="message"></div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- MITTLERE REIHE (Unverändert) -->
-  <div class="detail-area">
-    <div class="card" style="grid-column: span 1;">
-      <div class="card-content">
-        <h2>Kader Übersicht</h2>
-        <h3><span id="kader-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
-        <div id="player-list-container">
-            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="grid-column: span 1;">
-      <div class="card-content">
-        <h2>Spiel anlegen</h2>
-        <div class="game-category-tabs">
-            <button class="tab-button" id="tab-btn-saison" onclick="switchGameCategory('Saison')" disabled>Saison</button>
-            <button class="tab-button active" id="tab-btn-testspiel" onclick="switchGameCategory('Testspiel')" disabled>Testspiel</button>
-            <button class="tab-button" id="tab-btn-turnier" onclick="switchGameCategory('Turnier')" disabled>Turnier</button>
-        </div>
-        <form id="add-game-form">
-            <input type="hidden" id="active-game-category" value="Testspiel">
-            <div class="form-section active" id="common-game-fields">
-                <label for="game-opponent">Gegner:</label>
-                <input type="text" id="game-opponent" required>
-                <label for="game-date">Datum & Uhrzeit:</label>
-                <input type="datetime-local" id="game-date" required>
-            </div>
-            <div class="form-section" id="tournament-game-fields">
-                 <label for="tournament-select">Turnier auswählen:</label>
-                 <select id="tournament-select">
-                     <option value="" disabled selected>Lade Turniere...</option>
-                 </select>
-                 <div id="new-tournament-group">
-                     <label for="new-tournament-name">Neuer Turniername:</label>
-                     <input type="text" id="new-tournament-name">
-                 </div>
-            </div>
-            <button type="submit" class="btn-primary" id="add-game-button" disabled>Spiel erstellen</button>
-        </form>
-        <div id="game-message" class="message"></div>
-      </div>
-    </div>
-    <div class="card" style="grid-column: span 1;">
-      <div class="card-content">
-        <h2>Spielplan</h2>
-        <h3><span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
-        <div id="game-list-container" style="max-height: 400px; overflow-y: auto;">
-            <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="grid-column: span 1;">
-      <div class="card-content">
-        <h2>Aktionen</h2>
-        <h3><span id="custom-action-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
-        <form id="add-custom-action-form">
-            <label for="custom-action-name">Name der Aktion:</label>
-            <input type="text" id="custom-action-name" required><br>
-            <label for="custom-action-category">Kategorie:</label>
-            <select id="custom-action-category">
-                {% for category in action_categories %}
-                    <option value="{{ category }}">{{ category }}</option>
-                {% endfor %}
-            </select><br>
-            <button type="submit" class="btn-primary" id="add-custom-action-button" disabled>Aktion erstellen</button>
-        </form>
-        <div id="custom-action-message" class="message"></div>
-        <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
-        <div id="custom-action-list-container">
-             <p style="opacity: 0.6;">Wählen Sie ein Team.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- REIHE: SAISON-STATISTIK & LIGA-SCOUTING (PHASE 6) -->
-  <div class="stats-area">
-    <div class="card" style="grid-column: span 1;"> 
-      <div class="card-content">
-        <h2>Saison-Statistik (Aggregiert)</h2>
-        <h3><span id="season-stats-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
-        
-        <button class="btn-load-stats" id="load-season-stats-btn" disabled>
-            Saison-Statistik laden
-        </button>
-        
-        <div id="season-stats-message" class="message"></div>
-        
-        <h3 style="margin-top: 20px;">Gegner-Statistik (Saison)</h3>
-        <div id="stats-table-container-opponent-season">
-            <p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>
-        </div>
-        
-        <h3 style="margin-top: 20px;">Feldspieler-Statistik (Saison)</h3>
-        <div class="stats-table-container" id="stats-table-container-field-season">
-            <p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>
-        </div>
-        
-        <h3 style="margin-top: 20px;">Torwart-Statistik (Saison)</h3>
-        <div class="stats-table-container" id="stats-table-container-goalie-season"></div>
-
-        <h3 style="margin-top: 20px;">Team-Aktionen Statistik (Saison)</h3>
-        <div class="stats-table-container" id="stats-table-container-custom-season"></div>
-
-        <!-- BEREICH: SAISON-ARCHIVIERUNG -->
-        <hr style="border-color: rgba(255,255,255,0.2); margin: 30px 0;">
-        <h3>Saison-Archivierung (Reset)</h3>
-        <p style="opacity: 0.8; font-size: 0.9em;">
-            Hiermit werden alle Spiele der Kategorie "Saison" in ein Archiv verschoben.
-            Die Saison-Statistik wird dadurch zurückgesetzt.
-        </p>
-        <div class="form-section active">
-            <label for="archive-name-input">Name für das Archiv (z.B. "Saison 2024/25"):</label>
-            <input type="text" id="archive-name-input" placeholder="Name des Archivs" required>
-        </div>
-        <button id="archive-season-btn" disabled
-                style="background-color: #ff6666; color: white; width: 100%; max-width: 300px; margin-top: 10px;">
-            Aktive Saison jetzt archivieren
-        </button>
-        <div id="archive-message" class="message"></div>
-      </div>
-    </div>
-    
-    <!-- NEU: LIGA-SCOUTING KARTE (PHASE 6) -->
+<!-- 
+Dies ist die neue Hauptseite "dashboard.html".
+Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus game_planning).
+-->
+<div class="dashboard-grid">
     <div class="card">
         <div class="card-content">
-            <h2>Liga-Scouting</h2>
-            <label for="public-league-select">Öffentliche Liga auswählen:</label>
-            <select id="public-league-select" onchange="loadPublicTeams(this.value)">
-                <option value="" disabled selected>Fehler beim Laden.</option>
-            </select>
-            <p style="font-weight: bold; margin-top: 10px; color: #ffcc00;">Teams in dieser Liga:</p>
-            <div id="public-teams-list" style="max-height: 300px; overflow-y: auto;">
-                <p style="opacity: 0.6;">Bitte eine Liga auswählen.</p>
+            <h2>Team-Auswahl</h2>
+            <p style="opacity: 0.8; font-size: 0.9em;">Wähle das Team aus, das du aktuell bearbeiten möchtest.</p>
+            <div id="team-list" style="margin-top: 15px;">
+                <p style="opacity: 0.6;">Lade Mannschaften...</p>
+            </div>
+            <p id="selected-team-info" style="margin-top: 15px; font-weight: bold; color: #ffcc00;"></p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-content">
+            <h2>Spielplan & Protokoll</h2>
+            <h3><span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
+            <p style="opacity: 0.8; font-size: 0.9em;">Wähle ein Spiel aus, um das Live-Protokoll zu starten.</p>
+            <div id="game-list-container" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
+                <p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>
             </div>
         </div>
     </div>
-    <!-- ENDE LIGA-SCOUTING KARTE -->
-  </div> <!-- Ende stats-area -->
-  
-  </div> <!-- Ende app-features -->
+</div>
 
-  <!-- NEU: SCOUTING MODAL (PHASE 6) -->
-  <div id="scouting-modal" class="modal" onclick="if(event.target.id === 'scouting-modal') closeModal()">
-      <div class="modal-content">
-          <span class="close-btn" onclick="closeModal()">&times;</span>
-          <h2 id="scouting-team-name" style="color: #38E838;"></h2>
-          <p style="opacity: 0.8; margin-bottom: 20px;">Aggregierte Saison-Statistik (Öffentlich)</p>
+<script>
+    // --- Globale Variablen (geerbt vom Layout) ---
+    // global funcs: checkVerification, showToast, logout
 
-          <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
-          <div class="stats-table-container" id="public-stats-table-field">
-              <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
-          </div>
-          
-          <h3 style="margin-top: 20px;">Torwart-Statistik</h3>
-          <div class="stats-table-container" id="public-stats-table-goalie"></div>
+    // --- Lokale Variablen ---
+    let selectedTeamId = localStorage.getItem('selected_team_id');
+    let selectedTeamName = localStorage.getItem('selected_team_name');
 
-          <h3 style="margin-top: 20px;">Team-Aktionen Statistik</h3>
-          <div class="stats-table-container" id="public-stats-table-custom"></div>
-          
-      </div>
-  </div>
-  <!-- ENDE SCOUTING MODAL -->
-  
-  <script>
-    function logout() {
-      localStorage.removeItem('access_token');
-      window.location.href = "/"; 
-    }
-    
-    {% if is_verified %} 
-    
-    let selectedTeamId = null;
-    let selectedTeamName = "";
-
-    // --- DOM Elemente (aktualisiert) ---
+    // --- DOM-Elemente ---
     const teamListDiv = document.getElementById('team-list');
-    const teamMessageDiv = document.getElementById('team-message');
-    const playerMessageDiv = document.getElementById('player-message');
-    const playerListContainer = document.getElementById('player-list-container');
-    const gameListContainer = document.getElementById('game-list-container');
     const selectedTeamInfo = document.getElementById('selected-team-info');
-    const kaderTeamName = document.getElementById('kader-team-name');
     const gameplanTeamName = document.getElementById('gameplan-team-name');
-    const customActionTeamName = document.getElementById('custom-action-team-name');
-    const addPlayerButton = document.getElementById('add-player-button');
-    const addGameButton = document.getElementById('add-game-button');
-    const addCustomActionButton = document.getElementById('add-custom-action-button');
-    const gameMessageDiv = document.getElementById('game-message');
-    const customActionMessageDiv = document.getElementById('custom-action-message');
-    const customActionListContainer = document.getElementById('custom-action-list-container');
-    const addCustomActionForm = document.getElementById('add-custom-action-form');
-    const tabBtnSaison = document.getElementById('tab-btn-saison');
-    const tabBtnTestspiel = document.getElementById('tab-btn-testspiel');
-    const tabBtnTurnier = document.getElementById('tab-btn-turnier');
-    const activeGameCategoryInput = document.getElementById('active-game-category');
-    const tournamentGameFields = document.getElementById('tournament-game-fields');
-    const tournamentSelect = document.getElementById('tournament-select');
-    const newTournamentGroup = document.getElementById('new-tournament-group');
-    const seasonStatsTeamName = document.getElementById('season-stats-team-name');
-    const loadSeasonStatsBtn = document.getElementById('load-season-stats-btn');
-    const seasonStatsMessage = document.getElementById('season-stats-message');
-    const statsContainerFieldSeason = document.getElementById('stats-table-container-field-season');
-    const statsContainerGoalieSeason = document.getElementById('stats-table-container-goalie-season');
-    const statsContainerCustomSeason = document.getElementById('stats-table-container-custom-season');
-    const statsContainerOpponentSeason = document.getElementById('stats-table-container-opponent-season');
-    const archiveNameInput = document.getElementById('archive-name-input');
-    const archiveSeasonBtn = document.getElementById('archive-season-btn');
-    const archiveMessageDiv = document.getElementById('archive-message');
+    const gameListContainer = document.getElementById('game-list-container');
     
-    // NEU: Phase 6 Elemente
-    const publicLeagueSelect = document.getElementById('public-league-select');
-    const publicTeamsList = document.getElementById('public-teams-list');
-    const scoutingModal = document.getElementById('scouting-modal');
-    const scoutingTeamName = document.getElementById('scouting-team-name');
-    const publicStatsField = document.getElementById('public-stats-table-field');
-    const publicStatsGoalie = document.getElementById('public-stats-table-goalie');
-    const publicStatsCustom = document.getElementById('public-stats-table-custom');
-
-
-    function getToken() {
-        return localStorage.getItem('access_token');
-    }
-    
-    // --- (Unveränderte Funktionen: switchGameCategory) ---
-    function switchGameCategory(category) {
-        activeGameCategoryInput.value = category;
-        [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.classList.remove('active'));
-        if (category === 'Saison') tabBtnSaison.classList.add('active');
-        if (category === 'Testspiel') tabBtnTestspiel.classList.add('active');
-        if (category === 'Turnier') tabBtnTurnier.classList.add('active');
-        if (category === 'Turnier') {
-            tournamentGameFields.style.display = 'block';
-            if (tournamentSelect.value === 'NEW') {
-                newTournamentGroup.style.display = 'block';
-            } else {
-                newTournamentGroup.style.display = 'none';
-            }
-        } else {
-            tournamentGameFields.style.display = 'none';
-            newTournamentGroup.style.display = 'none';
-        }
-    }
-    tournamentSelect.addEventListener('change', function() {
-        if (this.value === 'NEW') {
-            newTournamentGroup.style.display = 'block';
-        } else {
-            newTournamentGroup.style.display = 'none';
-        }
-    });
-    
-    // --- TEAM WAHL (GEÄNDERT: Neue Checkbox-Logik) ---
-    async function toggleTeamPublic(teamId, teamName, isPublic) {
-        const token = getToken();
-        if (!token) { return; }
-        
-        const messageElement = document.getElementById(`team-public-message-${teamId}`);
-        messageElement.textContent = 'Aktualisiere...';
-        messageElement.className = 'message';
-
-        try {
-            const response = await fetch(`/teams/toggle-public/${teamId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ is_public: isPublic }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                messageElement.textContent = `✅ Team '${teamName}' ist jetzt ${isPublic ? 'öffentlich sichtbar.' : 'privat.'}`;
-                messageElement.className = 'message success';
-                loadPublicLeagues(); // Ligenliste im Scouting aktualisieren
-            } else {
-                const checkbox = document.getElementById(`public-checkbox-${teamId}`);
-                checkbox.checked = !isPublic; // Rollback bei Fehler
-                messageElement.textContent = `❌ Fehler: ${data.detail || 'Fehler beim Ändern der Sichtbarkeit.'}`;
-                messageElement.className = 'message error';
-            }
-        } catch (error) {
-            const checkbox = document.getElementById(`public-checkbox-${teamId}`);
-            checkbox.checked = !isPublic; // Rollback bei Fehler
-            messageElement.textContent = '❌ Serverfehler bei der Aktualisierung.';
-            messageElement.className = 'message error';
-            console.error('Toggle Public Fehler:', error);
-        }
-    }
-    
+    // --- Team-Auswahl Logik ---
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
+        
+        // UI-Update für Team-Auswahl
         document.querySelectorAll('.team-list-item').forEach(item => {
             item.classList.remove('selected');
         });
-        document.getElementById(`team-${teamId}`).classList.add('selected');
+        const selectedElement = document.getElementById(`team-${teamId}`);
+        if (selectedElement) {
+             selectedElement.classList.add('selected');
+        }
+       
         selectedTeamInfo.textContent = `Ausgewählt: ${teamName}`;
-        kaderTeamName.textContent = teamName;
-        gameplanTeamName.textContent = teamName;
-        customActionTeamName.textContent = teamName;
-        seasonStatsTeamName.textContent = teamName; 
-        addPlayerButton.disabled = false;
-        addGameButton.disabled = false;
-        addCustomActionButton.disabled = false;
-        loadSeasonStatsBtn.disabled = false;
-        archiveSeasonBtn.disabled = false; 
-        [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = false);
-        loadPlayers(teamId);
-        loadGames(teamId);
-        loadCustomActions(teamId);
-        loadTournaments(teamId);
         
-        seasonStatsMessage.textContent = '';
-        archiveMessageDiv.textContent = ''; 
-        archiveNameInput.value = ''; 
-        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte "Saison-Statistik laden" klicken.</p>';
-        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte "Saison-Statistik laden" klicken.</p>';
-        statsContainerGoalieSeason.innerHTML = '';
-        statsContainerCustomSeason.innerHTML = '';
+        // UI-Update für Spielplan
+        gameplanTeamName.textContent = teamName;
+        
+        // Speichern für alle Seiten
+        localStorage.setItem('selected_team_id', teamId);
+        localStorage.setItem('selected_team_name', teamName);
+        
+        // Spielplan für das ausgewählte Team laden
+        loadGames(teamId);
+
+        // KORREKTUR: Benachrichtige andere Seiten (falls ihre init-Funktionen bereits geladen sind)
+        if (typeof initGamePlanning === 'function') initGamePlanning();
+        if (typeof initSeasonAnalysis === 'function') initSeasonAnalysis();
     }
     
     async function loadTeams() {
-        const token = getToken();
-        if (!token) { teamListDiv.innerHTML = '<p class="error">Token fehlt.</p>'; return; }
         try {
             const response = await fetch('/teams/list', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
+                method: 'GET'
+                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
+
             if (response.status === 401 || response.status === 403) { 
-                logout(); 
-                return;
+                logout(); // Globale Funktion aus app_layout.html
+                return; 
             }
-            if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
+            if (!response.ok) {
+                 throw new Error(`FEHLER beim Laden der Teams. Status: ${response.status}`);
+            }
+
             const teams = await response.json();
-            teamListDiv.innerHTML = '';
             
-            // UI Reset
-            selectedTeamId = null;
-            selectedTeamInfo.textContent = "";
-            kaderTeamName.textContent = "(Team wählen)";
-            gameplanTeamName.textContent = "(Team wählen)";
-            customActionTeamName.textContent = "(Team wählen)";
-            seasonStatsTeamName.textContent = "(Team wählen)"; 
-            addPlayerButton.disabled = true;
-            addGameButton.disabled = true;
-            addCustomActionButton.disabled = true;
-            loadSeasonStatsBtn.disabled = true;
-            archiveSeasonBtn.disabled = true; 
-            [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = true);
-            playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
-            gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
-            customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
-            tournamentSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
-            seasonStatsMessage.textContent = '';
-            archiveMessageDiv.textContent = ''; 
-            archiveNameInput.value = ''; 
-            statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>';
-            statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Bitte Team wählen und Statistik laden.</p>';
-            statsContainerGoalieSeason.innerHTML = '';
-            statsContainerCustomSeason.innerHTML = '';
-
-
+            // Erst hier den Lade-Text entfernen
+            teamListDiv.innerHTML = ''; 
+            
             if (teams.length === 0) {
-                teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
+                teamListDiv.innerHTML = '<p style="opacity: 0.6;">Keine Teams vorhanden. Bitte im "Team Management" ein Team erstellen.</p>';
+                gameplanTeamName.textContent = "(Kein Team erstellt)";
+                gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team erstellen.</p>';
                 return;
             }
+            
+            let initialTeamToSelect = null;
+            
             teams.forEach(team => {
                 const teamItem = document.createElement('div');
                 teamItem.className = 'team-list-item';
                 teamItem.id = `team-${team.id}`;
-                
-                const teamInfoLine = document.createElement('div');
-                teamInfoLine.className = 'team-info-line';
-                teamInfoLine.innerHTML = `<span><strong>${team.name}</strong> (${team.league})</span>`;
-
-                const publicControl = document.createElement('div');
-                publicControl.className = 'team-public-control';
-                publicControl.innerHTML = `
-                    <input type="checkbox" id="public-checkbox-${team.id}" ${team.is_public ? 'checked' : ''}>
-                    <label for="public-checkbox-${team.id}">Öffentlich sichtbar (Liga-Scouting)</label>
-                    <div id="team-public-message-${team.id}" class="message" style="margin-top: 5px;"></div>
+                teamItem.innerHTML = `
+                    <span><strong>${team.name}</strong> (${team.league})</span>
                 `;
-                publicControl.querySelector(`#public-checkbox-${team.id}`).addEventListener('change', function() {
-                    toggleTeamPublic(team.id, team.name, this.checked);
-                });
-
-                teamItem.appendChild(teamInfoLine);
-                teamItem.appendChild(publicControl);
-                teamItem.addEventListener('click', (e) => {
-                    // Ignoriere Klicks auf Checkbox und Label
-                    if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'label') {
-                        return;
-                    }
+                teamItem.addEventListener('click', () => {
                     selectTeam(team.id, team.name);
                 });
                 teamListDiv.appendChild(teamItem);
+                
+                // Prüfen, ob dies das zuletzt ausgewählte Team war
+                if (team.id === parseInt(selectedTeamId)) {
+                    initialTeamToSelect = team;
+                }
             });
-        } catch (error) {
-            console.error('Fehler beim Laden der Teams:', error);
-            teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams.</p>`;
-        }
-    }
-    
-    document.getElementById('add-team-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const name = document.getElementById('team-name').value;
-        const league = document.getElementById('team-league').value;
-        const token = getToken();
-        if (!token) { return; }
-        teamMessageDiv.textContent = 'Erstelle Mannschaft...';
-        teamMessageDiv.className = 'message';
-        try {
-            const response = await fetch('/teams/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ name, league }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                teamMessageDiv.textContent = `✅ Mannschaft "${name}" erfolgreich erstellt.`;
-                teamMessageDiv.className = 'message success';
-                document.getElementById('add-team-form').reset();
-                loadTeams(); 
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
-            } else {
-                teamMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
-                teamMessageDiv.className = 'message error';
+            
+            // Auswahl Logik
+            if (initialTeamToSelect) {
+                selectTeam(initialTeamToSelect.id, initialTeamToSelect.name);
+            } else if (teams.length > 0) {
+                // Wähle automatisch das erste Team aus
+                selectTeam(teams[0].id, teams[0].name);
             }
-        } catch (error) {
-            teamMessageDiv.textContent = '❌ Serverfehler beim Erstellen der Mannschaft.';
-            teamMessageDiv.className = 'message error';
-        }
-    });
 
-    // --- (Unveränderte Spieler-Funktionen: deletePlayer, add-player-form, loadPlayers) ---
-    async function deletePlayer(playerId) {
-        if (!confirm("Sind Sie sicher, dass Sie diesen Spieler löschen möchten?")) return;
-        const token = getToken();
-        if (!token) return logout();
-        try {
-            const response = await fetch(`/players/delete/${playerId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                playerMessageDiv.textContent = `✅ Spieler erfolgreich gelöscht.`;
-                playerMessageDiv.className = 'message success';
-                loadPlayers(selectedTeamId);
-            } else {
-                const data = await response.json();
-                playerMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
-                playerMessageDiv.className = 'message error';
-            }
         } catch (error) {
-            playerMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spielers.';
-            playerMessageDiv.className = 'message error';
+            console.error('Kritischer Fehler beim Laden der Teams:', error);
+            if (teamListDiv) { // Sicherheitscheck
+                teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams: ${error.message || 'Netzwerkfehler'}</p>`;
+            }
         }
     }
-    document.getElementById('add-player-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        if (!selectedTeamId) {
-            playerMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
-            playerMessageDiv.className = 'message error';
-            return;
-        }
-        const name = document.getElementById('player-name').value;
-        const number = document.getElementById('player-number').value ? parseInt(document.getElementById('player-number').value) : null; 
-        const position = document.getElementById('player-position').value;
-        const token = getToken();
-        playerMessageDiv.textContent = `Füge Spieler zu ${selectedTeamName} hinzu...`;
-        playerMessageDiv.className = 'message';
-        const payload = {
-            name: name, number: number,
-            position: position || null, team_id: selectedTeamId 
-        };
-        try {
-            const response = await fetch('/players/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                playerMessageDiv.textContent = `✅ Spieler "${name}" erfolgreich hinzugefügt.`;
-                playerMessageDiv.className = 'message success';
-                document.getElementById('add-player-form').reset();
-                loadPlayers(selectedTeamId); 
-            } else {
-                playerMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
-                playerMessageDiv.className = 'message error';
-            }
-        } catch (error) {
-            playerMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spielers.';
-            playerMessageDiv.className = 'message error';
-        }
-    });
-    async function loadPlayers(teamId) {
-        const token = getToken();
-        if (!token) return;
-        playerListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Kader...</p>`;
-        try {
-            const response = await fetch(`/players/list/${teamId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const players = await response.json();
-            playerListContainer.innerHTML = '';
-            if (players.length === 0) {
-                playerListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spieler im Kader.</p>`;
-                return;
-            }
-            players.forEach(player => {
-                const playerItem = document.createElement('div');
-                playerItem.className = 'player-list-item';
-                const numberDisplay = player.number !== null ? `#${player.number}` : '';
-                const positionDisplay = player.position ? ` (${player.position})` : '';
-                playerItem.innerHTML = `
-                    <span>${numberDisplay} <strong>${player.name}</strong>${positionDisplay}</span>
-                    <button class="btn-delete" onclick="deletePlayer(${player.id})">Löschen</button>
-                `;
-                playerListContainer.appendChild(playerItem);
-            });
-        } catch (error) {
-            playerListContainer.innerHTML = `<p class="error">Fehler beim Laden des Kaders.</p>`;
-        }
+
+    // --- Spielplan-Logik (Kopiert von game_planning.html) ---
+    
+    function startProtocol(gameId) {
+        if (!checkVerification()) return; // Globale Funktion
+        
+        // KORREKTUR: Token wird nicht mehr in der URL benötigt
+        let url = `/protocol/${gameId}`;
+        window.location.href = url;
     }
     
-    // --- (Unveränderte Spiel-Funktionen: deleteGame, add-game-form, startProtocol, loadGames, loadTournaments) ---
     async function deleteGame(gameId) {
+        if (!checkVerification()) return; // Globale Funktion
         if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
-        const token = getToken();
-        if (!token) return logout();
+        
         try {
             const response = await fetch(`/games/delete/${gameId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                method: 'DELETE'
+                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
             if (response.ok) {
-                gameMessageDiv.textContent = `✅ Spiel erfolgreich gelöscht.`;
-                gameMessageDiv.className = 'message success';
+                showToast("Spiel erfolgreich gelöscht.", "success"); // Globale Funktion
                 loadGames(selectedTeamId); 
             } else {
                 const data = await response.json();
-                gameMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
-                gameMessageDiv.className = 'message error';
+                showToast(`Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`, "error"); // Globale Funktion
             }
         } catch (error) {
-            gameMessageDiv.textContent = '❌ Serverfehler beim Löschen des Spiels.';
-            gameMessageDiv.className = 'message error';
+            showToast('Serverfehler beim Löschen des Spiels.', "error"); // Globale Funktion
         }
     }
-    document.getElementById('add-game-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        if (!selectedTeamId) {
-            gameMessageDiv.textContent = '❌ Bitte zuerst eine Mannschaft auswählen.';
-            gameMessageDiv.className = 'message error';
+
+    async function loadGames(teamId) {
+        if (gameListContainer) {
+            gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
+        }
+        
+        if (!teamId) {
+            if (gameListContainer) {
+                gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team auswählen.</p>';
+            }
             return;
         }
-        const opponent = document.getElementById('game-opponent').value;
-        const date = document.getElementById('game-date').value;
-        const token = getToken();
-        const category = activeGameCategoryInput.value;
-        let tournamentName = null;
-        if (category === "Turnier") {
-            const selectedTournament = tournamentSelect.value;
-            if (selectedTournament === "NEW") {
-                tournamentName = document.getElementById('new-tournament-name').value;
-                if (!tournamentName) {
-                    gameMessageDiv.textContent = '❌ Bitte einen Namen für das neue Turnier eingeben.';
-                    gameMessageDiv.className = 'message error';
-                    return;
-                }
-            } else if (!selectedTournament) {
-                 gameMessageDiv.textContent = '❌ Bitte ein Turnier auswählen oder ein neues anlegen.';
-                 gameMessageDiv.className = 'message error';
-                 return;
-            } else {
-                tournamentName = selectedTournament;
-            }
-        }
-        gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
-        gameMessageDiv.className = 'message';
-        const payload = {
-            opponent: opponent,
-            date: date,
-            team_id: selectedTeamId,
-            game_category: category,
-            tournament_name: tournamentName
-        };
-        try {
-            const response = await fetch('/games/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                gameMessageDiv.textContent = `✅ Spiel gegen "${opponent}" erfolgreich angelegt.`;
-                gameMessageDiv.className = 'message success';
-                document.getElementById('add-game-form').reset();
-                switchGameCategory('Testspiel');
-                loadGames(selectedTeamId);
-                if (category === "Turnier") {
-                    loadTournaments(selectedTeamId);
-                }
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
-            } else {
-                gameMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
-                gameMessageDiv.className = 'message error';
-            }
-        } catch (error) {
-            gameMessageDiv.textContent = '❌ Serverfehler beim Erstellen des Spiels.';
-            gameMessageDiv.className = 'message error';
-        }
-    });
-    function startProtocol(gameId) {
-        localStorage.setItem('protocol_game_id', gameId);
-        window.location.href = `/app/protocol/${gameId}`; 
-    }
-    async function loadGames(teamId) {
-        const token = getToken();
-        if (!token) return;
-        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
+        
         try {
             const response = await fetch(`/games/list/${teamId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
+                method: 'GET'
+                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
+            if (response.status === 401 || response.status === 403) { logout(); return; } // Globale Funktion
+            if (!response.ok) throw new Error('Fehler beim Laden des Spielplans.');
+                
             const games = await response.json();
             gameListContainer.innerHTML = '';
+            
             if (games.length === 0) {
-                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
+                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt. Bitte im "Spielplanung" ein Spiel erstellen.</p>`;
                 return;
             }
+            
+            // Gruppierungslogik (identisch zu game_planning)
             const groupedGames = {
                 'Saison': [],
                 'Testspiel': [],
@@ -1059,23 +224,24 @@
                 gameList.forEach(game => {
                     const dateObj = new Date(game.date);
                     const formattedDate = dateObj.toLocaleDateString('de-DE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                        year: 'numeric', month: '2-digit', day: '2-digit'
                     });
                     html += `
                         <div class="game-list-item">
                             <div class="game-info">
-                                <span>📅 <strong>${formattedDate}</strong></span>
-                                <span>vs. ${game.opponent}</span>
+                                <span>📅 ${formattedDate} <strong>vs. ${game.opponent}</strong></span>
+                                <span>Kategorie: ${game.game_category === 'Turnier' ? game.tournament_name : game.game_category}</span>
                             </div>
                             <div class="game-actions">
-                                <button class="btn-protocol" onclick="startProtocol(${game.id})">Protokoll</button>
-                                <button class="btn-delete" onclick="deleteGame(${game.id})">Löschen</button>
+                                <button class="btn btn-info btn-inline" onclick="startProtocol(${game.id})">Protokoll</button>
+                                <button class="btn btn-danger btn-inline" onclick="deleteGame(${game.id})">Löschen</button>
                             </div>
                         </div>
                     `;
                 });
                 return html;
             };
+            
             let finalHtml = '';
             if (groupedGames.Saison.length > 0) {
                 finalHtml += '<h3 class="game-list-header">Saison (Liga)</h3>';
@@ -1101,521 +267,19 @@
             }
             gameListContainer.innerHTML = finalHtml;
         } catch (error) {
-            gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
-        }
-    }
-    async function loadTournaments(teamId) {
-        const token = getToken();
-        if (!token) return;
-        tournamentSelect.innerHTML = '<option value="" disabled selected>Lade Turniere...</option>';
-        try {
-            const response = await fetch(`/games/tournaments/${teamId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!response.ok) throw new Error('Turniere konnten nicht geladen werden.');
-            const tournaments = await response.json();
-            tournamentSelect.innerHTML = '';
-            if (tournaments.length > 0) {
-                tournaments.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    tournamentSelect.appendChild(option);
-                });
+            if (gameListContainer) {
+                gameListContainer.innerHTML = `<p class="error">FEHLER beim Laden des Spielplans.</p>`;
             }
-            const newOption = document.createElement('option');
-            newOption.value = 'NEW';
-            newOption.textContent = '[ Neues Turnier anlegen ]';
-            tournamentSelect.appendChild(newOption);
-            if (tournamentSelect.options.length > 0 && tournamentSelect.value === "") {
-                 tournamentSelect.selectedIndex = 0;
-            } else if (tournamentSelect.options.length === 1) {
-                tournamentSelect.value = 'NEW';
-            }
-            tournamentSelect.dispatchEvent(new Event('change'));
-        } catch (error) {
-            console.error('Fehler beim Laden der Turniere:', error);
-            tournamentSelect.innerHTML = '<option value="" disabled selected>Fehler</option>';
-            const newOption = document.createElement('option');
-            newOption.value = 'NEW';
-            newOption.textContent = '[ Neues Turnier anlegen ]';
-            tournamentSelect.appendChild(newOption);
-            tournamentSelect.value = 'NEW';
-            tournamentSelect.dispatchEvent(new Event('change'));
-        }
-    }
-
-    // --- (Unveränderte Custom-Action-Funktionen: deleteCustomAction, loadCustomActions, add-custom-action-form) ---
-    async function deleteCustomAction(actionId) {
-        if (!confirm("Sind Sie sicher, dass Sie diese Aktionsvorlage löschen möchten?")) return;
-        const token = getToken();
-        if (!token) return logout();
-        try {
-            const response = await fetch(`/custom-actions/delete/${actionId}?team_id=${selectedTeamId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                customActionMessageDiv.textContent = `✅ Aktion erfolgreich gelöscht.`;
-                customActionMessageDiv.className = 'message success';
-                loadCustomActions(selectedTeamId);
-            } else {
-                const data = await response.json();
-                customActionMessageDiv.textContent = `❌ Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`;
-                customActionMessageDiv.className = 'message error';
-            }
-        } catch (error) {
-            customActionMessageDiv.textContent = '❌ Serverfehler beim Löschen der Aktion.';
-            customActionMessageDiv.className = 'message error';
-        }
-    }
-    async function loadCustomActions(teamId) {
-        const token = getToken();
-        if (!token || !teamId) {
-            customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie ein Team.</p>';
-            return;
-        }
-        customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Aktionen...</p>`;
-        try {
-            const response = await fetch(`/custom-actions/list?team_id=${teamId}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const actions = await response.json();
-            customActionListContainer.innerHTML = '';
-            if (actions.length === 0) {
-                customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Keine eigenen Aktionen erstellt.</p>`;
-                return;
-            }
-            actions.forEach(action => {
-                const actionItem = document.createElement('div');
-                actionItem.className = 'custom-action-list-item';
-                const categoryDisplay = action.category ? ` (${action.category})` : '';
-                actionItem.innerHTML = `
-                    <span><strong>${action.name}</strong>${categoryDisplay}</span>
-                    <button class="btn-delete" onclick="deleteCustomAction(${action.id})">Löschen</button>
-                `;
-                customActionListContainer.appendChild(actionItem);
-            });
-        } catch (error) {
-            customActionListContainer.innerHTML = `<p class="error">Fehler beim Laden der Aktionen.</p>`;
-        }
-    }
-    addCustomActionForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        if (!selectedTeamId) {
-            customActionMessageDiv.textContent = '❌ Bitte zuerst Team auswählen.';
-            customActionMessageDiv.className = 'message error';
-            return;
-        }
-        const name = document.getElementById('custom-action-name').value;
-        const category = document.getElementById('custom-action-category').value;
-        const token = getToken();
-        customActionMessageDiv.textContent = `Erstelle Aktion "${name}"...`;
-        customActionMessageDiv.className = 'message';
-        const payload = {
-            name: name,
-            category: category,
-            team_id: selectedTeamId
-        };
-        try {
-            const response = await fetch('/custom-actions/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                customActionMessageDiv.textContent = `✅ Aktion "${name}" erfolgreich erstellt.`;
-                customActionMessageDiv.className = 'message success';
-                addCustomActionForm.reset();
-                loadCustomActions(selectedTeamId);
-            } else {
-                customActionMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
-                customActionMessageDiv.className = 'message error';
-            }
-        } catch (error) {
-            customActionMessageDiv.textContent = '❌ Serverfehler beim Erstellen der Aktion.';
-            customActionMessageDiv.className = 'message error';
-        }
-    });
-    
-    
-    // --- SAISON-STATISTIK LADEN (ANGEPASST für Gegner-Saison-Stats) ---
-    loadSeasonStatsBtn.addEventListener('click', loadSeasonStats);
-
-    async function loadSeasonStats() {
-        const token = getToken();
-        if (!token || !selectedTeamId) return;
-
-        seasonStatsMessage.textContent = 'Lade Saison-Statistik...';
-        seasonStatsMessage.className = 'message';
-        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Gegner-Statistik...</p>';
-        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Spieler-Statistik...</p>';
-        statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere TW-Statistik...</p>';
-        statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Team-Statistik...</p>';
-
-        try {
-            const [playerStatsResponse, opponentStatsResponse] = await Promise.all([
-                fetch(`/actions/stats/season/${selectedTeamId}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(`/actions/stats/season/opponent/${selectedTeamId}`, { 
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-            ]);
-
-            if (playerStatsResponse.status === 401 || playerStatsResponse.status === 403 || opponentStatsResponse.status === 401 || opponentStatsResponse.status === 403) { logout(); }
-            if (!playerStatsResponse.ok) throw new Error('Spieler-Statistikdaten konnten nicht abgerufen werden.');
-            if (!opponentStatsResponse.ok) throw new Error('Gegner-Statistikdaten konnten nicht abgerufen werden.');
-            
-            const playerStats = await playerStatsResponse.json();
-            const opponentStats = await opponentStatsResponse.json();
-            
-            seasonStatsMessage.textContent = '✅ Statistik erfolgreich geladen.';
-            seasonStatsMessage.className = 'message success';
-            
-            displaySeasonPlayerStats(playerStats);
-            displaySeasonOpponentStats(opponentStats); 
-
-        } catch (error) {
-            seasonStatsMessage.textContent = '❌ FEHLER beim Laden der Statistik.';
-            seasonStatsMessage.className = 'message error';
-            statsContainerFieldSeason.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
-            statsContainerOpponentSeason.innerHTML = `<p class="error">FEHLER beim Laden der Statistik.</p>`;
-            statsContainerGoalieSeason.innerHTML = '';
-            statsContainerCustomSeason.innerHTML = '';
-            console.error("Saison-Statistikfehler:", error);
-        }
-    }
-    
-    function displaySeasonOpponentStats(stats) {
-        let tableHtml = `<table class="opponent-stats-table"><tbody>
-            <tr>
-                <td>🟡 Gegner Tore (Gesamt)</td>
-                <td>${stats.opponent_goals}</td>
-            </tr>
-            <tr>
-                <td>💨 Gegner Fehlwürfe</td>
-                <td>${stats.opponent_misses}</td>
-            </tr>
-            <tr>
-                <td>🚫 Gegner Tech. Fehler</td>
-                <td>${stats.opponent_tech_errors}</td>
-            </tr>
-        </tbody></table>`;
-        statsContainerOpponentSeason.innerHTML = tableHtml;
-    }
-
-    // --- ANGEPASST (PHASE 6.3) ---
-    function displaySeasonPlayerStats(stats, containerPrefix = 'stats-table-container-') {
-        
-        const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
-        const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
-        const customContainer = document.getElementById(`${containerPrefix}custom-season`);
-
-        if (!fieldContainer || !goalieContainer || !customContainer) {
-             console.error("Statistik-Container nicht gefunden. Präfix:", containerPrefix);
-             return;
-        }
-
-        let fieldHeaders = [
-            { key: 'player_name', name: 'Spieler', isFixed: true }, 
-            { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, 
-            { key: 'goals', name: 'Tore (Quote)' }, 
-            { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, 
-            { key: 'misses', name: 'Fehlwürfe' },
-            { key: 'tech_errors', name: 'Tech. Fehler' }, 
-            { key: 'seven_meter_goals', name: '7m Tor' },
-            { key: 'seven_meter_misses', name: '7m Fehl' }, 
-            { key: 'seven_meter_caused', name: '7m Verursacht' },
-        ];
-        
-        let goalieHeaders = [
-            { key: 'player_name', name: 'Spieler', isFixed: true }, 
-            { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, 
-            { key: 'saves', name: 'Paraden Ges. (Quote)' }, 
-            { key: 'seven_meter_saves', name: '7m-Quote' },
-        ];
-        
-        // Initialisiere Tabellen-HTML
-        let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
-        fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
-        fieldTableHtml += `</tr></thead><tbody>`;
-        let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
-        goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
-        goalieTableHtml += `</tr></thead><tbody>`;
-        let fieldPlayersFound = false;
-        let goaliesFound = false;
-        
-        if (stats.length === 0) {
-             fieldContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
-             goalieContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
-             customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
-             return;
-        }
-        
-        // Fülle Tabellen-Reihen
-        stats.forEach(player => {
-            if (player.position === 'Torwart') {
-                goaliesFound = true;
-                goalieTableHtml += `<tr>`;
-                goalieHeaders.forEach(h => {
-                    let value = player[h.key] !== undefined ? player[h.key] : 0;
-                    if (h.name === 'Paraden Ges. (Quote)') {
-                        // Da OpponentGoals nicht mehr im PublicStats-Objekt ist, müssen wir dies überdenken.
-                        // Fürs Scouting lassen wir die Quote erstmal weg, wenn OpponentGoals fehlt.
-                        // Im privaten Dashboard wird OpponentGoals aus actions.py geladen.
-                        if (h.key === 'saves' && player.opponent_goals !== undefined) {
-                            const totalSaves = player.saves + player.seven_meter_saves;
-                            // Hier muss man aufpassen, dass man nur die OpponentGoals des Teams nutzt
-                            const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
-                            const totalShotsOnGoal = totalSaves + totalGoalsReceived;
-                            const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
-                            value = `${totalSaves} (${quote})`;
-                        } else if (h.key === 'saves' && containerPrefix === 'public-stats-table-') {
-                            // Wenn OpponentGoals fehlt (im Public Scouting), zeigen wir nur die Paraden
-                            value = player.saves + player.seven_meter_saves;
-                        }
-                    }
-                    if (h.name === '7m-Quote') {
-                        const totalSevenMeters = player.seven_meter_received; 
-                        const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
-                        value = `${player.seven_meter_saves} (${quote})`;
-                    }
-                    if (h.name === 'Tore (Quote)') {
-                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                        const totalGoals = player.goals + player.seven_meter_goals;
-                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalGoals} (${quote})`;
-                    }
-                    // --- NEUE BERECHNUNG (PHASE 6.3) ---
-                    if (h.name === 'Tore/Spiel') {
-                        if (player.games_played > 0) {
-                            const totalGoals = player.goals + player.seven_meter_goals;
-                            value = (totalGoals / player.games_played).toFixed(1);
-                        } else {
-                            value = '0.0'; 
-                        }
-                    }
-                    // --- ENDE NEUE BERECHNUNG ---
-
-                    goalieTableHtml += `<td>${value}</td>`;
-                });
-                goalieTableHtml += `</tr>`;
-            } else {
-                fieldPlayersFound = true;
-                fieldTableHtml += `<tr>`;
-                fieldHeaders.forEach(h => {
-                    let value = player[h.key] !== undefined ? player[h.key] : 0;
-
-                    if (h.name === 'Tore (Quote)') {
-                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                        const totalGoals = player.goals + player.seven_meter_goals;
-                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalGoals} (${quote})`;
-                    }
-                    if (h.name === 'Tore/Spiel') {
-                        if (player.games_played > 0) {
-                            const totalGoals = player.goals + player.seven_meter_goals;
-                            value = (totalGoals / player.games_played).toFixed(1);
-                        } else {
-                            value = '0.0'; 
-                        }
-                    }
-                    fieldTableHtml += `<td>${value}</td>`;
-                });
-                fieldTableHtml += `</tr>`;
-            }
-        });
-        fieldTableHtml += `</tbody></table>`;
-        goalieTableHtml += `</tbody></table>`;
-        fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
-        goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
-        
-        // Team-Aktionen 
-        const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
-        if (customActionNames.length === 0) {
-            customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
-        } else {
-            let customTableHtml = `<table class="stats-table"><thead><tr>`;
-            customTableHtml += `<th>Spieler</th><th>#</th><th>Spiele</th>`; 
-            customActionNames.forEach(name => {
-                customTableHtml += `<th>${name}</th>`; 
-            });
-            customTableHtml += `</tr></thead><tbody>`;
-            stats.forEach(player => {
-                if (player.position !== 'Torwart' && player.games_played > 0) {
-                    customTableHtml += `<tr>`;
-                    customTableHtml += `<td>${player.player_name}</td>`;
-                    customTableHtml += `<td>${player.player_number || ''}</td>`;
-                    customTableHtml += `<td>${player.games_played}</td>`; 
-                    customActionNames.forEach(name => {
-                        const count = player.custom_counts[name] || 0;
-                        customTableHtml += `<td>${count}</td>`;
-                    });
-                    customTableHtml += `</tr>`;
-                }
-            });
-            customTableHtml += `</tbody></table>`;
-            customContainer.innerHTML = customTableHtml;
-        }
-    }
-
-
-    // --- (Unveränderte Archivierungs-Funktion: handleArchiveSeason) ---
-    archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
-    async function handleArchiveSeason() {
-        const token = getToken();
-        if (!token || !selectedTeamId) return;
-        const archiveName = archiveNameInput.value.trim();
-        if (!archiveName) {
-            archiveMessageDiv.textContent = '❌ Bitte einen Namen für das Archiv eingeben.';
-            archiveMessageDiv.className = 'message error';
-            return;
-        }
-        if (!confirm(`Sind Sie sicher? \n\nAlle ${selectedTeamName}-Spiele der Kategorie "Saison" werden unwiderruflich in das Archiv "${archiveName}" verschoben. \n\nDie Saison-Statistik wird dadurch zurückgesetzt.`)) {
-            return;
-        }
-        archiveMessageDiv.textContent = 'Archiviere Saison...';
-        archiveMessageDiv.className = 'message';
-        try {
-            const response = await fetch(`/games/archive/season/${selectedTeamId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ archive_name: archiveName }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                archiveMessageDiv.textContent = `✅ ${data.message}`;
-                archiveMessageDiv.className = 'message success';
-                archiveNameInput.value = ''; 
-                await loadGames(selectedTeamId);
-                await loadSeasonStats(); 
-            } else if (response.status === 401 || response.status === 403) {
-                logout();
-            } else {
-                archiveMessageDiv.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
-                archiveMessageDiv.className = 'message error';
-            }
-        } catch (error) {
-            archiveMessageDiv.textContent = '❌ Serverfehler bei der Archivierung.';
-            archiveMessageDiv.className = 'message error';
-            console.error("Archiv-Fehler:", error);
-        }
-    }
-    
-    // --- LIGA-SCOUTING FUNKTIONEN (PHASE 6) ---
-    
-    function closeModal() {
-        scoutingModal.style.display = 'none';
-        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
-        publicStatsGoalie.innerHTML = '';
-        publicStatsCustom.innerHTML = '';
-    }
-    
-    async function loadPublicLeagues() {
-        publicLeagueSelect.innerHTML = '<option value="" disabled selected>Lade Ligen...</option>';
-        try {
-            const response = await fetch('/public/leagues');
-            const leagues = await response.json();
-            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Öffentliche Liga auswählen</option>';
-            if (leagues.length === 0) {
-                 publicLeagueSelect.innerHTML = '<option value="" disabled selected>Keine öffentlichen Ligen gefunden.</option>';
-                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine Teams in öffentlichen Ligen.</p>';
-                 return;
-            }
-            leagues.forEach(league => {
-                const option = document.createElement('option');
-                option.value = league;
-                option.textContent = league;
-                publicLeagueSelect.appendChild(option);
-            });
-            publicLeagueSelect.selectedIndex = 0; // Wählt die erste Liga aus
-            loadPublicTeams(publicLeagueSelect.value);
-        } catch (error) {
-            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden.</option>';
-            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Ligen.</p>`;
-            console.error('Public Leagues Error:', error);
-        }
-    }
-    
-    async function loadPublicTeams(leagueName) {
-        if (!leagueName) return;
-        publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Lade Teams...</p>';
-        try {
-            const response = await fetch(`/public/teams/${encodeURIComponent(leagueName)}`);
-            const teams = await response.json();
-            publicTeamsList.innerHTML = '';
-
-            teams.forEach(team => {
-                const teamItem = document.createElement('div');
-                teamItem.className = 'league-team-item';
-                teamItem.innerHTML = `
-                    <strong>${team.name}</strong>
-                    <small>Trainer: ${team.trainer_username}</small>
-                `;
-                teamItem.onclick = () => showPublicTeamStats(team.id, team.name);
-                publicTeamsList.appendChild(teamItem);
-            });
-            if (teams.length === 0) {
-                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine öffentlichen Teams in dieser Liga.</p>';
-            }
-
-        } catch (error) {
-            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Teams.</p>`;
-            console.error('Public Teams Error:', error);
-        }
-    }
-    
-    async function showPublicTeamStats(teamId, teamName) {
-        scoutingTeamName.textContent = teamName;
-        scoutingModal.style.display = 'block';
-
-        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
-        publicStatsGoalie.innerHTML = '';
-        publicStatsCustom.innerHTML = '';
-
-        try {
-            const response = await fetch(`/public/stats/season/${teamId}`);
-            if (!response.ok) throw new Error('Öffentliche Statistik konnte nicht geladen werden.');
-            const stats = await response.json();
-            
-            // Re-use der Funktion displaySeasonPlayerStats, aber mit dem Public-Präfix
-            displaySeasonPlayerStats(stats.player_stats, 'public-stats-table-');
-            
-        } catch (error) {
-            publicStatsField.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
-            publicStatsGoalie.innerHTML = '';
-            publicStatsCustom.innerHTML = '';
-            console.error('Public Stats Error:', error);
         }
     }
 
     // --- Initialisierung ---
-    async function initDashboard() {
-        try {
-            // Lade private Teams (und löst damit alle abhängigen Ladevorgänge aus)
-            await loadTeams(); 
-            // Lade öffentliche Ligen (unabhängig vom privaten Team)
-            await loadPublicLeagues(); 
-            switchGameCategory('Testspiel');
-        } catch (error) {
-            // Wenn loadTeams fehlschlägt, wird die Fehlermeldung bereits von loadTeams gesetzt.
-            console.error("Init-Fehler:", error);
-        }
+    function initDashboard() {
+        console.log("initDashboard() wird aufgerufen.");
+        loadTeams();
     }
     
-    if (document.getElementById('app-features')) {
-        initDashboard();
-    }
-    {% endif %}
-  </script>
+    // KORREKTUR: Der Selbst-Aufruf am Ende wurde entfernt.
+    // Die 'app_layout.html' ruft 'initDashboard()' auf.
+</script>
 
-</body>
-</html>

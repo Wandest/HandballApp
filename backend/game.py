@@ -1,13 +1,12 @@
-#
 # DATEI: backend/game.py
-#
+# (KEINE ÄNDERUNGEN NÖTIG)
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import distinct
 from pydantic import BaseModel
 from typing import List, Optional
 
-# PlayerResponse wird importiert, um es im Roster-Endpunkt zu verwenden
 from backend.player import PlayerResponse
 from backend.database import SessionLocal, Trainer, Team, Game, Player
 from backend.auth import get_current_trainer 
@@ -38,9 +37,7 @@ class GameResponse(BaseModel):
 class ArchiveSeasonRequest(BaseModel):
     archive_name: str 
 
-# --- NEUES MODELL (PHASE 6) ---
 class RosterUpdateRequest(BaseModel):
-    # Erwartet eine Liste von Spieler-IDs, die teilnehmen
     player_ids: List[int]
 
 # Datenbanksession
@@ -55,7 +52,7 @@ def get_db():
 # Endpunkte
 # -----------------------------
 
-# SPIEL HINZUFÜGEN (Unverändert)
+# SPIEL HINZUFÜGEN
 @router.post("/add", response_model=GameResponse)
 def create_game(
     game_data: GameCreate,
@@ -86,7 +83,7 @@ def create_game(
     db.refresh(new_game)
     return new_game
 
-# SPIEL LÖSCHEN (Unverändert)
+# SPIEL LÖSCHEN
 @router.delete("/delete/{game_id}")
 def delete_game(
     game_id: int,
@@ -107,7 +104,7 @@ def delete_game(
     return {"message": "Spiel erfolgreich gelöscht."}
 
 
-# SPIEL-LISTE EINES TEAMS LADEN (Unverändert)
+# SPIEL-LISTE EINES TEAMS LADEN
 @router.get("/list/{team_id}", response_model=List[GameResponse])
 def list_games(
     team_id: int,
@@ -125,7 +122,7 @@ def list_games(
     ).order_by(Game.date.desc()).all()
     return games
 
-# LISTE ALLER TURNIERNAMEN FÜR EIN TEAM (Unverändert)
+# LISTE ALLER TURNIERNAMEN FÜR EIN TEAM
 @router.get("/tournaments/{team_id}", response_model=List[str])
 def list_tournaments(
     team_id: int,
@@ -146,7 +143,7 @@ def list_tournaments(
     return tournaments
 
 
-# SAISON ARCHIVIEREN (Unverändert)
+# SAISON ARCHIVIEREN
 @router.post("/archive/season/{team_id}")
 def archive_season(
     team_id: int,
@@ -180,7 +177,7 @@ def archive_season(
     return {"message": f"Saison erfolgreich archiviert. {count} Spiele wurden in '{archive_name}' verschoben.", "archived_count": count}
 
 
-# --- NEUE ENDPUNKTE (PHASE 6) ---
+# --- SPIEL-ROSTER ENDPUNKTE ---
 
 # HELPER-FUNKTION: Prüft, ob der Trainer Zugriff auf das Spiel hat
 def check_game_auth(game_id: int, trainer_id: int, db: Session) -> Game:
@@ -206,8 +203,6 @@ def get_game_roster(
     db: Session = Depends(get_db)
 ):
     game = check_game_auth(game_id, current_trainer.id, db)
-    
-    # participating_players ist die Liste der Spieler-Objekte in der m2m-Beziehung
     return game.participating_players
 
 
@@ -221,13 +216,11 @@ def update_game_roster(
 ):
     game = check_game_auth(game_id, current_trainer.id, db)
     
-    # 1. Finde die Spieler-Objekte, die teilnehmen sollen
     players_to_participate = db.query(Player).filter(
         Player.id.in_(roster_data.player_ids),
-        Player.team_id == game.team_id # Sicherheitscheck: Nur Spieler des eigenen Teams
+        Player.team_id == game.team_id # Sicherheitscheck
     ).all()
     
-    # 2. Aktualisiere die Beziehungs-Liste
     game.participating_players = players_to_participate
     
     db.commit()

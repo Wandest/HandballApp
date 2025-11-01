@@ -1,20 +1,20 @@
-#
-# DATEI: backend/public.py (FINALE KORREKTUR FÜR PHASE 6)
-#
+# DATEI: backend/public.py
+# (KEINE ÄNDERUNGEN NÖTIG - Nutzt keine Authentifizierung)
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, distinct
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import urllib.parse # Für URL-Dekodierung
+import urllib.parse 
+import re
 
-# Importiere ALLE benötigten Modelle
 from backend.database import (
     SessionLocal, Team, Player, Game, Action, 
     CustomAction, game_participations_table, Trainer
 )
-# WICHTIG: Importiere nur PlayerStats, da OpponentStats für die öffentliche API entfernt wird
-from backend.action import PlayerStats 
+# Importiere Pydantic-Modelle direkt
+from backend.action import PlayerStats, OpponentStats 
 
 router = APIRouter()
 
@@ -26,16 +26,13 @@ class PublicTeamResponse(BaseModel):
     id: int
     name: str
     league: str
-    trainer_name: str 
 
     class Config:
         from_attributes = True
 
-# --- KORRIGIERTES MODELL (OHNE OpponentStats) ---
 class PublicSeasonStatsResponse(BaseModel):
     player_stats: List[PlayerStats]
-# --- ENDE KORRIGIERTES MODELL ---
-
+    opponent_stats: OpponentStats 
 
 # Datenbanksession (unabhängig von auth)
 def get_db():
@@ -51,10 +48,6 @@ def get_db():
 
 @router.get("/leagues", response_model=List[str])
 def get_public_leagues(db: Session = Depends(get_db)):
-    """
-    Gibt eine Liste aller Ligen zurück, in denen es
-    mindestens ein "öffentliches" Team gibt.
-    """
     leagues_query = db.query(distinct(Team.league)).filter(
         Team.is_public == True
     ).all()
@@ -64,26 +57,23 @@ def get_public_leagues(db: Session = Depends(get_db)):
 
 @router.get("/teams/{league_name}", response_model=List[PublicTeamResponse])
 def get_public_teams_by_league(league_name: str, db: Session = Depends(get_db)):
-    """
-    Gibt alle "öffentlichen" Teams für eine bestimmte Liga zurück.
-    """
-    
     decoded_league_name = urllib.parse.unquote(league_name)
     
-    teams = db.query(Team).filter(
+    results = db.query(
+        Team.id,
+        Team.name,
+        Team.league
+    ).filter(
         Team.league == decoded_league_name,
         Team.is_public == True
     ).all()
     
     response_teams = []
-    for team in teams:
-        trainer_name = team.trainer.username if team.trainer else "N/A"
-        
+    for team_id, team_name, team_league in results:
         response_teams.append(PublicTeamResponse(
-            id=team.id,
-            name=team.name,
-            league=team.league,
-            trainer_name=trainer_name 
+            id=team_id,
+            name=team_name,
+            league=team_league
         ))
     
     return response_teams
@@ -91,11 +81,6 @@ def get_public_teams_by_league(league_name: str, db: Session = Depends(get_db)):
 
 @router.get("/stats/season/{team_id}", response_model=PublicSeasonStatsResponse)
 def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
-    """
-    Gibt die aggregierte Saison-Statistik (NUR Spieler)
-    für ein einzelnes öffentliches Team zurück.
-    """
-    
     team = db.query(Team).filter(
         Team.id == team_id,
         Team.is_public == True
@@ -104,6 +89,7 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung oder Team nicht öffentlich.")
         
+    # --- Spieler-Statistiken (Logik wie in action.py) ---
     saison_games_query = db.query(Game.id).filter(
         Game.team_id == team_id,
         Game.game_category == 'Saison'
@@ -119,7 +105,7 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
                 player_id=p.id, player_name=p.name, player_number=p.number, position=p.position,
                 games_played=0, goals=0, misses=0, tech_errors=0, seven_meter_goals=0,
                 seven_meter_misses=0, seven_meter_caused=0, seven_meter_saves=0,
-                seven_meter_received=0, saves=0, opponent_goals=0, custom_counts={}
+                seven_meter_received=0, saves=0, opponent_goals_received=0, custom_counts={}
             ))
     else:
         games_played_count = db.query(
@@ -143,10 +129,13 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
             func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
             func.count(case((Action.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
             func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
-            func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals')
+            func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals_received')
         ]
+        
+        safe_custom_labels = {}
         for name in custom_action_names:
-            safe_label = f"custom_{name.replace(' ', '_')}" 
+            safe_label = f"custom_{re.sub(r'[^A-Za-z0-9_]', '_', name)}"
+            safe_custom_labels[name] = safe_label
             case_statements.append(
                 func.count(case((Action.action_type == name, 1), else_=None)).label(safe_label)
             )
@@ -173,8 +162,7 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
         for row in stats_results:
             row_data = row._asdict()
             custom_counts_dict = {}
-            for name in custom_action_names:
-                safe_label = f"custom_{name.replace(' ', '_')}"
+            for name, safe_label in safe_custom_labels.items():
                 custom_counts_dict[name] = row_data.get(safe_label, 0)
             
             player_stats_list.append(PlayerStats(
@@ -189,11 +177,30 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
                 seven_meter_saves=row_data.get('seven_meter_saves', 0),
                 seven_meter_received=row_data.get('seven_meter_received', 0),
                 saves=row_data.get('saves', 0),
-                opponent_goals=row_data.get('opponent_goals', 0),
+                opponent_goals_received=row_data.get('opponent_goals_received', 0),
                 custom_counts=custom_counts_dict
             ))
-        
-    # Gib nur Spieler-Statistiken zurück
+            
+    # --- Gegner-Statistiken ---
+    opponent_stats_result = OpponentStats(opponent_goals=0, opponent_misses=0, opponent_tech_errors=0)
+    if saison_games_ids:
+        opponent_stats_query = db.query(
+            func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals'),
+            func.count(case((Action.action_type == 'OppMiss', 1), else_=None)).label('opponent_misses'),
+            func.count(case((Action.action_type == 'OppTechError', 1), else_=None)).label('opponent_tech_errors')
+        ).filter(
+            Action.game_id.in_(saison_games_ids), 
+            Action.player_id.is_(None) 
+        )
+        stats_result = opponent_stats_query.first()
+        if stats_result:
+            opponent_stats_result = OpponentStats(
+                opponent_goals=stats_result.opponent_goals,
+                opponent_misses=stats_result.opponent_misses,
+                opponent_tech_errors=stats_result.opponent_tech_errors
+            )
+    
     return PublicSeasonStatsResponse(
-        player_stats=player_stats_list
+        player_stats=player_stats_list,
+        opponent_stats=opponent_stats_result
     )

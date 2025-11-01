@@ -570,7 +570,7 @@
         }
     });
 
-    // --- HILFSFUNKTION: Login und Weiterleitung ---
+    // --- HILFSFUNKTION: Login und Weiterleitung (KORRIGIERT für Cookies) ---
     async function loginAndRedirect(identifier, password, messageDiv) {
         try {
             const response = await fetch('/auth/login', {
@@ -579,27 +579,40 @@
                 body: JSON.stringify({ identifier: identifier, password: password }),
             });
 
-            const data = await response.json();
-
             if (response.ok) {
-                localStorage.setItem('access_token', data.access_token);
+                // Das Cookie wird vom Server gesetzt (HttpOnly).
+                // Wir müssen hier nichts mehr im localStorage speichern.
                 
                 messageDiv.innerHTML = `✅ Login erfolgreich. Weiterleitung...`;
                 messageDiv.className = 'message success';
                 
-                window.location.href = "/app/dashboard"; 
+                // KORREKTUR: Direkt zum /dashboard, nicht /app/dashboard
+                window.location.href = "/dashboard"; 
                 
             } else {
-                const detail = data.detail || 'Unbekannter Fehler';
-                messageDiv.innerHTML = `⚠️ Registrierung war erfolgreich, aber Auto-Login fehlgeschlagen: ${detail}. Bitte manuell einloggen.`;
-                messageDiv.className = 'message error';
-                
-                showLoginView();
-                document.getElementById('password-login').value = password;
+                let detail = 'Unbekannter Fehler';
+                try {
+                    const data = await response.json();
+                    detail = data.detail || `Fehler-Status: ${response.status}`;
+                } catch (e) {
+                    detail = `Server-Fehler: ${response.status} ${response.statusText}`;
+                }
+
+                if (messageDiv.id === 'message-reg') {
+                    // Auto-Login nach Registrierung ist fehlgeschlagen
+                    messageDiv.innerHTML = `⚠️ Registrierung war erfolgreich, aber Auto-Login fehlgeschlagen: ${detail}. Bitte manuell einloggen.`;
+                    messageDiv.className = 'message error';
+                    showLoginView();
+                    document.getElementById('password-login').value = password;
+                } else {
+                    // Manueller Login-Versuch ist fehlgeschlagen
+                    messageDiv.innerHTML = `❌ ${detail}`; // z.B. "Falsche Anmeldedaten"
+                    messageDiv.className = 'message error';
+                }
             }
 
         } catch (error) {
-            messageDiv.textContent = '❌ Kritischer Fehler beim Auto-Login.';
+            messageDiv.textContent = '❌ Netzwerkfehler oder Server nicht erreichbar.';
             messageDiv.className = 'message error';
             console.error('Error:', error);
         }
@@ -628,3 +641,4 @@
 
 </body>
 </html>
+

@@ -1,6 +1,6 @@
-#
 # DATEI: backend/player.py
-#
+# (KEINE ÄNDERUNGEN NÖTIG)
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -23,21 +23,16 @@ class PlayerCreate(BaseModel):
     position: Optional[str] = None
     team_id: int 
 
-# --- HIER SIND DIE ÄNDERUNGEN ---
 class PlayerResponse(BaseModel):
     id: int
     name: str
     number: Optional[int]
     position: Optional[str]
     team_id: int
-    
-    # NEU: Ein Flag, das wir im Frontend setzen können
-    # (z.B. um anzuzeigen, ob der Spieler im Roster ist)
     is_participating: Optional[bool] = False 
 
     class Config:
         from_attributes = True
-# --- ENDE ÄNDERUNGEN ---
 
 # Datenbanksession
 def get_db():

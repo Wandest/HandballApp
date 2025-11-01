@@ -10,6 +10,36 @@
             color: white;
             padding: 20px;
         }
+        
+        .verification-banner {
+            background-color: #ffcc00;
+            color: #1e3c72;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            font-size: 1em;
+        }
+        .verification-banner .btn-refresh {
+            background-color: #1e3c72;
+            color: #ffcc00;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 20px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .verification-banner .btn-refresh:hover {
+            background-color: #2a5298;
+            transform: translateY(-1px);
+        }
+        
         .header {
             background: rgba(0, 0, 0, 0.2);
             padding: 15px;
@@ -21,12 +51,62 @@
         }
         .match-info h2 { margin: 0 0 5px 0; color: #ffcc00; }
         .match-info p { margin: 0; font-size: 0.9em; }
-        .header-button {
-            background: #00bcd4; color: white; border: none;
-            border-radius: 5px; cursor: pointer; font-weight: bold;
-            padding: 10px 15px; transition: background-color 0.2s;
+        
+        /* KORREKTUR: Einheitliches Button-System (aus app_layout.html kopiert) */
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9em;
+            color: white;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            margin: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
         }
-        .header-button:hover { background: #0097a7; }
+        .btn.btn-full-width {
+            width: 100%;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .btn-primary { background: #38E838; color: #1e3c72; }
+        .btn-primary:hover:not(:disabled) { background: #50f050; }
+        .btn-danger { background-color: #f44336; color: white; }
+        .btn-danger:hover:not(:disabled) { background-color: #d32f2f; }
+        .btn-info { background-color: #00bcd4; color: white; }
+        .btn-info:hover:not(:disabled) { background-color: #0097a7; }
+        .btn-secondary { background-color: #607d8b; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #78909c; }
+        .btn-inline-delete {
+            width: auto;
+            padding: 6px 10px;
+            font-size: 0.85em;
+            margin-left: 10px;
+            flex-shrink: 0;
+            margin-top: 0; 
+        }
+
+        .header-button {
+            padding: 10px 15px;
+            margin: 0; /* Überschreibt .btn margin */
+        }
+        
         .score-board-display { font-size: 2em; font-weight: bold; color: #38E838; }
         .protocol-grid {
             display: grid; grid-template-columns: 2fr 1fr 3fr;
@@ -46,22 +126,25 @@
         .player-list button.goalkeeper { background: #ffcc00; color: #333; }
         .player-list button.selected { background: #ff6666; }
         
-        /* NEU: Eigener Stil für Gegner-Button */
         .player-list button.opponent {
-            background: #9e9e9e; /* Grau */
+            background: #9e9e9e;
             color: white;
             border: 2px dashed white;
         }
         .player-list button.opponent.selected {
-            background: #ff6666; /* Rot, wenn ausgewählt */
+            background: #ff6666;
             border-color: #ff6666;
         }
 
         .action-controls h3 { color: #ffcc00; margin-top: 0; text-align: center; }
         .action-controls button {
-            width: 100%; padding: 10px; margin-bottom: 8px;
+            width: 100%; padding: 10px;
             border: none; border-radius: 5px; font-weight: bold;
             cursor: pointer; font-size: 1.1em;
+            margin: 4px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-goal { background: #38E838; color: #333; }
         .btn-miss { background: #ff6666; color: white; }
@@ -70,12 +153,14 @@
         .btn-opp-goal { background: #9e9e9e; color: white; }
         .btn-opp-miss { background: #795548; color: white; }
         .btn-opp-error { background: #616161; color: white; }
+        
         .btn-custom { background: #673ab7; color: white; }
         .btn-custom-Offensiv { background: #ff9800; color: white; }
         .btn-custom-Defensiv { background: #00bcd4; color: white; }
         .btn-custom-Torwart { background: #ffcc00; color: #333; }
         .btn-custom-Sonstiges { background: #607d8b; color: white; }
         hr.divider { border-color: rgba(255,255,255,0.2); margin: 20px 0; }
+        
         .tab-nav {
             display: flex; border-bottom: 2px solid #ffcc00;
             margin-bottom: 15px;
@@ -83,12 +168,20 @@
         .tab-button {
             padding: 10px 15px; cursor: pointer; background: none;
             border: none; color: white; font-weight: bold;
-            opacity: 0.7; font-size: 1.1em;
+            opacity: 0.7; font-size: 1.0em;
+            border-top-left-radius: 5px; border-top-right-radius: 5px;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+        .tab-button:hover:not(:disabled) {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
         }
         .tab-button.active {
-            background: rgba(255, 255, 255, 0.2); opacity: 1;
-            border-top-left-radius: 5px; border-top-right-radius: 5px;
+            background: #ffcc00; 
+            color: #1e3c72; 
+            opacity: 1;
         }
+
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .stats-table {
@@ -103,6 +196,26 @@
             font-size: 0.9em; text-transform: uppercase;
         }
         .stats-table td:first-child, .stats-table th:first-child { text-align: left; }
+        
+        .opponent-stats-table {
+            width: 100%; max-width: 400px;
+            margin-top: 15px;
+        }
+        .opponent-stats-table td {
+             padding: 10px;
+             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+             font-size: 1.1em;
+        }
+        .opponent-stats-table td:first-child {
+            font-weight: bold;
+            width: 80%;
+        }
+        .opponent-stats-table td:last-child {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
         .log-table {
             width: 100%; border-collapse: collapse; margin-top: 10px;
         }
@@ -115,11 +228,14 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 0.9em;
         }
+        /* KORREKTUR: btn-inline-delete Klasse wird hier verwendet */
         .btn-delete-log {
-            background: #f44336; color: white; padding: 4px 8px;
-            font-size: 0.9em; margin: 0; border: none;
-            border-radius: 4px; cursor: pointer;
+            padding: 4px 8px;
+            font-size: 0.9em; 
+            margin: 0;
+            /* Stile kommen jetzt von .btn, .btn-danger, .btn-inline-delete */
         }
+        
         #roster-checklist-container {
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 10px; margin-bottom: 20px;
@@ -128,7 +244,6 @@
             background: rgba(255, 255, 255, 0.1); padding: 10px;
             border-radius: 4px; display: flex; align-items: center;
         }
-        /* NEU: Eigener Stil für Gegner-Checkbox */
         .roster-player-item.opponent {
             background: rgba(0, 0, 0, 0.2);
             border: 1px dashed #9e9e9e;
@@ -137,24 +252,149 @@
             width: 18px; height: 18px; margin-right: 10px; cursor: pointer;
         }
         .roster-player-item label { cursor: pointer; font-size: 1.1em; }
-        #save-roster-btn { background: #38E838; color: #333; width: 100%; }
+        
+        #save-roster-btn { 
+            width: 100%;
+            font-size: 1em;
+            margin-top: 10px; /* Standard .btn margin */
+        }
+        
         .message { margin-top: 10px; font-weight: bold; }
         .success { color: #38E838; }
         .error { color: #FF6666; }
+        
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1001;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 30px;
+            font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        .toast.error { background-color: #f44336; }
+        .toast.success { background-color: #38E838; color: #1e3c72; }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;}
+            to {bottom: 30px; opacity: 1;}
+        }
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;}
+            to {bottom: 0; opacity: 0;}
+        }
+
+        /* --- NEU (PHASE 8): Shot Modal Styles --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7); 
+            padding-top: 50px;
+        }
+        .modal-content {
+            background-color: #1e3c72;
+            margin: 5% auto; 
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%; 
+            max-width: 500px; /* Schmaler gemacht für 1:1-Feld */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-btn:hover, .close-btn:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .pitch-container {
+            position: relative;
+            width: 100%;
+            /* KORREKTUR: 1:1 Seitenverhältnis für 20x20m Feldhälfte */
+            padding-bottom: 100%; 
+            background-color: #006400; /* Dunkelgrün für das Feld */
+            border: 2px solid #fff;
+            box-sizing: border-box;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 15px;
+            cursor: crosshair;
+        }
+        .pitch-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* KORREKTUR: Canvas wird nicht mehr benötigt, Klicks gehen auf das SVG */
+            z-index: 2; 
+        }
+        .pitch-instructions {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #ffcc00;
+        }
+        
+        /* --- KORREKTUR: SVG STYLING --- */
+        .svg-handball-pitch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        .svg-handball-pitch path,
+        .svg-handball-pitch line,
+        .svg-handball-pitch rect {
+            stroke: white;
+            stroke-width: 2px; /* Skaliert mit viewBox */
+            fill: none;
+        }
+        .svg-handball-pitch .dashed-line {
+            stroke-dasharray: 8, 8;
+        }
+        
     </style>
 </head>
 <body>
+    
+    <!-- Banner wird von JS eingefügt, falls nötig -->
 
     <div class="header">
-        <button class="header-button" onclick="leaveProtocol()">⬅️ Dashboard</button>
+        <button class="btn btn-info header-button" onclick="leaveProtocol()">⬅️ Dashboard</button>
         <div class="match-info">
             <h2>{{ team_name }} vs. {{ opponent }}</h2>
             <p>Spiel-ID: {{ game_id }} | Team-ID: {{ team_id }}</p>
+
         </div>
         <div class="score-info">
             <p id="score-board" class="score-board-display">0 - 0</p>
         </div>
-        <button class="header-button" onclick="updateAllStats()">🔄 Aktualisieren</button>
+        <button class="btn btn-info header-button" onclick="updateAllStats()">🔄 Aktualisieren</button>
     </div>
 
     <div class="protocol-grid">
@@ -168,13 +408,14 @@
         </div>
 
         <div class="action-controls">
-            <!-- Die "Gegner-Aktionen"-Buttons sind entfernt (gemäß Phase 8) -->
             <h3>Meine Aktionen</h3>
-            <button class="btn-goal" onclick="handleShotAction('Goal', false)">🥅 Tor erzielt</button>
-            <button class="btn-miss" onclick="handleShotAction('Miss', false)">❌ Wurf verworfen</button>
-            <button class="btn-goal" onclick="handleShotAction('Goal', true)">🎯 7m Tor</button>
-            <button class="btn-miss" onclick="handleShotAction('Miss', true)">🧱 7m verworfen</button>
-            <button class="btn-error" onclick="handleAction('TechError')">⚠️ Technischer Fehler</button>
+            <!-- KORREKTUR: Buttons öffnen jetzt das Modal -->
+            <button class="btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
+            <button class="btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
+            <button class="btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
+            <button class="btn-miss" onclick="showShotModal('Miss', true)">🧱 7m verworfen</button>
+            <!-- KORREKTUR: Tech. Fehler öffnet jetzt das Modal -->
+            <button class="btn-error" onclick="showShotModal('TechError', false)">⚠️ Technischer Fehler</button>
             <button class="btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
             <hr class="divider">
             <h3>Team-Aktionen</h3>
@@ -185,7 +426,13 @@
             <h3>Torwart-Aktionen</h3>
             <button class="btn-save-opp" onclick="handleGoalieAction('Save')">🧤 Parade Torwart</button>
             <button class="btn-save-opp" onclick="handleGoalieAction('SEVEN_METER_SAVE')">🧱 7m Gehalten</button>
-            <button class="btn-opp-goal" onclick="handleGoalieAction('SEVEN_METER_RECEIVED')">🟡 7m Bekommen</button>
+            <button class="btn-opp-goal" onclick="handleGoalieAction('SEVEN_METER_RECEIVED')">🥅 7m Tor (kassiert)</button>
+            
+            <hr class="divider">
+            <h3>Gegner-Aktionen</h3>
+            <button class="btn-opp-goal" onclick="handleOpponentAction('OppGoal')">🟡 Gegner Tor</button>
+            <button class="btn-opp-miss" onclick="handleOpponentAction('OppMiss')">💨 Gegner Fehlwurf</button>
+            <button class="btn-opp-error" onclick="handleOpponentAction('OppTechError')">🚫 Gegner Tech. Fehler</button>
         </div>
 
         <div class="right-column-area">
@@ -195,8 +442,13 @@
                 <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
             </div>
 
-            <!-- HTML FÜR GEGNER-STATISTIK ENTFERNT (Phase 8 Feature) -->
             <div id="stats-tab" class="tab-content active">
+                
+                <h3 style="margin-top: 20px;">Gegner-Statistik</h3>
+                <div id="stats-table-container-opponent">
+                    <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
+                </div>
+
                 <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
                 <div id="stats-table-container-field">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
@@ -224,11 +476,52 @@
                 <div id="roster-checklist-container">
                     <p style="opacity: 0.6; text-align: center; grid-column: span 2;">Lade Team-Kader...</p>
                 </div>
-                <button id="save-roster-btn" class="header-button">Kader speichern</button>
+                <button id="save-roster-btn" class="btn btn-primary btn-full-width">Kader speichern</button>
                 <div id="roster-message" class="message"></div>
             </div>
         </div>
     </div>
+    
+    <!-- KORREKTUR (PHASE 8): SHOT MODAL -->
+    <div id="shot-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeShotModal()">&times;</span>
+            <h3 id="shot-modal-title" class="pitch-instructions">Aktion eintragen:</h3>
+            
+            <!-- KORRIGIERTES SVG-FELD -->
+            <div class="pitch-container" onclick="logShotWithCoordinates(event)">
+                <!-- 
+                    SVG-Koordinatensystem (viewBox):
+                    Basis ist ein 20x20 Meter (200x200 Einheiten) Feld.
+                    (0,0) ist oben links (an der Torauslinie, linke Ecke).
+                    (0, 100) ist die Tormitte.
+                    (200, 100) ist die Mittellinie.
+                -->
+                <svg viewBox="0 0 200 200" class="svg-handball-pitch" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Tor (3m breit = 15 Einheiten) -->
+                    <rect x="-2" y="92.5" width="2" height="15" fill="white" stroke="white" stroke-width="2" />
+
+                    <!-- 6m Torraumlinie (Radius 6m = 60 Einheiten, von Pfosten 0,92.5 und 0,107.5) -->
+                    <path d="M 0 32.5 A 60 60 0 0 1 60 92.5 L 60 107.5 A 60 60 0 0 1 0 167.5" />
+                    
+                    <!-- 9m Freiwurflinie (Radius 9m = 90 Einheiten, von Pfosten 0,92.5 und 0,107.5) -->
+                    <path d="M 0 2.5 A 90 90 0 0 1 90 92.5 L 90 107.5 A 90 90 0 0 1 0 197.5" class="dashed-line" />
+                    
+                    <!-- 7m Marke (bei 7m = 70 Einheiten) -->
+                    <line x1="70" y1="95" x2="70" y2="105" />
+                    
+                    <!-- 4m Torwartlinie (bei 4m = 40 Einheiten) -->
+                    <line x1="40" y1="95" x2="40" y2="105" />
+                </svg>
+                
+            </div>
+            
+            <p style="text-align: center; font-size: 0.9em; margin-top: 10px;">
+                Klicke (oder tippe) auf dem Spielfeld, um die Position der Aktion festzuhalten.
+            </p>
+        </div>
+    </div>
+    <!-- ENDE SHOT MODAL -->
 
     <script>
         // --- Globale Konstanten ---
@@ -243,26 +536,86 @@
         const STATS_TABLE_CONTAINER_FIELD = document.getElementById('stats-table-container-field');
         const STATS_TABLE_CONTAINER_GOALIE = document.getElementById('stats-table-container-goalie');
         const STATS_TABLE_CONTAINER_CUSTOM = document.getElementById('stats-table-container-custom');
+        const STATS_TABLE_CONTAINER_OPPONENT = document.getElementById('stats-table-container-opponent');
         const CUSTOM_ACTION_BUTTONS_CONTAINER = document.getElementById('custom-action-buttons');
         const ROSTER_CHECKLIST_CONTAINER = document.getElementById('roster-checklist-container');
         const ROSTER_MESSAGE = document.getElementById('roster-message');
         const SAVE_ROSTER_BTN = document.getElementById('save-roster-btn');
-        // const STATS_TABLE_CONTAINER_OPPONENT = document.getElementById('stats-table-container-opponent'); // Entfernt
+
+        // Shot Modal DOM
+        const SHOT_MODAL = document.getElementById('shot-modal');
+        const SHOT_MODAL_TITLE = document.getElementById('shot-modal-title');
+        // KORREKTUR: Canvas entfernt
+
 
         let fullTeamRoster = []; 
         let participatingPlayers = []; 
-        let customActions = []; // Wichtig: Wird von loadCustomActions() befüllt
+        let customActions = [];
         let selectedPlayerId = null; 
 
+        // Temporäre Variablen für die Modal-Aktion
+        let pendingActionType = null;
+        let pendingIsSevenMeter = false;
+        
+        // --- Verifizierungs-Logik (Kopiert aus Layout) ---
+        const IS_VERIFIED = (localStorage.getItem('is_verified') === 'true');
+        
+        // KORREKTUR: showToast muss global definiert sein (passiert in app_layout.html)
+        // Hier nur ein Fallback, falls die Seite standalone geladen wird.
+        if (typeof showToast === 'undefined') {
+            const globalShowToast = function(message, type = 'info') {
+                let toast = document.getElementById('toast-message');
+                if (!toast) {
+                    toast = document.createElement('div');
+                    toast.id = 'toast-message';
+                    toast.className = 'toast';
+                    document.body.appendChild(toast);
+                }
+                toast.textContent = message;
+                toast.className = `toast show ${type}`;
+                setTimeout(() => {
+                    toast.className = toast.className.replace('show', '');
+                }, 3000);
+            }
+            // Definiere showToast, wenn es nicht existiert
+            var showToast = globalShowToast;
+        }
+
+
+        function checkVerification() {
+            if (IS_VERIFIED) {
+                return true;
+            } else {
+                showToast("Bitte verifiziere dein Konto, um diese Aktion auszuführen.", "error");
+                return false;
+            }
+        }
+        
+        function showVerificationBanner() {
+            if (!IS_VERIFIED) {
+                const banner = document.createElement('div');
+                banner.className = 'verification-banner';
+                banner.innerHTML = `
+                    <span>
+                        ⚠️ Dein Konto ist nicht verifiziert. Du kannst keine Aktionen loggen.
+                    </span>
+                    <button class="btn-refresh" onclick="location.reload()">
+                        Refresh
+                    </button>
+                `;
+                document.body.prepend(banner);
+            }
+        }
+        // --- ENDE Verifizierung ---
+
         // --- Hilfsfunktionen ---
-        function getToken() { return localStorage.getItem('access_token'); }
-        function leaveProtocol() { window.location.href = "/app/dashboard"; }
+        function leaveProtocol() { window.location.href = "/dashboard"; } // KORRIGIERT: Geht zum Dashboard
         
         function updateAllStats() {
             updateScoreDisplay();
             if (document.getElementById('stats-tab').classList.contains('active')) {
                 loadStats();
-               // loadOpponentStats(); // Bleibt auskommentiert
+                loadOpponentStats();
             }
             if (document.getElementById('log-tab').classList.contains('active')) {
                 loadActionLog();
@@ -280,8 +633,8 @@
             document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
             
             if (tabName === 'stats') { 
-                loadStats(); 
-              //  loadOpponentStats(); // Bleibt auskommentiert
+                loadStats();
+                loadOpponentStats();
             } 
             else if (tabName === 'log') { loadActionLog(); }
         }
@@ -295,145 +648,243 @@
             document.getElementById(`player-btn-${playerId}`).classList.add('selected');
         }
 
-        // --- Aktion verarbeiten ---
+        // --- PHASE 8: Wurf Modal Logik ---
         
-        // Normale Aktion (z.B. Tech. Fehler)
-        function handleAction(actionType) {
-            if (selectedPlayerId === null) {
-                 alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
-                 return;
+        function getActionLabel(actionType, isSevenMeter) {
+            if (isSevenMeter) {
+                return actionType === 'Goal' ? '7m Tor' : '7m verworfen';
             }
-            
-            if (selectedPlayerId === 0) { // 0 ist unsere ID für "GEGNER"
-                if (actionType === 'TechError') {
-                    logAction('OppTechError', null, false);
-                } else {
-                    alert("Diese Aktion ist für den 'GEGNER'-Spieler nicht vorgesehen.");
-                }
-            } else {
-                // Normaler Spieler
-                logAction(actionType, selectedPlayerId, false);
-            }
-        }
-        
-        // Team-Aktion
-        function handleCustomAction(actionName) {
-             if (selectedPlayerId === null) {
-                 alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
-                 return;
-            }
-            if (selectedPlayerId === 0) {
-                alert("Team-Aktionen können nicht dem 'GEGNER'-Spieler zugewiesen werden.");
-                return;
-            }
-            logAction(actionName, selectedPlayerId, false);
+            if (actionType === 'Goal') return 'Tor erzielt (Feld)';
+            if (actionType === 'Miss') return 'Wurf verworfen';
+            if (actionType === 'TechError') return 'Technischer Fehler';
+            return actionType;
         }
 
-        // Wurf-Aktion (z.B. Tor, Fehlwurf)
-        function handleShotAction(actionType, isSevenMeter) {
-            if (selectedPlayerId === null) {
-                 alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
-                 return;
-            }
-            
-            if (selectedPlayerId === 0) { // 0 ist "GEGNER"
-                if (actionType === 'Goal') {
-                    logAction('OppGoal', null, false);
-                } else if (actionType === 'Miss') {
-                    logAction('OppMiss', null, false);
-                }
-                // 7m-Aktionen werden für den Gegner-Spieler ignoriert
-            } else {
-                // Normaler Spieler
-                logAction(actionType, selectedPlayerId, isSevenMeter);
-            }
-        }
-        
-        // Torwart-Aktion
-        function handleGoalieAction(actionType) {
+        function showShotModal(actionType, isSevenMeter) {
+            if (!checkVerification()) return;
             if (selectedPlayerId === null) {
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
                  return;
             }
             if (selectedPlayerId === 0) {
-                 alert("Torwart-Aktionen können nicht dem 'GEGNER'-Spieler zugewiesen werden.");
+                 alert("Diese Aktion kann nur eigenen Spielern zugewiesen werden.");
+                 return;
+            }
+
+            pendingActionType = actionType;
+            pendingIsSevenMeter = isSevenMeter;
+            
+            const player = participatingPlayers.find(p => p.id === selectedPlayerId);
+            const actionLabel = getActionLabel(actionType, isSevenMeter);
+            
+            SHOT_MODAL_TITLE.textContent = `Position für: ${player.name} - ${actionLabel}`;
+            
+            SHOT_MODAL.style.display = 'block';
+        }
+        
+        function closeShotModal() {
+            SHOT_MODAL.style.display = 'none';
+            pendingActionType = null;
+            pendingIsSevenMeter = false;
+        }
+        
+        // Modal bei Klick außerhalb schließen
+        SHOT_MODAL.addEventListener('click', function(event) {
+            if (event.target === SHOT_MODAL) {
+                closeShotModal();
+            }
+        });
+        
+        // KORREKTUR: Klick-Event-Handler
+        function logShotWithCoordinates(event) {
+            // Stoppt das Event-Bubbling, damit der Klick auf den Container nicht das Modal schließt
+            event.stopPropagation(); 
+            
+            const container = event.currentTarget; // .pitch-container
+            const rect = container.getBoundingClientRect();
+            
+            // Berechne Klick relativ zum Container
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Umrechnung in Prozent basierend auf der Container-Größe
+            const xCoord = (x / rect.width) * 100;
+            const yCoord = (y / rect.height) * 100;
+
+            console.log(`Koordinaten: X=${xCoord.toFixed(1)}%, Y=${yCoord.toFixed(1)}%`);
+            
+            // Logge die Aktion mit den Koordinaten
+            logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, xCoord, yCoord);
+            
+            // Schließe das Modal und setze die temporären Variablen zurück
+            closeShotModal();
+        }
+        
+        // --- Aktion verarbeiten (mit Koordinaten) ---
+        
+        function handleAction(actionType) {
+            if (!checkVerification()) return;
+            if (selectedPlayerId === null || selectedPlayerId === 0) {
+                 alert("Bitte wähle einen eigenen Spieler.");
+                 return;
+            }
+            // Für Nicht-Wurf-Aktionen (wie 7m verursacht)
+            if (actionType === 'SEVEN_METER_CAUSED') {
+                logAction(actionType, selectedPlayerId, false, null, null);
+            } else {
+                 alert("Diese Aktion sollte das Shot-Modal öffnen, ist aber nicht als Wurf konfiguriert.");
+            }
+        }
+        
+        function handleCustomAction(actionName) {
+             if (!checkVerification()) return;
+             if (selectedPlayerId === null || selectedPlayerId === 0) {
+                 alert("Bitte wähle einen eigenen Spieler.");
+                 return;
+            }
+            // Logge Custom Action ohne Koordinaten
+            logAction(actionName, selectedPlayerId, false, null, null);
+        }
+        
+        function handleGoalieAction(actionType) {
+            if (!checkVerification()) return;
+            if (selectedPlayerId === null || selectedPlayerId === 0) {
+                 alert("Bitte wähle einen eigenen Torwart.");
                  return;
             }
             const selectedPlayer = participatingPlayers.find(p => p.id === selectedPlayerId);
             if (!selectedPlayer || selectedPlayer.position !== 'Torwart') {
-                alert("Bitte wähle zuerst einen Torwart (der am Spiel teilnimmt) für diese Aktion aus.");
+                alert("Bitte wähle zuerst einen Torwart für diese Aktion aus.");
                 return;
             }
-            logAction(actionType, selectedPlayerId, false);
+            
+            logAction(actionType, selectedPlayerId, false, null, null);
         }
 
-        // Aktion protokollieren (Sendet an Backend)
-        async function logAction(actionType, playerId = null, isSevenMeter = false) {
-            const token = getToken();
-            if (!token) return leaveProtocol();
+        function handleOpponentAction(actionType) {
+            if (!checkVerification()) return;
+            // Gegner-Aktionen werden ohne Spieler-ID und Koordinaten geloggt
+            logAction(actionType, null, false, null, null);
+        }
+
+        // AKTION protokollieren (Haupt-Logger mit Koordinaten-Support)
+        async function logAction(actionType, playerId = null, isSevenMeter = false, xCoord = null, yCoord = null) {
+            
             const payload = {
-                action_type: actionType, time_in_game: "N/A", 
-                game_id: GAME_ID, player_id: playerId, is_seven_meter: isSevenMeter
+                action_type: actionType, 
+                time_in_game: "N/A", // Zeit wird vom Server (oder später vom Timer) geholt
+                game_id: GAME_ID, 
+                player_id: playerId,
+                is_seven_meter: isSevenMeter,
+                x_coordinate: xCoord, 
+                y_coordinate: yCoord
             };
+
             try {
                 const response = await fetch('/actions/add', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: { 'Content-Type': 'application/json' }, // KEIN Auth-Header
                     body: JSON.stringify(payload),
                 });
-                if (response.ok) { updateAllStats(); } 
-                else if (response.status === 401 || response.status === 403) { leaveProtocol(); } 
-                else { alert('Fehler beim Protokollieren der Aktion.'); }
+                if (response.ok) { 
+                    updateAllStats(); 
+                    selectedPlayerId = null;
+                    SELECTED_PLAYER_INFO.textContent = "Keiner";
+                    document.querySelectorAll('.player-list button').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                } 
+                else if (response.status === 401 || response.status === 403) { 
+                    logout(); 
+                } 
+                else { 
+                    const data = await response.json();
+                    alert(`Fehler beim Protokollieren: ${data.detail || 'Unbekannt'}`); 
+                }
             } catch (error) { console.error('Protokollfehler:', error); }
         }
         
-        // Aktion löschen
+        // Restliche Funktionen (loadActionLog, loadStats, Roster-Logik) bleiben unverändert.
         async function deleteAction(actionId) {
+            if (!checkVerification()) return;
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
-            const token = getToken();
-            if (!token) return leaveProtocol();
+
             try {
                 const response = await fetch(`/actions/delete/${actionId}`, {
-                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'DELETE' // KEIN Auth-Header
                 });
                 if (response.ok) { updateAllStats(); } 
                 else { alert('Aktion konnte nicht gelöscht werden.'); }
             } catch (error) { console.error('Löschfehler:', error); }
         }
         
-        // Score aktualisieren
         async function updateScoreDisplay() {
-            const token = getToken();
-            if (!token) return;
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}`, {
-                    method: 'GET', headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
-                if (!response.ok) throw new Error('Score-Daten nicht gefunden');
+                if (response.status === 401 || response.status === 403) return logout();
+                if (!response.ok) { 
+                    SCORE_BOARD.textContent = "N/A";
+                    return;
+                }
                 const actions = await response.json();
-                let ownGoals = 0; let opponentGoals = 0;
-                actions.forEach(action => {
-                    if (action.action_type === 'Goal' || action.action_type === 'Goal_7m') { ownGoals++; } 
-                    else if (action.action_type === 'OppGoal') { opponentGoals++; }
-                });
-                SCORE_BOARD.textContent = `${ownGoals} - ${opponentGoals}`;
+                
+                const own_goals_count = actions.filter(a => a.action_type === 'Goal' || a.action_type === 'Goal_7m').length;
+                const opp_goals_count = actions.filter(a => a.action_type === 'OppGoal').length;
+
+                SCORE_BOARD.textContent = `${own_goals_count} - ${opp_goals_count}`;
+                
             } catch (error) {
                 console.error("Score Update Fehler:", error);
                 SCORE_BOARD.textContent = "N/A";
             }
         }
 
-        // Protokoll laden
+        async function loadOpponentStats() {
+            STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+            try {
+                const response = await fetch(`/actions/stats/opponent/${GAME_ID}`, {
+                    method: 'GET' // KEIN Auth-Header
+                });
+                if (response.status === 401 || response.status === 403) return logout();
+                if (!response.ok) throw new Error('Gegner-Stats-Daten nicht gefunden');
+                
+                const stats = await response.json();
+                
+                let tableHtml = `<table class="opponent-stats-table"><tbody>
+                    <tr>
+                        <td>🟡 Gegner Tore</td>
+                        <td>${stats.opponent_goals}</td>
+                    </tr>
+                    <tr>
+                        <td>💨 Gegner Fehlwürfe</td>
+                        <td>${stats.opponent_misses}</td>
+                    </tr>
+                    <tr>
+                        <td>🚫 Gegner Tech. Fehler</td>
+                        <td>${stats.opponent_tech_errors}</td>
+                    </tr>
+                </tbody></table>`;
+                
+                STATS_TABLE_CONTAINER_OPPONENT.innerHTML = tableHtml;
+
+            } catch (error) {
+                console.error('Fehler beim Laden der Gegner-Stats:', error);
+                STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p class="error">Fehler beim Laden der Gegner-Statistik.</p>';
+            }
+        }
+
         async function loadActionLog() {
-            const token = getToken();
-            if (!token) return;
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Log-Daten nicht gefunden');
+                
                 const actions = await response.json();
+                
                 if (actions.length === 0) {
                     ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Aktionen protokolliert.</p>';
                     return;
@@ -444,7 +895,7 @@
                     'TechError': '🚫 Technischer Fehler', 'Save': '🛑 Parade',
                     'SEVEN_METER_CAUSED': '🚨 7m verursacht',
                     'SEVEN_METER_SAVE': '🧱 7m Gehalten',
-                    'SEVEN_METER_RECEIVED': '🟡 7m Bekommen',
+                    'SEVEN_METER_RECEIVED': '🟡 7m Bekommen', 
                     'OppGoal': '🟡 Gegner Tor',
                     'OppMiss': '💨 Gegner Fehlwurf',
                     'OppTechError': '🚫 Gegner Tech. Fehler'
@@ -452,8 +903,15 @@
                 let tableHtml = `<table class="log-table"><thead><tr>
                                     <th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
-                actions.forEach(action => {
-                    const actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
+                
+                // .reverse() ist nicht nötig, da der Server bereits sortiert (desc) liefert
+                actions.forEach(action => { 
+                    let actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
+                    
+                    if (action.action_type === 'SEVEN_METER_RECEIVED' && action.player_name) {
+                        actionText = '🥅 7m Tor (kassiert)';
+                    }
+
                     let playerInfo = action.player_name || 'TEAM';
                     if (action.action_type.startsWith('Opp') && !action.player_name) {
                         playerInfo = 'GEGNER';
@@ -461,7 +919,7 @@
                     const playerNumber = action.player_number !== null ? action.player_number : '';
                     tableHtml += `<tr>
                             <td>${actionText}</td><td>${playerInfo}</td><td>${playerNumber}</td>
-                            <td><button class="btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button></td>
+                            <td><button class="btn btn-danger btn-inline-delete btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button></td>
                          </tr>`;
                 });
                 tableHtml += `</tbody></table>`;
@@ -472,24 +930,18 @@
             }
         }
         
-        // --- NEU: Custom Actions laden (WIEDERHERGESTELLT) ---
         async function loadCustomActions() {
-            const token = getToken();
-            if (!token) return;
-            
             CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Aktionen...</p>';
             
             try {
-                // Der Endpunkt erwartet team_id als Query-Parameter
                 const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
 
-                if (response.status === 401 || response.status === 403) return leaveProtocol();
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden der Custom Actions.');
 
-                customActions = await response.json(); // Store in global variable
+                customActions = await response.json(); 
                 CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '';
 
                 if (customActions.length === 0) {
@@ -499,16 +951,13 @@
 
                 customActions.forEach(action => {
                     const button = document.createElement('button');
-                    // Standard-Klasse
                     let categoryClass = 'btn-custom'; 
-                    // Spezifische Klasse basierend auf der Kategorie
                     if (action.category) {
-                        // Ersetze Leerzeichen oder ungültige Zeichen für CSS-Klassen
                         const safeCategory = action.category.replace(/\s+/g, '-');
                         categoryClass = `btn-custom-${safeCategory}`;
                     }
                     
-                    button.className = categoryClass; // Z.B. btn-custom-Offensiv
+                    button.className = categoryClass; 
                     button.textContent = `⭐ ${action.name}`;
                     button.onclick = () => handleCustomAction(action.name);
                     CUSTOM_ACTION_BUTTONS_CONTAINER.appendChild(button);
@@ -520,22 +969,17 @@
             }
         }
 
-        // --- NEU: Spieler-Statistik-Tabelle laden (WIEDERHERGESTELLT) ---
         async function loadStats() {
-            const token = getToken();
-            if (!token) return;
-
             STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
 
             try {
                 const response = await fetch(`/actions/stats/${GAME_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
 
-                if (response.status === 401 || response.status === 403) return leaveProtocol();
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Statistik-Ladefehler.');
 
                 const stats = await response.json();
@@ -562,10 +1006,9 @@
                                         <th>7m (Geh/Bek)</th>
                                       </tr></thead><tbody>`;
 
-                // Dynamische Header for Custom-Tabelle
                 let customTableHtml = `<table class="stats-table"><thead><tr>
                                         <th>Spieler</th><th>#</th>`;
-                const customActionNames = customActions.map(ca => ca.name); // Globale Variable von loadCustomActions()
+                const customActionNames = customActions.map(ca => ca.name);
                 customActionNames.forEach(name => {
                     customTableHtml += `<th>${name}</th>`;
                 });
@@ -578,9 +1021,11 @@
                     if (player.position === 'Torwart') {
                         goaliesFound = true;
                         const totalSaves = player.saves + player.seven_meter_saves;
-                        // Bugfix: opponent_goals ist beim Torwart die Anzahl der Gegentore, die er erhalten hat
-                        // seven_meter_received ist die GESAMTZAHL der 7m (gehalten + rein)
-                        const totalGoalsReceived = player.opponent_goals + (player.seven_meter_received - player.seven_meter_saves);
+                        const goalsReceivedOnTw = player.opponent_goals_received;
+                        
+                        const sevenMeterGoalsReceived = player.seven_meter_received - player.seven_meter_saves;
+                        
+                        const totalGoalsReceived = goalsReceivedOnTw + sevenMeterGoalsReceived;
                         const totalShotsOnGoal = totalSaves + totalGoalsReceived;
                         const saveQuote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
                         
@@ -602,13 +1047,12 @@
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>
                             <td>${totalGoals} (${shotQuote})</td>
-                            <td>${player.misses}</td>
+                            <td>${player.misses + player.seven_meter_misses}</td>
                             <td>${player.tech_errors}</td>
                             <td>${player.seven_meter_goals} / ${player.seven_meter_goals + player.seven_meter_misses}</td>
                             <td>${player.seven_meter_caused}</td>
                         </tr>`;
                         
-                        // Custom-Tabelle auch füllen
                         customTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>`;
@@ -625,35 +1069,27 @@
 
                 STATS_TABLE_CONTAINER_FIELD.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
                 STATS_TABLE_CONTAINER_GOALIE.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
-                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = customActionNames.length > 0 ? customTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>';
+                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = (customActionNames.length > 0 && fieldPlayersFound) ? customTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen oder Spieler vorhanden.</p>';
 
             } catch (error) {
                 STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
                 STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
-                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
+                STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</Gegner-Statistik>';
                 console.error(error);
             }
         }
         
-        // Gegner-Statistik-Tabelle laden (ENTFERNT)
-        // async function loadOpponentStats() { ... }
-        
-        
-        // --- Roster/Kader-Funktionen (Unverändert) ---
-        
         async function loadFullTeamRoster() {
-            const token = getToken();
-            if (!token) return leaveProtocol();
             try {
                 const response = await fetch(`/players/list/${TEAM_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Team-Kaders.');
                 fullTeamRoster = await response.json();
                 buildRosterChecklist();
             } catch (error) {
-                ROSTER_CHECKLIST_CONTAINER.innerHTML = '<p class="error">Team-Kader konnte nicht geladen werden.</p>';
+                ROSTER_CHECKLIST_CONTAINER.innerHTML = '<p class="error">Team-Kader konnte nicht gelöscht werden.</p>';
                 console.error(error);
             }
         }
@@ -681,17 +1117,16 @@
                     #0 GEGNER (Simulation)
                 </label>
             `;
-            ROSTER_CHECKLIST_CONTAINER.appendChild(opponentItem);
+            // Gegner-Simulation vorerst deaktiviert, bis Backend es unterstützt
+            // ROSTER_CHECKLIST_CONTAINER.appendChild(opponentItem);
         }
         
         async function loadGameRoster() {
-            const token = getToken();
-            if (!token) return leaveProtocol();
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    method: 'GET' // KEIN Auth-Header
                 });
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Spiel-Kaders.');
                 participatingPlayers = await response.json();
                 updateRosterChecklist();
@@ -705,9 +1140,7 @@
         function updateRosterChecklist() {
             const participatingIds = participatingPlayers.map(p => p.id);
             ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                if (checkbox.dataset.playerId !== "0") {
-                    checkbox.checked = false;
-                }
+                 checkbox.checked = false;
             });
             participatingIds.forEach(id => {
                 const checkbox = document.getElementById(`roster-check-${id}`);
@@ -715,15 +1148,15 @@
                     checkbox.checked = true;
                 }
             });
+            // Gegner-Checkbox-Logik entfernt
         }
         
         function buildActionPlayerButtons() {
             PLAYER_BUTTONS_CONTAINER.innerHTML = '';
             
-            if (participatingPlayers.length === 0) {
-                PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Spieler für dieses Spiel ausgewählt. Bitte im Tab "Kader / Roster" festlegen.</p>';
-            }
+            let hasPlayers = false;
             participatingPlayers.forEach(player => {
+                hasPlayers = true;
                 const isGoalie = player.position === 'Torwart';
                 const button = document.createElement('button');
                 button.textContent = `#${player.number || '?'} ${player.name}`;
@@ -733,35 +1166,34 @@
                 PLAYER_BUTTONS_CONTAINER.appendChild(button);
             });
             
-            const opponentCheckbox = document.getElementById('roster-check-0');
-            if (opponentCheckbox && opponentCheckbox.checked) {
-                const button = document.createElement('button');
-                button.textContent = `#0 GEGNER`;
-                button.className = 'opponent';
-                button.id = `player-btn-0`;
-                button.onclick = () => selectPlayer(0, 'GEGNER', false); 
-                PLAYER_BUTTONS_CONTAINER.appendChild(button);
+            // Gegner-Button-Logik entfernt
+            
+            if (!hasPlayers) {
+                 PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Spieler für dieses Spiel ausgewählt. Bitte im Tab "Kader / Roster" festlegen.</p>';
             }
         }
         
         async function handleSaveRoster() {
-            const token = getToken();
-            if (!token) return leaveProtocol();
+            if (!checkVerification()) return;
             ROSTER_MESSAGE.textContent = 'Speichere Kader...';
             ROSTER_MESSAGE.className = 'message';
             
             const checkedBoxes = ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]:checked');
             const player_ids = Array.from(checkedBoxes)
-                .map(box => parseInt(box.dataset.playerId))
-                .filter(id => id !== 0); // Filtert die 0 (Gegner) raus
-            
+                .map(box => parseInt(box.dataset.playerId));
+                // .filter(id => id !== 0); // Gegner-Filter nicht mehr nötig
+
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ player_ids: player_ids }),
+                    headers: { 'Content-Type': 'application/json' }, // KEIN Auth-Header
+                    body: JSON.stringify({ 
+                        player_ids: player_ids
+                        // include_opponent nicht mehr gesendet
+                    }),
                 });
                 
+                if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Speichern.');
                 
                 participatingPlayers = await response.json();
@@ -780,22 +1212,54 @@
         SAVE_ROSTER_BTN.addEventListener('click', handleSaveRoster);
 
         // --- Seite initialisieren ---
-        async function initializeProtocol() {
+        function initProtocol() {
             try {
-                await Promise.all([
+                showVerificationBanner();
+                
+                Promise.all([
                     loadFullTeamRoster(),
                     loadCustomActions()
-                ]);
-                await loadGameRoster();
-                updateAllStats();
+                ]).then(() => {
+                    loadGameRoster().then(() => {
+                        updateAllStats();
+                    });
+                });
+                
             } catch (error) {
                 console.error("Fehler bei der Initialisierung des Protokolls:", error);
                 alert("Ein kritischer Fehler ist beim Laden der Protokolldaten aufgetreten. Bitte zurück zum Dashboard.");
             }
         }
         
-        // Start
-        initializeProtocol();
+        // KORREKTUR: Die Initialisierung wird jetzt von app_layout.html aufgerufen,
+        // aber wir brauchen einen Fallback, falls protocol.html direkt aufgerufen wird
+        // (was es tut, da es kein 'page_content_template' ist).
+        
+        // KORREKTUR 2: protocol.html ist KEIN 'page_content_template'.
+        // Es wird direkt geladen. Daher MUSS es seine eigene Logik am Ende aufrufen.
+        // Die 'DOMContentLoaded'-Logik in app_layout.html greift hier nicht.
+        
+        // Globalen Toast-Puffer erstellen, falls app_layout nicht da ist
+        // (Doppelte Definition, um sicherzustellen, dass es existiert)
+        if (typeof showToast === 'undefined') {
+            const toast = document.createElement('div');
+            toast.id = 'toast-message';
+            toast.className = 'toast';
+            document.body.appendChild(toast);
+            
+            var showToast = function(message, type = 'info') {
+                toast.textContent = message;
+                toast.className = `toast show ${type}`;
+                setTimeout(() => {
+                    toast.className = toast.className.replace('show', '');
+                }, 3000);
+            }
+        }
+        
+        // Starte die Initialisierung für diese Seite
+        document.addEventListener('DOMContentLoaded', initProtocol);
+        
     </script>
 </body>
 </html>
+
