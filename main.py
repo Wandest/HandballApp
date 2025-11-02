@@ -2,20 +2,13 @@
 import webview
 import threading
 import uvicorn
-from fastapi import (
-    FastAPI, Request, Depends, HTTPException, status, Query, Response
-)
+from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
-# WICHTIG: Wir importieren jetzt die ZENTRALE Cookie-Auth-Funktion
-from backend.auth import (
-    router as auth_router, 
-    get_current_trainer,  # <-- DIE NEUE, ZENTRALE FUNKTION
-    get_db
-)
+from backend.auth import router as auth_router, get_current_trainer
 from backend.team import router as team_router, get_league_list 
 from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
@@ -44,13 +37,6 @@ templates = Jinja2Templates(directory="frontend")
 # Datenbank initialisieren
 init_db()
 
-
-# --- PROFI-AUTHENTIFIZIERUNG ---
-# Die Logik ist jetzt nach backend/auth.py umgezogen und wird
-# von hier und allen anderen Routern importiert.
-# --- ENDE ---
-
-
 # Unprotected route: Home / Authentication page
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
@@ -59,15 +45,7 @@ def home(request: Request):
         {"request": request, "title": "Handball Auswertung"}
     )
 
-# Dashboard-Loader: Leitet immer zur ersten Seite um
-@app.get("/app/dashboard", response_class=HTMLResponse)
-def app_dashboard(request: Request):
-    return templates.TemplateResponse(
-        "app_loader.html",
-        {"request": request, "title": "Lade Dashboard"}
-    )
-
-# NEUE HAUPTSEITE
+# NEUE HAUPTSEITE (ersetzt /app/dashboard)
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -80,7 +58,8 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "dashboard.html"
+            "page_content_template": "dashboard.html",
+            # "auth_token" wird nicht mehr benötigt (Cookie)
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -89,15 +68,7 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
     finally:
         db.close()
 
-@app.get("/app/protocol/{game_id}", response_class=HTMLResponse)
-def app_protocol_loader(game_id: int, request: Request):
-    return templates.TemplateResponse(
-        "protocol_loader.html",
-        {"request": request, "title": "Lade Protokoll", "game_id_to_load": game_id}
-    )
-
-# --- GESCHÜTZTE ROUTEN ---
-# Diese verwenden jetzt alle die importierte Cookie-Auth-Funktion
+# --- GESCHÜTZTE ROUTEN (Beispielhaft für alle Seiten) ---
 
 # 1. Team Management
 @app.get("/team-management", response_class=HTMLResponse)
@@ -112,7 +83,7 @@ def team_management_page(request: Request, current_trainer: Trainer = Depends(ge
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "team_management.html"
+            "page_content_template": "team_management.html",
         }
         return templates.TemplateResponse(
             "app_layout.html",
@@ -134,7 +105,7 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "game_planning.html"
+            "page_content_template": "game_planning.html", 
         }
         return templates.TemplateResponse(
             "app_layout.html",
@@ -156,7 +127,7 @@ def season_analysis_page(request: Request, current_trainer: Trainer = Depends(ge
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "season_analysis.html"
+            "page_content_template": "season_analysis.html",
         }
         return templates.TemplateResponse(
             "app_layout.html",
@@ -200,11 +171,15 @@ def start_server(application):
     uvicorn.run(application, host="127.0.0.1", port=8000, reload=False)
 
 if __name__ == "__main__":
-    print("Starte FastAPI-Server auf http://127.0.0.1:8000")
     t = threading.Thread(target=start_server, args=(app,), daemon=True)
     t.start()
 
-    print("Starte pywebview Fenster...")
-    webview.create_window("Handball Auswertung", "http://127.0.0.1:8000", width=1400, height=800)
+    # KORREKTUR: Der fehlerhafte 'cache_dir'-Parameter wurde entfernt.
+    webview.create_window(
+        "Handball Auswertung", 
+        "http://127.0.0.1:8000", 
+        width=1400, 
+        height=800
+    )
     webview.start()
 

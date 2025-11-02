@@ -1,7 +1,3 @@
-<!-- 
-Dies ist die neue Hauptseite "dashboard.html".
-Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus game_planning).
--->
 <div class="dashboard-grid">
     <div class="card">
         <div class="card-content">
@@ -27,9 +23,6 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
 </div>
 
 <script>
-    // --- Globale Variablen (geerbt vom Layout) ---
-    // global funcs: checkVerification, showToast, logout
-
     // --- Lokale Variablen ---
     let selectedTeamId = localStorage.getItem('selected_team_id');
     let selectedTeamName = localStorage.getItem('selected_team_name');
@@ -65,21 +58,16 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
         
         // Spielplan für das ausgewählte Team laden
         loadGames(teamId);
-
-        // KORREKTUR: Benachrichtige andere Seiten (falls ihre init-Funktionen bereits geladen sind)
-        if (typeof initGamePlanning === 'function') initGamePlanning();
-        if (typeof initSeasonAnalysis === 'function') initSeasonAnalysis();
     }
     
     async function loadTeams() {
         try {
             const response = await fetch('/teams/list', {
                 method: 'GET'
-                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
 
             if (response.status === 401 || response.status === 403) { 
-                logout(); // Globale Funktion aus app_layout.html
+                logout(); 
                 return; 
             }
             if (!response.ok) {
@@ -88,7 +76,6 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
 
             const teams = await response.json();
             
-            // Erst hier den Lade-Text entfernen
             teamListDiv.innerHTML = ''; 
             
             if (teams.length === 0) {
@@ -112,77 +99,64 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
                 });
                 teamListDiv.appendChild(teamItem);
                 
-                // Prüfen, ob dies das zuletzt ausgewählte Team war
                 if (team.id === parseInt(selectedTeamId)) {
                     initialTeamToSelect = team;
                 }
             });
             
-            // Auswahl Logik
             if (initialTeamToSelect) {
                 selectTeam(initialTeamToSelect.id, initialTeamToSelect.name);
             } else if (teams.length > 0) {
-                // Wähle automatisch das erste Team aus
                 selectTeam(teams[0].id, teams[0].name);
             }
 
         } catch (error) {
             console.error('Kritischer Fehler beim Laden der Teams:', error);
-            if (teamListDiv) { // Sicherheitscheck
-                teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams: ${error.message || 'Netzwerkfehler'}</p>`;
-            }
+            teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams: ${error.message || 'Netzwerkfehler'}</p>`;
         }
     }
 
-    // --- Spielplan-Logik (Kopiert von game_planning.html) ---
+    // --- Spielplan-Logik ---
     
     function startProtocol(gameId) {
-        if (!checkVerification()) return; // Globale Funktion
+        if (!checkVerification()) return; 
         
-        // KORREKTUR: Token wird nicht mehr in der URL benötigt
-        let url = `/protocol/${gameId}`;
-        window.location.href = url;
+        window.location.href = `/protocol/${gameId}`;
     }
     
     async function deleteGame(gameId) {
-        if (!checkVerification()) return; // Globale Funktion
+        if (!checkVerification()) return; 
         if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
         
         try {
             const response = await fetch(`/games/delete/${gameId}`, {
                 method: 'DELETE'
-                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
             if (response.ok) {
-                showToast("Spiel erfolgreich gelöscht.", "success"); // Globale Funktion
+                showToast("Spiel erfolgreich gelöscht.", "success");
                 loadGames(selectedTeamId); 
             } else {
                 const data = await response.json();
-                showToast(`Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`, "error"); // Globale Funktion
+                showToast(`Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`, "error");
             }
         } catch (error) {
-            showToast('Serverfehler beim Löschen des Spiels.', "error"); // Globale Funktion
+            showToast('Serverfehler beim Löschen des Spiels.', "error");
         }
     }
 
     async function loadGames(teamId) {
-        if (gameListContainer) {
-            gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
-        }
+        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         
         if (!teamId) {
-            if (gameListContainer) {
-                gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team auswählen.</p>';
-            }
+            gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team auswählen.</p>';
             return;
         }
         
         try {
             const response = await fetch(`/games/list/${teamId}`, {
                 method: 'GET'
-                // KORREKTUR: Kein 'Authorization'-Header mehr nötig.
             });
-            if (response.status === 401 || response.status === 403) { logout(); return; } // Globale Funktion
+            if (response.status === 401 || response.status === 403) { logout(); return; }
             if (!response.ok) throw new Error('Fehler beim Laden des Spielplans.');
                 
             const games = await response.json();
@@ -193,7 +167,6 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
                 return;
             }
             
-            // Gruppierungslogik (identisch zu game_planning)
             const groupedGames = {
                 'Saison': [],
                 'Testspiel': [],
@@ -234,7 +207,7 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
                             </div>
                             <div class="game-actions">
                                 <button class="btn btn-info btn-inline" onclick="startProtocol(${game.id})">Protokoll</button>
-                                <button class="btn btn-danger btn-inline" onclick="deleteGame(${game.id})">Löschen</button>
+                                <button class="btn btn-danger btn-inline-delete" onclick="deleteGame(${game.id})">Löschen</button>
                             </div>
                         </div>
                     `;
@@ -267,9 +240,7 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
             }
             gameListContainer.innerHTML = finalHtml;
         } catch (error) {
-            if (gameListContainer) {
-                gameListContainer.innerHTML = `<p class="error">FEHLER beim Laden des Spielplans.</p>`;
-            }
+            gameListContainer.innerHTML = `<p class="error">FEHLER beim Laden des Spielplans.</p>`;
         }
     }
 
@@ -279,7 +250,6 @@ Sie kombiniert die Team-Auswahl (aus team_management) und die Spiel-Liste (aus g
         loadTeams();
     }
     
-    // KORREKTUR: Der Selbst-Aufruf am Ende wurde entfernt.
-    // Die 'app_layout.html' ruft 'initDashboard()' auf.
+    // KORREKTUR: Selbstaufruf wieder hinzugefügt
+    initDashboard();
 </script>
-

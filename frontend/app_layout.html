@@ -132,9 +132,15 @@
         }
         .analysis-grid {
              display: grid;
+            grid-template-columns: 1fr; 
+            gap: 20px;
+        }
+        .analysis-grid-2-col {
+             display: grid;
             grid-template-columns: 2fr 1fr; 
             gap: 20px;
         }
+        
         .card {
             background: rgba(255, 255, 255, 0.15);
             padding: 20px;
@@ -171,7 +177,6 @@
         }
         
         .btn {
-            /* KORREKTUR: width: 100% wurde entfernt, um Button-Größen flexibler zu machen */
             padding: 12px 15px;
             border: none;
             border-radius: 5px;
@@ -187,7 +192,6 @@
             text-decoration: none;
             box-sizing: border-box;
         }
-        /* KORREKTUR: Eigene Klasse für Buttons, die die volle Breite haben sollen */
         .btn.btn-full-width {
             width: 100%;
         }
@@ -225,7 +229,6 @@
             margin: 0 5px;
         }
         
-        /* KORREKTUR: Neue Klasse für kleine Lösch-Buttons in Listen */
         .btn-inline-delete {
             width: auto;
             padding: 6px 10px;
@@ -274,6 +277,12 @@
         .player-list-item span {
             font-size: 1.1em;
         }
+        .player-list-item .btn-danger {
+            width: auto; 
+            padding: 5px 10px; 
+            font-size: 0.85em; 
+            margin-top: 0; 
+        }
         
         .custom-action-list-item {
             display: flex;
@@ -284,7 +293,13 @@
             border-radius: 4px;
             margin-bottom: 5px;
         }
-
+        .custom-action-list-item .btn-danger {
+            width: auto; 
+            padding: 5px 10px; 
+            font-size: 0.85em; 
+            margin-top: 0; 
+        }
+        
         /* Spielplan-Liste */
         .game-list-item {
             display: flex;
@@ -481,6 +496,99 @@
             display: block;
         }
         
+        /* --- CSS FÜR SHOT CHART (PHASE 8) --- */
+        .shot-chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Begrenzt die maximale Breite */
+            margin: 15px auto 0 auto;
+            /* KORREKTUR: 1:1 Aspekt (Halbfeld 20x20m) */
+            padding-bottom: 100%; 
+            /* KORREKTUR: Hintergrund weiß */
+            background-color: #ffffff; 
+            border: 2px solid #000; /* KORREKTUR: Schwarzer Rand */
+            box-sizing: border-box;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .svg-handball-pitch {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        .svg-handball-pitch path,
+        .svg-handball-pitch line,
+        .svg-handball-pitch rect {
+            /* KORREKTUR: Schwarze Linien */
+            stroke: #000000;
+            stroke-width: 2px; /* Skaliert mit viewBox */
+            fill: none;
+        }
+        .svg-handball-pitch .dashed-line {
+            stroke-dasharray: 8, 8; /* Größere Striche */
+        }
+        .shot-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2; /* Liegt über dem SVG */
+            cursor: crosshair;
+        }
+        /* KORREKTUR: Text im Overlay (z.B. "Keine Wurfdaten") auf schwarz */
+        .shot-overlay p {
+            color: #000000;
+            opacity: 0.7;
+        }
+        .shot-dot {
+            position: absolute;
+            width: 10px; /* Größe des Punkts */
+            height: 10px; /* Größe des Punkts */
+            border-radius: 50%;
+            transform: translate(-50%, -50%); /* Zentriert den Punkt */
+            box-shadow: 0 0 5px rgba(0,0,0,0.7);
+            /* KORREKTUR: Schwarzer Rand für bessere Sichtbarkeit */
+            border: 1px solid rgba(0,0,0,0.7);
+        }
+        .shot-dot.goal {
+            background-color: #38E838; /* Grün für Tore */
+        }
+        .shot-dot.miss {
+            background-color: #f44336; /* Rot für Fehlwürfe */
+        }
+        
+        .shot-chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            /* KORREKTUR: Textfarbe auf weiß zurück (da es außerhalb des weißen Felds ist) */
+            color: #ffffff;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        .legend-color-box {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 8px;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .legend-color-box.goal {
+            background-color: #38E838;
+        }
+        .legend-color-box.miss {
+            background-color: #f44336;
+        }
+        /* --- ENDE SHOT CHART CSS --- */
+        
     </style>
 </head>
 <body>
@@ -501,9 +609,7 @@
 
     <div class="main-content">
         
-        <!-- 
-          Banner für Verifizierung (korrekt hier platziert)
-        --><div id="verification-banner" class="verification-banner">
+        <div id="verification-banner" class="verification-banner">
             <span>
                 ⚠️ Dein Konto ist nicht verifiziert. Bitte überprüfe dein E-Mail-Postfach (ggf. Spam).
             </span>
@@ -522,14 +628,13 @@
         </div>
     </div>
 
-    <!-- Toast-Container --><div id="toast-message" class="toast"></div>
+    <div id="toast-message" class="toast"></div>
 
     <script>
         // --- Globale Navigations- und Token-Logik ---
         
         const isVerified = {{ is_verified | tojson }};
         
-        // Wir speichern das, damit protocol.html (standalone) es lesen kann
         localStorage.setItem('is_verified', isVerified); 
         
         if (!isVerified) {
@@ -539,7 +644,6 @@
         function updateNavLinks() {
             document.querySelectorAll('.nav-link').forEach(link => {
                 const url = new URL(link.href);
-                // KEINE Query-Parameter für Tokens mehr nötig.
                 
                 if (url.pathname === window.location.pathname) {
                     link.classList.add('active');
@@ -550,12 +654,10 @@
         }
         
         function logout() {
-            // Sende einen Request an den /logout Endpunkt, um das HttpOnly Cookie zu löschen
             fetch('/auth/logout', { 
                 method: 'POST' 
             })
             .finally(() => {
-                // Lösche alle lokalen Daten und gehe zur Login-Seite
                 localStorage.removeItem('is_verified');
                 localStorage.removeItem('selected_team_id');
                 localStorage.removeItem('selected_team_name');
@@ -566,7 +668,6 @@
         updateNavLinks();
         
         // --- Globale Verifizierungs- und Toast-Logik ---
-        // KORREKTUR: showToast als globalShowToast definieren, damit protocol.html sie finden kann
         const globalShowToast = function(message, type = 'info') {
             const toast = document.getElementById('toast-message');
             if (!toast) return;
@@ -576,12 +677,10 @@
                 toast.className = toast.className.replace('show', '');
             }, 3000);
         }
-        // Alte Referenz beibehalten
         const showToast = globalShowToast;
 
 
         function checkVerification() {
-            // Liest den Status aus dem LocalStorage (wird beim Laden dieser Seite gesetzt)
             const currentIsVerified = localStorage.getItem('is_verified') === 'true';
 
             if (currentIsVerified) {
@@ -592,41 +691,21 @@
             }
         }
         
-        // --- KORREKTUR: Zentraler Skript-Aufruf ---
-        // Diese Logik stellt sicher, dass die init-Funktion der jeweiligen Seite
-        // (z.B. initDashboard() in dashboard.html) aufgerufen wird,
-        // NACHDEM die Seite geladen wurde.
-        
         const currentPage = "{{ page_content_template }}";
         
-        // Wir warten, bis das Dokument (inkl. der Skripte aus den include-Dateien)
-        // vollständig geladen und verarbeitet wurde.
         document.addEventListener('DOMContentLoaded', (event) => {
-            // KORREKTUR: Stelle sicher, dass die Buttons die Klasse btn-full-width haben,
-            // wo sie 100% Breite benötigen (z.B. in Formularen)
+            // Stelle sicher, dass Buttons in Formularen die volle Breite haben
             document.querySelectorAll('form .btn').forEach(btn => {
                 if (!btn.classList.contains('btn-inline') && !btn.classList.contains('btn-inline-delete')) {
                     btn.classList.add('btn-full-width');
                 }
             });
 
-
-            if (currentPage === 'dashboard.html' && typeof initDashboard === 'function') {
-                initDashboard();
-            } else if (currentPage === 'team_management.html' && typeof initTeamManagement === 'function') {
-                initTeamManagement();
-            } else if (currentPage === 'game_planning.html' && typeof initGamePlanning === 'function') {
-                initGamePlanning();
-            } else if (currentPage === 'season_analysis.html' && typeof initSeasonAnalysis === 'function') {
-                initSeasonAnalysis();
-            } else if (currentPage === 'protocol.html' && typeof initProtocol === 'function') {
-                // protocol.html wird nicht über das Layout geladen,
-                // aber der Vollständigkeit halber hier drin
-                initProtocol();
-            }
+            // KORREKTUR: Die 'init'-Funktionen werden jetzt am Ende jeder
+            // jeweiligen HTML-Datei (z.B. dashboard.html) selbst aufgerufen.
+            // Das ist stabiler als der Versuch, sie von hier aus zu starten.
         });
 
     </script>
 </body>
 </html>
-

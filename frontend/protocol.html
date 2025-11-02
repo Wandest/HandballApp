@@ -329,13 +329,15 @@
             cursor: pointer;
         }
         
+        /* ================================================== */
+        /* HIER BEGINNT DIE KORREKTUR (protocol.html)       */
+        /* ================================================== */
         .pitch-container {
             position: relative;
             width: 100%;
-            /* KORREKTUR: 1:1 Seitenverhältnis für 20x20m Feldhälfte */
             padding-bottom: 100%; 
-            background-color: #006400; /* Dunkelgrün für das Feld */
-            border: 2px solid #fff;
+            background-color: #ffffff; /* NEU: Weiss */
+            border: 2px solid #000;    /* NEU: Schwarz */
             box-sizing: border-box;
             border-radius: 5px;
             overflow: hidden;
@@ -348,7 +350,6 @@
             left: 0;
             width: 100%;
             height: 100%;
-            /* KORREKTUR: Canvas wird nicht mehr benötigt, Klicks gehen auf das SVG */
             z-index: 2; 
         }
         .pitch-instructions {
@@ -358,7 +359,6 @@
             color: #ffcc00;
         }
         
-        /* --- KORREKTUR: SVG STYLING --- */
         .svg-handball-pitch {
             position: absolute;
             top: 0;
@@ -370,10 +370,13 @@
         .svg-handball-pitch path,
         .svg-handball-pitch line,
         .svg-handball-pitch rect {
-            stroke: white;
-            stroke-width: 2px; /* Skaliert mit viewBox */
+            stroke: black;         /* NEU: Schwarz */
+            stroke-width: 2px; 
             fill: none;
         }
+        /* ================================================== */
+        /* HIER ENDET DIE KORREKTUR (protocol.html)         */
+        /* ================================================== */
         .svg-handball-pitch .dashed-line {
             stroke-dasharray: 8, 8;
         }
@@ -382,8 +385,6 @@
 </head>
 <body>
     
-    <!-- Banner wird von JS eingefügt, falls nötig -->
-
     <div class="header">
         <button class="btn btn-info header-button" onclick="leaveProtocol()">⬅️ Dashboard</button>
         <div class="match-info">
@@ -409,12 +410,10 @@
 
         <div class="action-controls">
             <h3>Meine Aktionen</h3>
-            <!-- KORREKTUR: Buttons öffnen jetzt das Modal -->
             <button class="btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
             <button class="btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
             <button class="btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
             <button class="btn-miss" onclick="showShotModal('Miss', true)">🧱 7m verworfen</button>
-            <!-- KORREKTUR: Tech. Fehler öffnet jetzt das Modal -->
             <button class="btn-error" onclick="showShotModal('TechError', false)">⚠️ Technischer Fehler</button>
             <button class="btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
             <hr class="divider">
@@ -482,35 +481,21 @@
         </div>
     </div>
     
-    <!-- KORREKTUR (PHASE 8): SHOT MODAL -->
     <div id="shot-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeShotModal()">&times;</span>
             <h3 id="shot-modal-title" class="pitch-instructions">Aktion eintragen:</h3>
             
-            <!-- KORRIGIERTES SVG-FELD -->
             <div class="pitch-container" onclick="logShotWithCoordinates(event)">
-                <!-- 
-                    SVG-Koordinatensystem (viewBox):
-                    Basis ist ein 20x20 Meter (200x200 Einheiten) Feld.
-                    (0,0) ist oben links (an der Torauslinie, linke Ecke).
-                    (0, 100) ist die Tormitte.
-                    (200, 100) ist die Mittellinie.
-                -->
                 <svg viewBox="0 0 200 200" class="svg-handball-pitch" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Tor (3m breit = 15 Einheiten) -->
-                    <rect x="-2" y="92.5" width="2" height="15" fill="white" stroke="white" stroke-width="2" />
+                    <rect x="-2" y="92.5" width="2" height="15" fill="black" stroke="black" stroke-width="2" />
 
-                    <!-- 6m Torraumlinie (Radius 6m = 60 Einheiten, von Pfosten 0,92.5 und 0,107.5) -->
                     <path d="M 0 32.5 A 60 60 0 0 1 60 92.5 L 60 107.5 A 60 60 0 0 1 0 167.5" />
                     
-                    <!-- 9m Freiwurflinie (Radius 9m = 90 Einheiten, von Pfosten 0,92.5 und 0,107.5) -->
                     <path d="M 0 2.5 A 90 90 0 0 1 90 92.5 L 90 107.5 A 90 90 0 0 1 0 197.5" class="dashed-line" />
                     
-                    <!-- 7m Marke (bei 7m = 70 Einheiten) -->
                     <line x1="70" y1="95" x2="70" y2="105" />
                     
-                    <!-- 4m Torwartlinie (bei 4m = 40 Einheiten) -->
                     <line x1="40" y1="95" x2="40" y2="105" />
                 </svg>
                 
@@ -521,7 +506,6 @@
             </p>
         </div>
     </div>
-    <!-- ENDE SHOT MODAL -->
 
     <script>
         // --- Globale Konstanten ---
@@ -545,7 +529,6 @@
         // Shot Modal DOM
         const SHOT_MODAL = document.getElementById('shot-modal');
         const SHOT_MODAL_TITLE = document.getElementById('shot-modal-title');
-        // KORREKTUR: Canvas entfernt
 
 
         let fullTeamRoster = []; 
@@ -560,8 +543,6 @@
         // --- Verifizierungs-Logik (Kopiert aus Layout) ---
         const IS_VERIFIED = (localStorage.getItem('is_verified') === 'true');
         
-        // KORREKTUR: showToast muss global definiert sein (passiert in app_layout.html)
-        // Hier nur ein Fallback, falls die Seite standalone geladen wird.
         if (typeof showToast === 'undefined') {
             const globalShowToast = function(message, type = 'info') {
                 let toast = document.getElementById('toast-message');
@@ -577,7 +558,6 @@
                     toast.className = toast.className.replace('show', '');
                 }, 3000);
             }
-            // Definiere showToast, wenn es nicht existiert
             var showToast = globalShowToast;
         }
 
@@ -609,7 +589,7 @@
         // --- ENDE Verifizierung ---
 
         // --- Hilfsfunktionen ---
-        function leaveProtocol() { window.location.href = "/dashboard"; } // KORRIGIERT: Geht zum Dashboard
+        function leaveProtocol() { window.location.href = "/dashboard"; } 
         
         function updateAllStats() {
             updateScoreDisplay();
@@ -688,35 +668,28 @@
             pendingIsSevenMeter = false;
         }
         
-        // Modal bei Klick außerhalb schließen
         SHOT_MODAL.addEventListener('click', function(event) {
             if (event.target === SHOT_MODAL) {
                 closeShotModal();
             }
         });
         
-        // KORREKTUR: Klick-Event-Handler
         function logShotWithCoordinates(event) {
-            // Stoppt das Event-Bubbling, damit der Klick auf den Container nicht das Modal schließt
             event.stopPropagation(); 
             
-            const container = event.currentTarget; // .pitch-container
+            const container = event.currentTarget; 
             const rect = container.getBoundingClientRect();
             
-            // Berechne Klick relativ zum Container
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
 
-            // Umrechnung in Prozent basierend auf der Container-Größe
             const xCoord = (x / rect.width) * 100;
             const yCoord = (y / rect.height) * 100;
 
             console.log(`Koordinaten: X=${xCoord.toFixed(1)}%, Y=${yCoord.toFixed(1)}%`);
             
-            // Logge die Aktion mit den Koordinaten
             logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, xCoord, yCoord);
             
-            // Schließe das Modal und setze die temporären Variablen zurück
             closeShotModal();
         }
         
@@ -728,7 +701,6 @@
                  alert("Bitte wähle einen eigenen Spieler.");
                  return;
             }
-            // Für Nicht-Wurf-Aktionen (wie 7m verursacht)
             if (actionType === 'SEVEN_METER_CAUSED') {
                 logAction(actionType, selectedPlayerId, false, null, null);
             } else {
@@ -742,7 +714,6 @@
                  alert("Bitte wähle einen eigenen Spieler.");
                  return;
             }
-            // Logge Custom Action ohne Koordinaten
             logAction(actionName, selectedPlayerId, false, null, null);
         }
         
@@ -763,16 +734,14 @@
 
         function handleOpponentAction(actionType) {
             if (!checkVerification()) return;
-            // Gegner-Aktionen werden ohne Spieler-ID und Koordinaten geloggt
             logAction(actionType, null, false, null, null);
         }
 
-        // AKTION protokollieren (Haupt-Logger mit Koordinaten-Support)
         async function logAction(actionType, playerId = null, isSevenMeter = false, xCoord = null, yCoord = null) {
             
             const payload = {
                 action_type: actionType, 
-                time_in_game: "N/A", // Zeit wird vom Server (oder später vom Timer) geholt
+                time_in_game: "N/A", 
                 game_id: GAME_ID, 
                 player_id: playerId,
                 is_seven_meter: isSevenMeter,
@@ -783,7 +752,7 @@
             try {
                 const response = await fetch('/actions/add', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }, // KEIN Auth-Header
+                    headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(payload),
                 });
                 if (response.ok) { 
@@ -804,14 +773,13 @@
             } catch (error) { console.error('Protokollfehler:', error); }
         }
         
-        // Restliche Funktionen (loadActionLog, loadStats, Roster-Logik) bleiben unverändert.
         async function deleteAction(actionId) {
             if (!checkVerification()) return;
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
 
             try {
                 const response = await fetch(`/actions/delete/${actionId}`, {
-                    method: 'DELETE' // KEIN Auth-Header
+                    method: 'DELETE' 
                 });
                 if (response.ok) { updateAllStats(); } 
                 else { alert('Aktion konnte nicht gelöscht werden.'); }
@@ -821,7 +789,7 @@
         async function updateScoreDisplay() {
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) { 
@@ -845,7 +813,7 @@
             STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             try {
                 const response = await fetch(`/actions/stats/opponent/${GAME_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Gegner-Stats-Daten nicht gefunden');
@@ -878,7 +846,7 @@
         async function loadActionLog() {
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Log-Daten nicht gefunden');
@@ -904,7 +872,6 @@
                                     <th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
                 
-                // .reverse() ist nicht nötig, da der Server bereits sortiert (desc) liefert
                 actions.forEach(action => { 
                     let actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
                     
@@ -935,7 +902,7 @@
             
             try {
                 const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
 
                 if (response.status === 401 || response.status === 403) return logout();
@@ -976,7 +943,7 @@
 
             try {
                 const response = await fetch(`/actions/stats/${GAME_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
 
                 if (response.status === 401 || response.status === 403) return logout();
@@ -1082,7 +1049,7 @@
         async function loadFullTeamRoster() {
             try {
                 const response = await fetch(`/players/list/${TEAM_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Team-Kaders.');
@@ -1117,14 +1084,12 @@
                     #0 GEGNER (Simulation)
                 </label>
             `;
-            // Gegner-Simulation vorerst deaktiviert, bis Backend es unterstützt
-            // ROSTER_CHECKLIST_CONTAINER.appendChild(opponentItem);
         }
         
         async function loadGameRoster() {
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`, {
-                    method: 'GET' // KEIN Auth-Header
+                    method: 'GET' 
                 });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Spiel-Kaders.');
@@ -1148,7 +1113,6 @@
                     checkbox.checked = true;
                 }
             });
-            // Gegner-Checkbox-Logik entfernt
         }
         
         function buildActionPlayerButtons() {
@@ -1166,8 +1130,6 @@
                 PLAYER_BUTTONS_CONTAINER.appendChild(button);
             });
             
-            // Gegner-Button-Logik entfernt
-            
             if (!hasPlayers) {
                  PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Spieler für dieses Spiel ausgewählt. Bitte im Tab "Kader / Roster" festlegen.</p>';
             }
@@ -1181,15 +1143,13 @@
             const checkedBoxes = ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]:checked');
             const player_ids = Array.from(checkedBoxes)
                 .map(box => parseInt(box.dataset.playerId));
-                // .filter(id => id !== 0); // Gegner-Filter nicht mehr nötig
 
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }, // KEIN Auth-Header
+                    headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ 
                         player_ids: player_ids
-                        // include_opponent nicht mehr gesendet
                     }),
                 });
                 
@@ -1231,16 +1191,6 @@
             }
         }
         
-        // KORREKTUR: Die Initialisierung wird jetzt von app_layout.html aufgerufen,
-        // aber wir brauchen einen Fallback, falls protocol.html direkt aufgerufen wird
-        // (was es tut, da es kein 'page_content_template' ist).
-        
-        // KORREKTUR 2: protocol.html ist KEIN 'page_content_template'.
-        // Es wird direkt geladen. Daher MUSS es seine eigene Logik am Ende aufrufen.
-        // Die 'DOMContentLoaded'-Logik in app_layout.html greift hier nicht.
-        
-        // Globalen Toast-Puffer erstellen, falls app_layout nicht da ist
-        // (Doppelte Definition, um sicherzustellen, dass es existiert)
         if (typeof showToast === 'undefined') {
             const toast = document.createElement('div');
             toast.id = 'toast-message';
@@ -1256,10 +1206,8 @@
             }
         }
         
-        // Starte die Initialisierung für diese Seite
         document.addEventListener('DOMContentLoaded', initProtocol);
         
     </script>
 </body>
 </html>
-

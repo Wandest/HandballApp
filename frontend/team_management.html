@@ -60,6 +60,7 @@
     </div>
 </div>
 
+
 <div class="card" style="margin-top: 20px; grid-column: span 3;">
     <h2>Meine Mannschaften (Auswahl)</h2>
     <p style="font-size: 0.9em; opacity: 0.8;">Hier wählst du dein Team aus UND verwaltest die öffentliche Sichtbarkeit (für Liga-Scouting).</p>
@@ -171,11 +172,6 @@
         // Benachrichtige andere Seiten (Game Planning / Season Analysis), dass das Team gewechselt hat
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
-        
-        // Manuelle Aktualisierung der anderen Seiten (falls deren init-Funktionen geladen sind)
-        if (typeof initDashboard === 'function') initDashboard();
-        if (typeof initGamePlanning === 'function') initGamePlanning();
-        if (typeof initSeasonAnalysis === 'function') initSeasonAnalysis();
     }
     
     async function loadTeams() {
@@ -303,7 +299,7 @@
         playerMessageDiv.textContent = 'Lösche Spieler...';
         playerMessageDiv.className = 'message';
         try {
-            const response = await fetch(`/players/delete/${playerId}?team_id=${selectedTeamId}`, {
+            const response = await fetch(`/players/delete/${playerId}`, {
                 method: 'DELETE' // KEIN Auth-Header
             });
             if (response.ok) {
@@ -384,7 +380,6 @@
                 const positionDisplay = player.position ? ` (${player.position})` : '';
                 playerItem.innerHTML = `
                     <span>${numberDisplay} <strong>${player.name}</strong>${positionDisplay}</span>
-                    <!-- KORREKTUR: .btn-inline-delete Klasse hinzugefügt -->
                     <button class="btn btn-danger btn-inline-delete" onclick="deletePlayer(${player.id})">Löschen</button>
                 `;
                 playerListContainer.appendChild(playerItem);
@@ -439,7 +434,6 @@
                 const categoryDisplay = action.category ? ` (${action.category})` : '';
                 actionItem.innerHTML = `
                     <span><strong>${action.name}</strong>${categoryDisplay}</span>
-                    <!-- KORREKTUR: .btn-inline-delete Klasse hinzugefügt -->
                     <button class="btn btn-danger btn-inline-delete" onclick="deleteCustomAction(${action.id})">Löschen</button>
                 `;
                 customActionListContainer.appendChild(actionItem);
@@ -496,7 +490,6 @@
         await loadTeams(); 
     }
     
-    // KORREKTUR: Der Selbst-Aufruf am Ende wurde entfernt.
-    // Die 'app_layout.html' ruft 'initTeamManagement()' auf.
+    // KORREKTUR: Selbstaufruf wieder hinzugefügt
+    initTeamManagement();
 </script>
-

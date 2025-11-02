@@ -1,6 +1,4 @@
 # DATEI: backend/action.py
-# (KEINE ÄNDERUNGEN NÖTIG - Importiert `get_current_trainer` aus dem jetzt korrekten auth.py)
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, distinct
@@ -9,7 +7,6 @@ from typing import List, Optional, Dict, Any
 import re
 
 from backend.database import SessionLocal, Trainer, Team, Player, Game, Action, CustomAction, game_participations_table
-# Dieser Import funktioniert jetzt korrekt und nutzt die Cookie-Authentifizierung
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
@@ -57,13 +54,25 @@ class PlayerStats(BaseModel):
     seven_meter_saves: int
     seven_meter_received: int 
     saves: int
-    opponent_goals_received: int # Umbenannt von opponent_goals für Klarheit
+    opponent_goals_received: int 
     custom_counts: Dict[str, int] = {}
 
 class OpponentStats(BaseModel):
     opponent_goals: int
     opponent_misses: int
     opponent_tech_errors: int
+
+# --- NEUE MODELLE FÜR SHOT CHARTS ---
+class ShotData(BaseModel):
+    action_type: str
+    x_coordinate: float
+    y_coordinate: float
+
+class ShotDataResponse(BaseModel):
+    player_id: int
+    player_name: str
+    player_number: Optional[int]
+    shots: List[ShotData]
 
 # Datenbanksession
 def get_db():
@@ -489,3 +498,63 @@ def delete_action(
     db.delete(action)
     db.commit()
     return {"message": "Aktion erfolgreich gelöscht."}
+
+
+# --- NEUER ENDPUNKT (PHASE 8): SHOT CHART DATEN ---
+@router.get("/shots/season/{team_id}", response_model=List[ShotDataResponse])
+def get_season_shot_charts(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+
+    # 1. Finde alle "Saison"-Spiele des Teams
+    saison_games_ids = [g[0] for g in db.query(Game.id).filter(
+        Game.team_id == team_id,
+        Game.game_category == 'Saison'
+    ).all()]
+
+    if not saison_games_ids:
+        return [] # Keine Spiele, keine Würfe
+
+    # 2. Definiere Wurf-Aktionen
+    shot_action_types = ['Goal', 'Miss', 'Goal_7m', 'Miss_7m']
+
+    # 3. Hole alle Würfe mit Koordinaten für die Saisonspiele dieses Teams
+    shots_query = db.query(
+        Action.player_id,
+        Action.action_type,
+        Action.x_coordinate,
+        Action.y_coordinate,
+        Player.name,
+        Player.number
+    ).join(Player, Player.id == Action.player_id)\
+    .filter(
+        Action.game_id.in_(saison_games_ids),
+        Action.action_type.in_(shot_action_types),
+        Action.x_coordinate.isnot(None),
+        Action.y_coordinate.isnot(None)
+    ).all()
+
+    # 4. Gruppiere die Würfe nach Spieler
+    player_shots: Dict[int, Dict[str, Any]] = {}
+    for shot in shots_query:
+        if shot.player_id not in player_shots:
+            player_shots[shot.player_id] = {
+                "player_id": shot.player_id,
+                "player_name": shot.name or "Unbekannt",
+                "player_number": shot.number,
+                "shots": []
+            }
+        
+        player_shots[shot.player_id]["shots"].append(ShotData(
+            action_type=shot.action_type,
+            x_coordinate=shot.x_coordinate,
+            y_coordinate=shot.y_coordinate
+        ))
+
+    return list(player_shots.values())
+
