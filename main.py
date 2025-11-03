@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles # <--- 1. HINZUGEFÜGT
+from fastapi.staticfiles import StaticFiles 
 from typing import Optional
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
@@ -65,7 +65,6 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
             "page_content_template": "dashboard.html",
-            # "auth_token" wird nicht mehr benötigt (Cookie)
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -75,6 +74,7 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
         db.close()
 
 # --- GESCHÜTZTE ROUTEN (Beispielhaft für alle Seiten) ---
+# ... (deine anderen Seiten-Routen wie /team-management, etc.) ...
 
 # 1. Team Management
 @app.get("/team-management", response_class=HTMLResponse)
@@ -142,6 +142,32 @@ def season_analysis_page(request: Request, current_trainer: Trainer = Depends(ge
     finally:
         db.close()
 
+# ==================================================
+# KORREKTUR: NEUE SEITE FÜR LIGA-SCOUTING (DEIN WUNSCH)
+# ==================================================
+@app.get("/league-scouting", response_class=HTMLResponse)
+def league_scouting_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    db = SessionLocal()
+    try:
+        template_vars = {
+            "request": request,
+            "title": "Liga Scouting", # Neuer Titel
+            "trainer_name": current_trainer.username,
+            "is_verified": current_trainer.is_verified,
+            "leagues": get_league_list(),
+            "positions": POSITIONS,
+            "action_categories": ACTION_CATEGORIES,
+            # NEUES TEMPLATE:
+            "page_content_template": "league_scouting.html", 
+        }
+        return templates.TemplateResponse(
+            "app_layout.html",
+            template_vars
+        )
+    finally:
+        db.close()
+
+
 # Geschützte Route: Protokoll-Oberfläche
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
@@ -171,22 +197,23 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
 
 
 # ------------------------------------
-# SERVER-START-LOGIK
+# SERVER-START-LOGIK (Für ZWEI-TERMINAL-WORKFLOW)
 # ------------------------------------
-def start_server(application):
-    uvicorn.run(application, host="127.0.0.1", port=8000, reload=False)
+
+# Die start_server Funktion wird NICHT MEHR BENÖTIGT
 
 if __name__ == "__main__":
-    t = threading.Thread(target=start_server, args=(app,), daemon=True)
-    t.start()
-
-    # KORREKTUR: Der fehlerhafte 'cache_dir'-Parameter wurde entfernt.
-    # Die fehlerhafte webview.clear_cache() Zeile ist entfernt.
+    
+    # HINWEIS: Stelle sicher, dass der Uvicorn-Server
+    # in einem separaten Terminal läuft:
+    # > uvicorn main:app --reload
+    
+    # Wir starten NUR NOCH das pywebview-Fenster.
     webview.create_window(
         "Handball Auswertung", 
         "http://127.0.0.1:8000", 
         width=1400, 
         height=800
     )
-    # WICHTIG: debug=True beibehalten, um Caching-Probleme zu minimieren
+    # WICHTIG: debug=True beibehalten
     webview.start(debug=True)

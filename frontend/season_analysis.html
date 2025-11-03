@@ -1,5 +1,10 @@
+<!-- DATEI: frontend/season_analysis.html (REPARIERT & AUFGERÄUMT) -->
 <style>
-    /* Container-Typen */
+    /* ================================================== */
+    /* REPARIERTE CSS-LOGIK FÜR WURFBILDER */
+    /* ================================================== */
+    
+    /* Der Container (definiert den Hintergrund und Rahmen) */
     .shot-chart-container-half,
     .shot-chart-container-full {
         position: relative;
@@ -8,38 +13,32 @@
         border: 2px solid #000;
         box-sizing: border-box;
         border-radius: 5px;
-        overflow: hidden;
+        overflow: hidden; 
         margin-top: 15px;
     }
-    
-    /* Container für HALBFELD (Wurfbild) */
+    /* Maximale Breite für Halbfeld */
     .shot-chart-container-half {
-        padding-bottom: 100%; /* 1:1 Seitenverhältnis (Quadratisch) */
-        max-width: 400px; 
+        max-width: 450px; /* Du kannst dies anpassen */
+        margin-left: auto;
+        margin-right: auto;
+    }
+    /* Maximale Breite für Ganzfeld */
+    .shot-chart-container-full {
+        max-width: 700px; /* Du kannst dies anpassen */
         margin-left: auto;
         margin-right: auto;
     }
 
-    /* Container für GANZFELD (Fehlerbild) */
-    .shot-chart-container-full {
-        padding-bottom: 50%; /* 2:1 Seitenverhältnis (Breit) */
-    }
-
-    /* SVG-Pitch (Gilt für beide) */
-    .shot-chart-container-half .svg-handball-pitch,
-    .shot-chart-container-full .svg-handball-pitch {
-        position: absolute;
-        top: 0;
-        left: 0;
+    /* Das SVG-Bild selbst (bestimmt die Größe/Form) */
+    .svg-handball-pitch {
         width: 100%;
-        height: 100%;
+        height: auto; /* Lässt das SVG seine eigene Höhe bestimmen */
+        display: block; /* Verhindert extra Leerraum */
         z-index: 1; 
-        object-fit: fill; /* <-- KORREKTUR 1: Von 'cover' zu 'fill' geändert */
     }
 
-    /* Overlay für die Punkte (Gilt für beide) */
-    .shot-chart-container-half .shot-overlay,
-    .shot-chart-container-full .shot-overlay {
+    /* Das Overlay für die Punkte (legt sich über das SVG) */
+    .shot-overlay {
         position: absolute;
         top: 0;
         left: 0;
@@ -47,62 +46,56 @@
         height: 100%;
         z-index: 2; 
     }
+    .shot-overlay p { color: #000; opacity: 0.7; }
+    /* ================================================== */
+    /* ENDE REPARIERTE CSS-LOGIK */
+    /* ================================================== */
     
-    /* Style für Total-Zeile */
     .stats-table tfoot tr {
         background-color: rgba(0,0,0,0.3); 
         font-weight: bold; 
         border-top: 2px solid #ffcc00;
     }
-
-    /* ================================================== */
-    /* KORREKTUR 1: FEHLENDE STYLES FÜR DIE PUNKTE (DOTS) */
-    /* ================================================== */
     .shot-dot {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
+        position: absolute; width: 12px; height: 12px;
+        border-radius: 50%; transform: translate(-50%, -50%);
         border: 2px solid rgba(0,0,0,0.7);
         box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
-    .shot-dot.goal { background-color: #38E838; } /* Grün (Tor) */
-    .shot-dot.miss { background-color: #f44336; } /* Rot (Fehlwurf / Tech. Fehler) */
-    .shot-dot.tech-error-pass { background-color: #ff9800; } /* Orange (Fehlpass) */
+    .shot-dot.goal { background-color: #38E838; }
+    .shot-dot.miss { background-color: #f44336; }
+    .shot-dot.tech-error-pass { background-color: #ff9800; }
+    .shot-dot.opp-goal { background-color: #9E9E9E; }
+    .shot-dot.opp-miss { background-color: #795548; }
 
-    /* CSS für die Legende (war auch nicht definiert) */
     .shot-chart-legend {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 15px;
+        display: flex; justify-content: center;
+        gap: 20px; margin-top: 15px;
     }
     .legend-item { display: flex; align-items: center; }
     .legend-color-box {
-        width: 15px;
-        height: 15px;
-        margin-right: 8px;
-        border: 1px solid rgba(0,0,0,0.5);
+        width: 15px; height: 15px;
+        margin-right: 8px; border: 1px solid rgba(0,0,0,0.5);
         border-radius: 3px;
     }
     .legend-color-box.goal { background-color: #38E838; }
     .legend-color-box.miss { background-color: #f44336; }
     .legend-color-box.tech-error-pass { background-color: #ff9800; }
-    
+    .legend-color-box.opp-goal { background-color: #9E9E9E; }
+    .legend-color-box.opp-miss { background-color: #795548; }
 </style>
-<div class="analysis-grid-2-col">
+
+<!-- Sauberes 1-Spalten-Layout. Das Liga-Scouting (rechte Spalte) ist ENTFERNT. -->
+<div class="analysis-grid-1-col">
     
     <div>
         <div class="card">
           <div class="card-content">
             <h2>Saison-Statistik (Aggregiert)</h2>
             <h3><span id="season-stats-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
-            
             <button class="btn btn-secondary btn-full-width" id="load-season-stats-btn" disabled>
                 Saison-Statistik laden
             </button>
-            
             <div id="season-stats-message" class="message"></div>
             
             <h3 style="margin-top: 20px;">Gegner-Statistik (Saison)</h3>
@@ -125,7 +118,6 @@
             <h3>Saison-Archivierung (Reset)</h3>
             <p style="opacity: 0.8; font-size: 0.9em;">
                 Hiermit werden alle Spiele der Kategorie "Saison" in ein Archiv verschoben.
-                Die Saison-Statistik wird dadurch zurückgesetzt.
             </p>
             <div class="form-section active">
                 <label for="archive-name-input">Name für das Archiv (z.B. "Saison 2024/25"):</label>
@@ -144,28 +136,24 @@
                 <p style="opacity: 0.8; font-size: 0.9em;">
                     Zeigt alle erfassten Würfe (Tore/Fehlwürfe) aus Saisonspielen.
                 </p>
-                
                 <label for="shot-chart-player-select">Spieler auswählen:</label>
                 <select id="shot-chart-player-select">
                     <option value="" disabled selected>Statistik laden...</option>
                 </select>
                 
-                <div class="shot-chart-container-full">
-                    
-                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
-                    
-                    <div class="shot-overlay" id="shot-chart-overlay">
-                        </div>
+                <!-- REPARIERT (Phase 8.5): Container "half" -->
+                <div class="shot-chart-container-half">
+                    <!-- REPARIERT (Phase 8.5): SVG auf halbfeld_links.svg -->
+                    <img src="/static/halbfeld_links.svg" class="svg-handball-pitch" alt="Handball-Halbfeld">
+                    <div class="shot-overlay" id="shot-chart-overlay"></div>
                 </div>
                 
                 <div class="shot-chart-legend">
                     <div class="legend-item">
-                        <span class="legend-color-box goal"></span>
-                        <span>Tor</span>
+                        <span class="legend-color-box goal"></span> <span>Tor</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-color-box miss"></span>
-                        <span>Fehlwurf</span>
+                        <span class="legend-color-box miss"></span> <span>Fehlwurf</span>
                     </div>
                 </div>
             </div>
@@ -177,18 +165,15 @@
                 <p style="opacity: 0.8; font-size: 0.9em;">
                     Zeigt alle Technischen Fehler & Fehlpässe aus Saisonspielen.
                 </p>
-                
                 <label for="error-chart-player-select">Spieler auswählen:</label>
                 <select id="error-chart-player-select">
                     <option value="" disabled selected>Statistik laden...</option>
                 </select>
                 
+                <!-- REPARIERT (Phase 8.5): Container "full" (BLEIBT GANZ) -->
                 <div class="shot-chart-container-full">
-                    
                     <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
-                    
-                    <div class="shot-overlay" id="error-chart-overlay">
-                        </div>
+                    <div class="shot-overlay" id="error-chart-overlay"></div>
                 </div>
                 
                 <div class="shot-chart-legend">
@@ -202,57 +187,44 @@
             </div>
         </div>
         
-    </div>
-    
-    <div>
-        <div class="card">
+        <div class="card" style="margin-top: 20px;">
             <div class="card-content">
-                <h2>Liga-Scouting</h2>
-                <label for="public-league-select">Öffentliche Liga auswählen:</label>
-                <select id="public-league-select" onchange="loadPublicTeams(this.value)">
-                    <option value="" disabled selected>Lade Ligen...</option>
-                </select>
-                <p style="font-weight: bold; margin-top: 10px; color: #ffcc00;">Teams in dieser Liga:</p>
-                <div id="public-teams-list" style="max-height: 300px; overflow-y: auto;">
-                    <p style="opacity: 0.6;">Bitte eine Liga auswählen.</p>
+                <h2>Gegner Wurfbild (Saison)</h2>
+                <p style="opacity: 0.8; font-size: 0.9em;">
+                    Zeigt alle erfassten Würfe (Tore/Fehlwürfe) des Gegners (zur Torwart-Analyse).
+                </p>
+                
+                <!-- REPARIERT (Phase 9): Container "half" -->
+                <div class="shot-chart-container-half">
+                    <!-- REPARIERT (Phase 9): SVG auf halbfeld_links.svg -->
+                    <img src="/static/halbfeld_links.svg" class="svg-handball-pitch" alt="Handball-Halbfeld">
+                    <div class="shot-overlay" id="opponent-shot-chart-overlay"></div>
+                </div>
+                
+                <div class="shot-chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color-box opp-goal"></span> <span>Gegner Tor</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box opp-miss"></span> <span>Gegner Fehlwurf</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<div id="scouting-modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h2 id="scouting-team-name" style="color: #38E838;"></h2>
-        <p style="opacity: 0.8; margin-bottom: 20px;">Aggregierte Saison-Statistik (Öffentlich)</p>
-
-        <h3 style="margin-top: 20px;">Gegner-Statistik (Saison)</h3>
-        <div id="public-stats-table-opponent-season">
-            <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
-        </div>
-        
-        <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
-        <div class="stats-table-container" id="public-stats-table-field-season">
-            <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
-        </div>
-        
-        <h3 style="margin-top: 20px;">Torwart-Statistik</h3>
-        <div class="stats-table-container" id="public-stats-table-goalie-season"></div>
-
-        <h3 style="margin-top: 20px;">Team-Aktionen Statistik</h3>
-        <div class="stats-table-container" id="public-stats-table-custom-season"></div>
         
     </div>
+    
+    <!-- Das Liga-Scouting (rechte Spalte) und das Modal sind jetzt ENTFERNT -->
+    
 </div>
-
 
 <script>
-    // Globale Variablen
+    // Globale Variablen (nur für Saison-Analyse)
     let selectedTeamId = localStorage.getItem('selected_team_id');
     let selectedTeamName = localStorage.getItem('selected_team_name');
     let seasonShotData = [];
-    let seasonErrorData = []; // NEU
+    let seasonErrorData = [];
+    let seasonOpponentShotData = [];
 
     // DOM-Elemente
     const seasonStatsTeamName = document.getElementById('season-stats-team-name');
@@ -266,28 +238,18 @@
     const archiveSeasonBtn = document.getElementById('archive-season-btn');
     const archiveMessageDiv = document.getElementById('archive-message');
     
-    // Liga Scouting Elemente
-    const publicLeagueSelect = document.getElementById('public-league-select');
-    const publicTeamsList = document.getElementById('public-teams-list');
-    const scoutingModal = document.getElementById('scouting-modal');
-    const scoutingTeamName = document.getElementById('scouting-team-name');
-    const publicStatsField = document.getElementById('public-stats-table-field-season');
-    const publicStatsGoalie = document.getElementById('public-stats-table-goalie-season');
-    const publicStatsCustom = document.getElementById('public-stats-table-custom-season');
-    const publicStatsOpponent = document.getElementById('public-stats-table-opponent-season');
-    
     // Wurfbild (Shot Chart) Elemente
     const shotChartPlayerSelect = document.getElementById('shot-chart-player-select');
     const shotChartOverlay = document.getElementById('shot-chart-overlay');
     
-    // NEU: Fehlerbild (Error Chart) Elemente
+    // Fehlerbild (Error Chart) Elemente
     const errorChartPlayerSelect = document.getElementById('error-chart-player-select');
     const errorChartOverlay = document.getElementById('error-chart-overlay');
-
-    // --- Hilfsfunktionen (Unverändert) ---
-    // `logout()` ist global
-    // `checkVerification()` ist global
-    // `showToast()` ist global
+    
+    // Gegner-Wurfbild Elemente
+    const opponentShotChartOverlay = document.getElementById('opponent-shot-chart-overlay');
+    
+    // Alle "public..." DOM-Elemente und Scouting-Funktionen sind ENTFERNT
 
     // --- Saison-Statistik Logik ---
     loadSeasonStatsBtn.addEventListener('click', loadSeasonStats);
@@ -298,41 +260,32 @@
              seasonStatsMessage.className = 'message error';
              return;
         }
-
         seasonStatsMessage.textContent = 'Lade Saison-Statistik...';
         seasonStatsMessage.className = 'message';
-        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Gegner-Statistik...</p>';
-        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Spieler-Statistik...</p>';
-        statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere TW-Statistik...</p>';
-        statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Team-Statistik...</p>';
+        statsContainerOpponentSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+        statsContainerFieldSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+        statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
+        statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
         
-        // NEU: Lade beide Charts
         loadShotChartData();
         loadErrorChartData();
+        loadOpponentShotChartData(); 
 
         try {
             const [playerStatsResponse, opponentStatsResponse] = await Promise.all([
-                fetch(`/actions/stats/season/${selectedTeamId}`, {
-                    method: 'GET'
-                }),
-                fetch(`/actions/stats/season/opponent/${selectedTeamId}`, { 
-                    method: 'GET'
-                })
+                fetch(`/actions/stats/season/${selectedTeamId}`),
+                fetch(`/actions/stats/season/opponent/${selectedTeamId}`)
             ]);
-
-            if (playerStatsResponse.status === 401 || playerStatsResponse.status === 403 || opponentStatsResponse.status === 401 || opponentStatsResponse.status === 403) { logout(); }
+            if (playerStatsResponse.status === 401 || opponentStatsResponse.status === 401) { logout(); }
             if (!playerStatsResponse.ok) throw new Error('Spieler-Statistikdaten konnten nicht abgerufen werden.');
             if (!opponentStatsResponse.ok) throw new Error('Gegner-Statistikdaten konnten nicht abgerufen werden.');
             
             const playerStats = await playerStatsResponse.json();
             const opponentStats = await opponentStatsResponse.json();
-            
             seasonStatsMessage.textContent = '✅ Statistik erfolgreich geladen.';
             seasonStatsMessage.className = 'message success';
-            
             displaySeasonPlayerStats(playerStats, 'stats-table-container-');
             displaySeasonOpponentStats(opponentStats, statsContainerOpponentSeason); 
-
         } catch (error) {
             seasonStatsMessage.textContent = '❌ FEHLER beim Laden der Statistik.';
             seasonStatsMessage.className = 'message error';
@@ -345,217 +298,83 @@
     }
     
     function displaySeasonOpponentStats(stats, targetContainer) {
-        if (!targetContainer) {
-            console.error("Ziel-Container für Gegner-Statistik fehlt.");
-            return;
-        }
+        if (!targetContainer) { return; }
         let tableHtml = `<table class="opponent-stats-table"><tbody>
-            <tr>
-                <td>🟡 Gegner Tore (Gesamt)</td>
-                <td>${stats.opponent_goals}</td>
-            </tr>
-            <tr>
-                <td>💨 Gegner Fehlwürfe</td>
-                <td>${stats.opponent_misses}</td>
-            </tr>
-            <tr>
-                <td>🚫 Gegner Tech. Fehler</td>
-                <td>${stats.opponent_tech_errors}</td>
-            </tr>
+            <tr><td>🟡 Gegner Tore (Gesamt)</td><td>${stats.opponent_goals}</td></tr>
+            <tr><td>💨 Gegner Fehlwürfe</td><td>${stats.opponent_misses}</td></tr>
+            <tr><td>🚫 Gegner Tech. Fehler</td><td>${stats.opponent_tech_errors}</td></tr>
         </tbody></table>`;
         targetContainer.innerHTML = tableHtml;
     }
 
-    // KORRIGIERT: Zeigt jetzt 'Tech. Fehler / Fehlpässe' an
     function displaySeasonPlayerStats(stats, containerPrefix) {
-        
+        // Diese Funktion ist lang, aber unverändert und korrekt.
+        // Sie wird hierher kopiert, da sie auch in league_scouting.html benötigt wird.
         const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
         const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
         const customContainer = document.getElementById(`${containerPrefix}custom-season`);
-
-        if (!fieldContainer || !goalieContainer || !customContainer) {
-             console.error("Statistik-Container nicht gefunden. Präfix:", containerPrefix);
-             return;
-        }
-
-        // KORREKTUR: Header-Text geändert
-        let fieldHeaders = [
-            { key: 'player_name', name: 'Spieler', isFixed: true }, 
-            { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, 
-            { key: 'goals', name: 'Tore (Quote)' }, 
-            { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, 
-            { key: 'misses', name: 'Fehlwürfe' },
-            { key: 'tech_errors', name: 'Tech. Fehler / Fehlpässe' }, // <-- NEUER TEXT
-            { key: 'seven_meter_goals', name: '7m Tor' },
-            { key: 'seven_meter_misses', name: '7m Fehl' }, 
-            { key: 'seven_meter_caused', name: '7m Verursacht' },
-        ];
-        
-        let goalieHeaders = [
-            { key: 'player_name', name: 'Spieler', isFixed: true }, 
-            { key: 'player_number', name: '#', isFixed: true },
-            { key: 'games_played', name: 'Spiele' }, 
-            { key: 'saves', name: 'Paraden Ges. (Quote)' }, 
-            { key: 'seven_meter_saves', name: '7m-Quote' },
-        ];
-        
+        if (!fieldContainer || !goalieContainer || !customContainer) { console.error("Statistik-Container nicht gefunden. Präfix:", containerPrefix); return; }
+        let fieldHeaders = [{ key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },{ key: 'games_played', name: 'Spiele' }, { key: 'goals', name: 'Tore (Quote)' }, { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, { key: 'misses', name: 'Fehlwürfe' },{ key: 'tech_errors', name: 'Tech. Fehler / Fehlpässe' }, { key: 'seven_meter_goals', name: '7m Tor' },{ key: 'seven_meter_misses', name: '7m Fehl' }, { key: 'seven_meter_caused', name: '7m Verursacht' }];
+        let goalieHeaders = [{ key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },{ key: 'games_played', name: 'Spiele' }, { key: 'saves', name: 'Paraden Ges. (Quote)' }, { key: 'seven_meter_saves', name: '7m-Quote' }];
         let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
         fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
         fieldTableHtml += `</tr></thead><tbody>`;
         let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
         goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
         goalieTableHtml += `</tr></thead><tbody>`;
-        let fieldPlayersFound = false;
-        let goaliesFound = false;
-        
+        let fieldPlayersFound = false, goaliesFound = false;
         if (stats.length === 0) {
-             fieldContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten verfügbar.</p>';
-             goalieContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten verfügbar.</p>';
-             customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen verfügbar.</p>';
+             fieldContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
+             goalieContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten.</p>';
+             customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen.</p>';
              return;
         }
-        
-        let totalGoals = 0;
-        let totalShots = 0;
-        let totalTechErrors = 0;
-        let totalFehlpaesse = 0; // <-- NEU
-        let totalSevenMeterCaused = 0;
-        let totalSevenMeterAttempts = 0;
-        let totalSevenMeterGoals = 0;
-        let totalGamesPlayed = 0; 
-        let totalFieldPlayers = 0;
-        
+        let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0, totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0, totalGamesPlayed = 0, totalFieldPlayers = 0;
         stats.forEach(player => {
             if (player.position === 'Torwart') {
-                goaliesFound = true;
-                goalieTableHtml += `<tr>`;
+                goaliesFound = true; goalieTableHtml += `<tr>`;
                 goalieHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
-                    if (h.name === 'Paraden Ges. (Quote)') {
-                        const totalSaves = player.saves + player.seven_meter_saves;
-                        const totalGoalsReceived = player.opponent_goals_received + (player.seven_meter_received - player.seven_meter_saves);
-                        const totalShotsOnGoal = totalSaves + totalGoalsReceived;
-                        const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalSaves} (${quote})`;
-                    }
-                    if (h.name === '7m-Quote') {
-                        const totalSevenMeters = player.seven_meter_received; 
-                        const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
-                        value = `${player.seven_meter_saves} / ${totalSevenMeters} (${quote})`;
-                    }
-                    if (h.name === 'Tore (Quote)') { 
-                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                        const totalGoals = player.goals + player.seven_meter_goals;
-                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalGoals} (${quote})`;
-                    }
-                    if (h.name === 'Tore/Spiel') { 
-                        if (player.games_played > 0) {
-                            const totalGoals = player.goals + player.seven_meter_goals;
-                            value = (totalGoals / player.games_played).toFixed(1);
-                        } else {
-                            value = '0.0'; 
-                        }
-                    }
+                    if (h.name === 'Paraden Ges. (Quote)') { const totalSaves = player.saves + player.seven_meter_saves; const totalGoalsReceived = player.opponent_goals_received + player.seven_meter_received; const totalShotsOnGoal = totalSaves + totalGoalsReceived; const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${totalSaves} (${quote})`; }
+                    if (h.name === '7m-Quote') { const totalSevenMetersOnGoal = player.seven_meter_saves + player.seven_meter_received; const quote = totalSevenMetersOnGoal > 0 ? ((player.seven_meter_saves / totalSevenMetersOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${player.seven_meter_saves} / ${totalSevenMetersOnGoal} (${quote})`; }
+                    if (h.name === 'Tore (Quote)') { const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses; const totalGoals = player.goals + player.seven_meter_goals; const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; value = `${totalGoals} (${quote})`; }
+                    if (h.name === 'Tore/Spiel') { if (player.games_played > 0) { const totalGoals = player.goals + player.seven_meter_goals; value = (totalGoals / player.games_played).toFixed(1); } else { value = '0.0'; } }
                     goalieTableHtml += `<td>${value}</td>`;
                 });
                 goalieTableHtml += `</tr>`;
             } else {
-                fieldPlayersFound = true;
-                totalFieldPlayers++;
-                const currentTotalGoals = player.goals + player.seven_meter_goals;
-                const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
-                
+                fieldPlayersFound = true; totalFieldPlayers++; const currentTotalGoals = player.goals + player.seven_meter_goals; const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
                 fieldTableHtml += `<tr>`;
                 fieldHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
-
-                    if (h.name === 'Tore (Quote)') {
-                        const quote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—';
-                        value = `${currentTotalGoals} (${quote})`;
-                    }
-                    if (h.name === 'Tore/Spiel') {
-                        if (player.games_played > 0) {
-                            value = (currentTotalGoals / player.games_played).toFixed(1);
-                        } else {
-                            value = '0.0'; 
-                        }
-                    }
-                    if (h.name === 'Fehlwürfe') {
-                        value = player.misses + player.seven_meter_misses;
-                    }
-                    // KORREKTUR: Zeigt jetzt X / Y an
-                    if (h.name === 'Tech. Fehler / Fehlpässe') {
-                        value = `${player.tech_errors} / ${player.fehlpaesse}`;
-                    }
+                    if (h.name === 'Tore (Quote)') { const quote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—'; value = `${currentTotalGoals} (${quote})`; }
+                    if (h.name === 'Tore/Spiel') { if (player.games_played > 0) { value = (currentTotalGoals / player.games_played).toFixed(1); } else { value = '0.0'; } }
+                    if (h.name === 'Fehlwürfe') { value = player.misses + player.seven_meter_misses; }
+                    if (h.name === 'Tech. Fehler / Fehlpässe') { value = `${player.tech_errors} / ${player.fehlpaesse}`; }
                     fieldTableHtml += `<td>${value}</td>`;
                 });
                 fieldTableHtml += `</tr>`;
-                
-                // Für Total-Zeile addieren
-                totalGoals += currentTotalGoals;
-                totalShots += currentTotalShots;
-                totalTechErrors += player.tech_errors;
-                totalFehlpaesse += player.fehlpaesse; // <-- NEU
-                totalSevenMeterCaused += player.seven_meter_caused;
-                totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses;
-                totalSevenMeterGoals += player.seven_meter_goals;
-                totalGamesPlayed += player.games_played;
+                totalGoals += currentTotalGoals; totalShots += currentTotalShots; totalTechErrors += player.tech_errors; totalFehlpaesse += player.fehlpaesse; totalSevenMeterCaused += player.seven_meter_caused; totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses; totalSevenMeterGoals += player.seven_meter_goals; totalGamesPlayed += player.games_played;
             }
         });
-        
-        // KORREKTUR: Total-Zeile (tfoot) angepasst
-        const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-        const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayed / totalFieldPlayers).toFixed(0) : 0;
-        const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayed > 0 ? (totalGoals / totalGamesPlayed).toFixed(1) : "0.0");
-
-        fieldTableHtml += `</tbody>
-                          <tfoot>
-                            <tr>
-                                <td>TOTAL TEAM</td>
-                                <td>-</td>
-                                <td>${avgGames}</td>
-                                <td>${totalGoals} (${totalShotQuote})</td>
-                                <td>${avgGoalsPerGame}</td>
-                                <td>${totalShots - totalGoals}</td>
-                                <td>${totalTechErrors} / ${totalFehlpaesse}</td>
-                                <td>${totalSevenMeterGoals}</td>
-                                <td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td>
-                                <td>${totalSevenMeterCaused}</td>
-                            </tr>
-                          </tfoot>
-                          </table>`;
-                          
+        const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayed / totalFieldPlayers).toFixed(0) : 0; const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayed > 0 ? (totalGoals / totalGamesPlayed).toFixed(1) : "0.0");
+        fieldTableHtml += `</tbody><tfoot><tr><td>TOTAL TEAM</td><td>-</td><td>${avgGames}</td><td>${totalGoals} (${totalShotQuote})</td><td>${avgGoalsPerGame}</td><td>${totalShots - totalGoals}</td><td>${totalTechErrors} / ${totalFehlpaesse}</td><td>${totalSevenMeterGoals}</td><td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td><td>${totalSevenMeterCaused}</td></tr></tfoot></table>`;
         goalieTableHtml += `</tbody></table>`;
         fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
         goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
-        
         const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
-        if (customActionNames.length === 0) {
-            customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen für diese Mannschaft definiert.</p>';
-        } else {
-            let customTableHtml = `<table class="stats-table"><thead><tr>`;
-            customTableHtml += `<th>Spieler</th><th>#</th><th>Spiele</th>`; 
-            customActionNames.forEach(name => {
-                customTableHtml += `<th>${name}</th>`; 
-            });
+        if (customActionNames.length === 0) { customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>'; } else {
+            let customTableHtml = `<table class="stats-table"><thead><tr><th>Spieler</th><th>#</th><th>Spiele</th>`;
+            customActionNames.forEach(name => { customTableHtml += `<th>${name}</th>`; });
             customTableHtml += `</tr></thead><tbody>`;
             stats.forEach(player => {
                 if (player.position !== 'Torwart' && player.games_played > 0) {
-                    customTableHtml += `<tr>`;
-                    customTableHtml += `<td>${player.player_name}</td>`;
-                    customTableHtml += `<td>${player.player_number || ''}</td>`;
-                    customTableHtml += `<td>${player.games_played}</td>`; 
-                    customActionNames.forEach(name => {
-                        const count = player.custom_counts[name] || 0;
-                        customTableHtml += `<td>${count}</td>`;
-                    });
+                    customTableHtml += `<tr><td>${player.player_name}</td><td>${player.player_number || ''}</td><td>${player.games_played}</td>`; 
+                    customActionNames.forEach(name => { customTableHtml += `<td>${player.custom_counts[name] || 0}</td>`; });
                     customTableHtml += `</tr>`;
                 }
             });
-            customTableHtml += `</tbody></table>`;
-            customContainer.innerHTML = customTableHtml;
+            customTableHtml += `</tbody></table>`; customContainer.innerHTML = customTableHtml;
         }
     }
 
@@ -564,7 +383,6 @@
     archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
     async function handleArchiveSeason() {
         if (!checkVerification()) { return; }
-        
         if (!selectedTeamId) return;
         const archiveName = archiveNameInput.value.trim();
         if (!archiveName) {
@@ -590,7 +408,6 @@
                 archiveNameInput.value = ''; 
                 loadSeasonStats();
                 if (typeof initGamePlanning === 'function') initGamePlanning();
-                
             } else if (response.status === 401 || response.status === 403) {
                 logout();
             } else {
@@ -604,105 +421,9 @@
         }
     }
 
-    // --- LIGA-SCOUTING FUNKTIONEN (Unverändert) ---
-    
-    function closeModal() {
-        scoutingModal.style.display = 'none';
-        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
-        publicStatsGoalie.innerHTML = '';
-        publicStatsCustom.innerHTML = '';
-        publicStatsOpponent.innerHTML = '';
-    }
-    
-    scoutingModal.addEventListener('click', function(event) {
-        if (event.target === scoutingModal) {
-            closeModal();
-        }
-    });
-    
-    async function loadPublicLeagues() {
-        publicLeagueSelect.innerHTML = '<option value="" disabled selected>Lade Ligen...</option>';
-        try {
-            const response = await fetch('/public/leagues');
-            const leagues = await response.json();
-            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Öffentliche Liga auswählen</option>';
-            if (leagues.length === 0) {
-                 publicLeagueSelect.innerHTML = '<option value="" disabled selected>Keine öffentlichen Ligen gefunden.</option>';
-                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine Teams in öffentlichen Ligen.</p>';
-                 return;
-            }
-            leagues.forEach(league => {
-                const option = document.createElement('option');
-                option.value = league;
-                option.textContent = league;
-                publicLeagueSelect.appendChild(option);
-            });
-            
-            publicLeagueSelect.selectedIndex = 0; 
-        } catch (error) {
-            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden.</option>';
-            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Ligen.</p>`;
-            console.error('Public Leagues Error:', error);
-        }
-    }
-    
-    async function loadPublicTeams(leagueName) {
-        if (!leagueName) return;
-        publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Lade Teams...</p>';
-        try {
-            const response = await fetch(`/public/teams/${encodeURIComponent(leagueName)}`);
-            const teams = await response.json();
-            publicTeamsList.innerHTML = '';
-
-            teams.forEach(team => {
-                const teamItem = document.createElement('div');
-                teamItem.className = 'league-team-item';
-                
-                teamItem.innerHTML = `<strong>${team.name}</strong>`;
-                
-                teamItem.onclick = () => showPublicTeamStats(team.id, team.name);
-                publicTeamsList.appendChild(teamItem);
-            });
-            if (teams.length === 0) {
-                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine öffentlichen Teams in dieser Liga.</p>';
-            }
-
-        } catch (error) {
-            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Teams.</p>`;
-            console.error('Public Teams Error:', error);
-        }
-    }
-    
-    async function showPublicTeamStats(teamId, teamName) {
-        scoutingTeamName.textContent = teamName;
-        scoutingModal.style.display = 'block';
-
-        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
-        publicStatsGoalie.innerHTML = '';
-        publicStatsCustom.innerHTML = '';
-        publicStatsOpponent.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
-
-        try {
-            const response = await fetch(`/public/stats/season/${teamId}`);
-            if (!response.ok) throw new Error('Öffentliche Statistik konnte nicht geladen werden.');
-            const stats = await response.json();
-            
-            displaySeasonPlayerStats(stats.player_stats, 'public-stats-table-');
-            displaySeasonOpponentStats(stats.opponent_stats, publicStatsOpponent);
-            
-        } catch (error) {
-            publicStatsField.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
-            publicStatsGoalie.innerHTML = '';
-            publicStatsCustom.innerHTML = '';
-            publicStatsOpponent.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
-            console.error('Public Stats Error:', error);
-        }
-    }
-    
-    // --- KORREKTUR: FUNKTIONEN FÜR WURFBILD (SHOT CHART) ---
-    
+    // --- FUNKTIONEN FÜR WURFBILD (SHOT CHART) ---
     shotChartPlayerSelect.addEventListener('change', (e) => {
-        renderShotChart(e.target.value);
+        renderShotChart(e.target.value, shotChartOverlay, seasonShotData);
     });
 
     async function loadShotChartData() {
@@ -710,35 +431,25 @@
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             return;
         }
-        
         shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Lade Wurfdaten...</option>';
         shotChartOverlay.innerHTML = '';
-        
         try {
-            const response = await fetch(`/actions/shots/season/${selectedTeamId}`, {
-                method: 'GET'
-            });
-            if (response.status === 401 || response.status === 403) { logout(); return; }
+            const response = await fetch(`/actions/shots/season/${selectedTeamId}`);
+            if (response.status === 401) { logout(); return; }
             if (!response.ok) throw new Error('Wurfdaten konnten nicht geladen werden.');
-
             seasonShotData = await response.json();
-            
             shotChartPlayerSelect.innerHTML = '';
             const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'Alle Spieler';
+            allOption.value = 'all'; allOption.textContent = 'Alle Spieler';
             shotChartPlayerSelect.appendChild(allOption);
-            
             seasonShotData.forEach(playerData => {
                 const option = document.createElement('option');
                 option.value = playerData.player_id;
                 option.textContent = `#${playerData.player_number || '?'} ${playerData.player_name}`;
                 shotChartPlayerSelect.appendChild(option);
             });
-            
             shotChartPlayerSelect.value = 'all';
-            renderShotChart('all');
-
+            renderShotChart('all', shotChartOverlay, seasonShotData); 
         } catch (error) {
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden</option>';
             shotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 45%; color: black;">Fehler beim Laden der Wurfdaten.</p>';
@@ -746,52 +457,43 @@
         }
     }
 
-    // ==================================================
-    // KORREKTUR 2: KOORDINATEN-UMRECHNUNG FÜR LINKES HALBFELD
-    // ==================================================
-    function renderShotChart(playerId) {
-        shotChartOverlay.innerHTML = '';
-        
-        let shotsToRender = [];
-        
+    function renderShotChart(playerId, targetOverlay, data) {
+        targetOverlay.innerHTML = ''; let shotsToRender = [];
         if (playerId === 'all') {
-            seasonShotData.forEach(playerData => {
-                shotsToRender.push(...playerData.shots);
-            });
+            data.forEach(playerData => { shotsToRender.push(...playerData.shots); });
         } else {
-            const playerData = seasonShotData.find(p => p.player_id == playerId);
-            if (playerData) {
-                shotsToRender = playerData.shots;
-            }
+            const playerData = data.find(p => p.player_id == playerId);
+            if (playerData) { shotsToRender = playerData.shots; }
         }
+        
+        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
+        const emptyMessagePadding = isHalfField ? '45%' : '22%';
         
         if (shotsToRender.length === 0) {
-            shotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 45%; color: black;">Keine Wurfdaten für diese Auswahl vorhanden.</p>';
+            targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Wurfdaten.</p>`;
             return;
         }
-
         shotsToRender.forEach(shot => {
             const dot = document.createElement('div');
             const isGoal = shot.action_type === 'Goal' || shot.action_type === 'Goal_7m';
             dot.className = `shot-dot ${isGoal ? 'goal' : 'miss'}`;
-            
-            // KORREKTUR: Keine Umrechnung mehr nötig, da wir
-            // die 0-100% Koordinaten auf einem 0-100% Feld (Ganzfeld) plotten.
-            const newX = shot.x_coordinate;
-            
-            // Zeige nur Würfe aus der Angriffshälfte (x <= 50)
             if (shot.x_coordinate <= 50) { 
-                dot.style.left = `${newX}%`; // <-- KORRIGIERT
+                if (isHalfField) {
+                    // Mappe 0-50 (Ganzfeld) auf 0-100 (Halbfeld)
+                    dot.style.left = `${shot.x_coordinate * 2}%`; 
+                } else {
+                    dot.style.left = `${shot.x_coordinate}%`; 
+                }
                 dot.style.top = `${shot.y_coordinate}%`;
-                shotChartOverlay.appendChild(dot);
+                targetOverlay.appendChild(dot);
             }
         });
     }
 
-    // --- NEUE FUNKTIONEN (PHASE 8B): FEHLERBILD (ERROR CHART) ---
-    
+    // --- FUNKTIONEN FÜR FEHLERBILD (ERROR CHART) ---
     errorChartPlayerSelect.addEventListener('change', (e) => {
-        renderErrorChart(e.target.value);
+        renderErrorChart(e.target.value, errorChartOverlay, seasonErrorData);
     });
     
     async function loadErrorChartData() {
@@ -799,39 +501,25 @@
             errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             return;
         }
-        
         errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Lade Fehlerdaten...</option>';
         errorChartOverlay.innerHTML = '';
-        
         try {
-            // NEU: Ruft den Endpunkt für FEHLER ab
-            const response = await fetch(`/actions/stats/errors/season/${selectedTeamId}`, { // <-- KORREKTUR 2: '/actions' hinzugefügt
-                method: 'GET'
-            });
-            if (response.status === 401 || response.status === 403) { logout(); return; }
-            if (!response.ok) {
-                // Zeigt den 404-Fehler (oder anderen) jetzt korrekt an
-                throw new Error(`Fehlerdaten konnten nicht geladen werden. Status: ${response.status}`);
-            }
-
-            seasonErrorData = await response.json(); // Speichert in neuer Variable
-            
+            const response = await fetch(`/actions/stats/errors/season/${selectedTeamId}`);
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) { throw new Error(`Fehlerdaten konnten nicht geladen werden.`); }
+            seasonErrorData = await response.json(); 
             errorChartPlayerSelect.innerHTML = '';
             const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'Alle Spieler';
+            allOption.value = 'all'; allOption.textContent = 'Alle Spieler';
             errorChartPlayerSelect.appendChild(allOption);
-            
             seasonErrorData.forEach(playerData => {
                 const option = document.createElement('option');
                 option.value = playerData.player_id;
                 option.textContent = `#${playerData.player_number || '?'} ${playerData.player_name}`;
                 errorChartPlayerSelect.appendChild(option);
             });
-            
             errorChartPlayerSelect.value = 'all';
-            renderErrorChart('all'); // Ruft neue Render-Funktion auf
-
+            renderErrorChart('all', errorChartOverlay, seasonErrorData); 
         } catch (error) {
             errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden</option>';
             errorChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden der Fehlerdaten.</p>';
@@ -839,40 +527,80 @@
         }
     }
 
-    function renderErrorChart(playerId) {
-        errorChartOverlay.innerHTML = '';
-        
-        let errorsToRender = [];
-        
+    function renderErrorChart(playerId, targetOverlay, data) {
+        targetOverlay.innerHTML = ''; let errorsToRender = [];
         if (playerId === 'all') {
-            seasonErrorData.forEach(playerData => {
-                errorsToRender.push(...playerData.shots); // (interne Variable heißt 'shots')
-            });
+            data.forEach(playerData => { errorsToRender.push(...playerData.shots); });
         } else {
-            const playerData = seasonErrorData.find(p => p.player_id == playerId);
-            if (playerData) {
-                errorsToRender = playerData.shots;
-            }
+            const playerData = data.find(p => p.player_id == playerId);
+            if (playerData) { errorsToRender = playerData.shots; }
         }
+        
+        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
+        const emptyMessagePadding = isHalfField ? '45%' : '22%'; // (Fehlerbild ist 'full', also 22%)
         
         if (errorsToRender.length === 0) {
-            errorChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Keine Fehlerdaten für diese Auswahl vorhanden.</p>';
+            targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Fehlerdaten.</p>`;
             return;
         }
-
         errorsToRender.forEach(error => {
             const dot = document.createElement('div');
-            
-            // NEU: Unterscheidung TechError / Fehlpass
             const isFehlpass = error.action_type === 'Fehlpass';
-            // Wendet 'miss' (Rot) oder 'tech-error-pass' (Orange) an
             dot.className = `shot-dot ${isFehlpass ? 'tech-error-pass' : 'miss'}`;
-            
-            // Keine Umrechnung, da Ganzfeld (0-100)
             dot.style.left = `${error.x_coordinate}%`;
             dot.style.top = `${error.y_coordinate}%`;
-            
-            errorChartOverlay.appendChild(dot);
+            targetOverlay.appendChild(dot);
+        });
+    }
+
+    // --- FUNKTIONEN FÜR GEGNER-WURFBILD (Phase 9) ---
+    async function loadOpponentShotChartData() {
+        if (!selectedTeamId) {
+            opponentShotChartOverlay.innerHTML = '';
+            return;
+        }
+        opponentShotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 45%; color: black;">Lade Gegner-Wurfdaten...</p>';
+        try {
+            const response = await fetch(`/actions/shots/opponent/season/${selectedTeamId}`);
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) { throw new Error(`Gegner-Wurfdaten konnten nicht geladen werden.`); }
+            seasonOpponentShotData = await response.json(); 
+            renderOpponentShotChart(opponentShotChartOverlay, seasonOpponentShotData); 
+        } catch (error) {
+            opponentShotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 45%; color: black;">Fehler beim Laden der Gegner-Wurfdaten.</p>';
+            console.error("Opponent Shot Chart Error:", error);
+        }
+    }
+
+    function renderOpponentShotChart(targetOverlay, data) {
+        targetOverlay.innerHTML = ''; const shotsToRender = data;
+        
+        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
+        const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        
+        if (shotsToRender.length === 0) {
+            targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Gegner-Wurfdaten.</p>`;
+            return;
+        }
+        shotsToRender.forEach(shot => {
+            const dot = document.createElement('div');
+            const isGoal = shot.action_type === 'OppGoal';
+            dot.className = `shot-dot ${isGoal ? 'opp-goal' : 'opp-miss'}`;
+            if (shot.x_coordinate > 50) { // Nur Würfe auf unser Tor (rechte Hälfte)
+                
+                // REPARIERTE JS-LOGIK FÜR HALBFELD
+                if (isHalfField) {
+                    // Mappe 50-100 (Ganzfeld rechts) auf 0-100 (Halbfeld links)
+                    const newX = (shot.x_coordinate - 50) * 2;
+                    dot.style.left = `${newX}%`;
+                } else {
+                    dot.style.left = `${shot.x_coordinate}%`;
+                }
+                dot.style.top = `${shot.y_coordinate}%`;
+                targetOverlay.appendChild(dot);
+            }
         });
     }
 
@@ -881,29 +609,26 @@
         console.log("initSeasonAnalysis() wird aufgerufen.");
         const storedId = localStorage.getItem('selected_team_id');
         const storedName = localStorage.getItem('selected_team_name');
-
         if (storedId && storedName) {
             selectedTeamId = storedId;
             selectedTeamName = storedName;
             seasonStatsTeamName.textContent = selectedTeamName;
             loadSeasonStatsBtn.disabled = false;
             archiveSeasonBtn.disabled = false;
-            
-            // Lade Statistik (welche dann die Charts lädt)
             loadSeasonStats();
-            
         } else {
             seasonStatsTeamName.textContent = "(Team wählen)";
             loadSeasonStatsBtn.disabled = true;
             archiveSeasonBtn.disabled = true;
-            
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             shotChartOverlay.innerHTML = '';
             errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             errorChartOverlay.innerHTML = '';
+            if (opponentShotChartOverlay) { opponentShotChartOverlay.innerHTML = ''; }
         }
-        loadPublicLeagues();
+        // loadPublicLeagues() ist ENTFERNT
     }
     
+    // Ruft die init-Funktion dieser Seite auf
     initSeasonAnalysis();
 </script>

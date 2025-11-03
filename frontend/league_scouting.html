@@ -1,0 +1,479 @@
+<!-- DATEI: frontend/league_scouting.html (NEUE DATEI) -->
+<style>
+    /* * Diese Stile sind 1:1 aus app_layout.html / season_analysis.html kopiert,
+     * damit die Wurfbilder und Tabellen im Modal korrekt aussehen.
+     */
+    .shot-chart-container-half,
+    .shot-chart-container-full {
+        position: relative; width: 100%;
+        background-color: #ffffff; border: 2px solid #000;
+        box-sizing: border-box; border-radius: 5px;
+        overflow: hidden; margin-top: 15px;
+    }
+    .shot-chart-container-full {
+        /* Im Scouting-Modal wollen wir nur Ganzfeld */
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .svg-handball-pitch {
+        width: 100%;
+        height: auto;
+        display: block;
+        z-index: 1; 
+    }
+    .shot-overlay {
+        position: absolute; top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: 2; 
+    }
+    .shot-overlay p { color: #000; opacity: 0.7; }
+    
+    .stats-table tfoot tr {
+        background-color: rgba(0,0,0,0.3); 
+        font-weight: bold; 
+        border-top: 2px solid #ffcc00;
+    }
+    .shot-dot {
+        position: absolute; width: 12px; height: 12px;
+        border-radius: 50%; transform: translate(-50%, -50%);
+        border: 2px solid rgba(0,0,0,0.7);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .shot-dot.goal { background-color: #38E838; }
+    .shot-dot.miss { background-color: #f44336; }
+    .shot-dot.tech-error-pass { background-color: #ff9800; }
+    .shot-dot.opp-goal { background-color: #9E9E9E; }
+    .shot-dot.opp-miss { background-color: #795548; }
+    
+    .shot-chart-legend {
+        display: flex; justify-content: center;
+        gap: 20px; margin-top: 15px;
+        color: white; /* Legenden-Text im Modal ist weiß */
+    }
+    .legend-item { display: flex; align-items: center; }
+    .legend-color-box {
+        width: 15px; height: 15px;
+        margin-right: 8px; border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 3px;
+    }
+    .legend-color-box.goal { background-color: #38E838; }
+    .legend-color-box.miss { background-color: #f44336; }
+    .legend-color-box.tech-error-pass { background-color: #ff9800; }
+    .legend-color-box.opp-goal { background-color: #9E9E9E; }
+    .legend-color-box.opp-miss { background-color: #795548; }
+</style>
+
+<!-- Sauberes 1-Spalten-Layout für die Scouting-Seite -->
+<div class="analysis-grid-1-col">
+    <div class="card">
+        <div class="card-content">
+            <h2>Liga-Scouting</h2>
+            <label for="public-league-select">Öffentliche Liga auswählen:</label>
+            <select id="public-league-select" onchange="loadPublicTeams(this.value)">
+                <option value="" disabled selected>Lade Ligen...</option>
+            </select>
+            <p style="font-weight: bold; margin-top: 10px; color: #ffcc00;">Teams in dieser Liga:</p>
+            <div id="public-teams-list" style="max-height: 400px; overflow-y: auto;">
+                <p style="opacity: 0.6;">Bitte eine Liga auswählen.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Das Modal (Hier ist der Layout-Bug von dir BEHOBEN) -->
+<div id="scouting-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="scouting-team-name" style="color: #38E838;"></h2>
+        <p style="opacity: 0.8; margin-bottom: 20px;">Aggregierte Saison-Statistik (Öffentlich)</p>
+
+        <!-- KORREKTUR (Layout-Bug): Wrapper Divs hinzugefügt -->
+        <div class="card" style="background: #1a335c; padding: 10px; margin-bottom: 15px;">
+            <div class="card-content">
+                <h3 style="margin-top: 0px;">Gegner-Statistik (Saison)</h3>
+                <div id="public-stats-table-opponent-season">
+                    <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- KORREKTUR (Layout-Bug): Wrapper Divs hinzugefügt -->
+        <div class="card" style="background: #1a335c; padding: 10px; margin-bottom: 15px;">
+            <div class="card-content">
+                <h3 style="margin-top: 0px;">Feldspieler-Statistik</h3>
+                <div class="stats-table-container" id="public-stats-table-field-season">
+                    <p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KORREKTUR (Layout-Bug): Wrapper Divs hinzugefügt -->
+        <div class="card" style="background: #1a335c; padding: 10px; margin-bottom: 15px;">
+            <div class="card-content">
+                <h3 style="margin-top: 0px;">Torwart-Statistik</h3>
+                <div class="stats-table-container" id="public-stats-table-goalie-season"></div>
+            </div>
+        </div>
+
+        <!-- KORREKTUR (Layout-Bug): Wrapper Divs hinzugefügt -->
+        <div class="card" style="background: #1a335c; padding: 10px; margin-bottom: 15px;">
+            <div class="card-content">
+                <h3 style="margin-top: 0px;">Team-Aktionen Statistik</h3>
+                <div class="stats-table-container" id="public-stats-table-custom-season"></div>
+            </div>
+        </div>
+        
+        <hr style="border-color: rgba(255,255,255,0.2); margin: 30px 0;">
+        <h2 style="color: #38E838;">Wurf-Analyse (Öffentlich)</h2>
+
+        <div class="card" style="margin-top: 20px; background: #1a335c; padding: 10px;">
+            <div class="card-content">
+                <h3 style="color: #ffcc00;">Eigenes Wurfbild (Team)</h3>
+                <label for="public-shot-chart-player-select">Spieler auswählen:</label>
+                <select id="public-shot-chart-player-select">
+                    <option value="all" selected>Alle Spieler</option>
+                </select>
+                <!-- Container nutzt "full" für Ganzfeld -->
+                <div class="shot-chart-container-full">
+                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                    <div class="shot-overlay" id="public-shot-chart-overlay"></div>
+                </div>
+                <div class="shot-chart-legend">
+                    <div class="legend-item"><span class="legend-color-box goal"></span> <span>Tor</span></div>
+                    <div class="legend-item"><span class="legend-color-box miss"></span> <span>Fehlwurf</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px; background: #1a335c; padding: 10px;">
+            <div class="card-content">
+                <h3 style="color: #ffcc00;">Eigenes Fehlerbild (Team)</h3>
+                <label for="public-error-chart-player-select">Spieler auswählen:</label>
+                <select id="public-error-chart-player-select">
+                    <option value="all" selected>Alle Spieler</option>
+                </select>
+                <div class="shot-chart-container-full">
+                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                    <div class="shot-overlay" id="public-error-chart-overlay"></div>
+                </div>
+                <div class="shot-chart-legend">
+                    <div class="legend-item"><span class="legend-color-box miss"></span> <span>Tech. Fehler</span></div>
+                    <div class="legend-item"><span class="legend-color-box tech-error-pass"></span> <span>Fehlpass</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px; background: #1a335c; padding: 10px;">
+            <div class="card-content">
+                <h3 style="color: #ffcc00;">Gegner Wurfbild (Team)</h3>
+                <div class="shot-chart-container-full">
+                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                    <div class="shot-overlay" id="public-opponent-shot-chart-overlay"></div>
+                </div>
+                <div class="shot-chart-legend">
+                    <div class="legend-item"><span class="legend-color-box opp-goal"></span> <span>Gegner Tor</span></div>
+                    <div class="legend-item"><span class="legend-color-box opp-miss"></span> <span>Gegner Fehlwurf</span></div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    // Globale Variablen (nur für Scouting)
+    let publicSeasonShotData = [];
+    let publicSeasonErrorData = [];
+
+    // Liga Scouting Elemente
+    const publicLeagueSelect = document.getElementById('public-league-select');
+    const publicTeamsList = document.getElementById('public-teams-list');
+    const scoutingModal = document.getElementById('scouting-modal');
+    const scoutingTeamName = document.getElementById('scouting-team-name');
+    const publicStatsField = document.getElementById('public-stats-table-field-season');
+    const publicStatsGoalie = document.getElementById('public-stats-table-goalie-season');
+    const publicStatsCustom = document.getElementById('public-stats-table-custom-season');
+    const publicStatsOpponent = document.getElementById('public-stats-table-opponent-season');
+    
+    // Public Chart DOM-Elemente
+    const publicShotChartPlayerSelect = document.getElementById('public-shot-chart-player-select');
+    const publicShotChartOverlay = document.getElementById('public-shot-chart-overlay');
+    const publicErrorChartPlayerSelect = document.getElementById('public-error-chart-player-select');
+    const publicErrorChartOverlay = document.getElementById('public-error-chart-overlay');
+    const publicOpponentShotChartOverlay = document.getElementById('public-opponent-shot-chart-overlay');
+
+    // --- LIGA-SCOUTING FUNKTIONEN (Hierher verschoben) ---
+    
+    function closeModal() {
+        scoutingModal.style.display = 'none';
+        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
+        publicStatsGoalie.innerHTML = '';
+        publicStatsCustom.innerHTML = '';
+        publicStatsOpponent.innerHTML = '';
+        publicShotChartOverlay.innerHTML = '';
+        publicErrorChartOverlay.innerHTML = '';
+        publicOpponentShotChartOverlay.innerHTML = '';
+        publicShotChartPlayerSelect.innerHTML = '<option value="all" selected>Alle Spieler</option>';
+        publicErrorChartPlayerSelect.innerHTML = '<option value="all" selected>Alle Spieler</option>';
+    }
+    
+    scoutingModal.addEventListener('click', function(event) {
+        if (event.target === scoutingModal) {
+            closeModal();
+        }
+    });
+    
+    async function loadPublicLeagues() {
+        publicLeagueSelect.innerHTML = '<option value="" disabled selected>Lade Ligen...</option>';
+        try {
+            const response = await fetch('/public/leagues');
+            if (!response.ok) throw new Error("Ligen-API-Fehler");
+            const leagues = await response.json();
+            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Öffentliche Liga auswählen</option>';
+            if (leagues.length === 0) {
+                 publicLeagueSelect.innerHTML = '<option value="" disabled selected>Keine öffentlichen Ligen gefunden.</option>';
+                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine Teams in öffentlichen Ligen.</p>';
+                 return;
+            }
+            leagues.forEach(league => {
+                const option = document.createElement('option');
+                option.value = league;
+                option.textContent = league;
+                publicLeagueSelect.appendChild(option);
+            });
+        } catch (error) {
+            publicLeagueSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden.</option>';
+            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Ligen.</p>`;
+            console.error('Public Leagues Error:', error);
+        }
+    }
+    
+    async function loadPublicTeams(leagueName) {
+        if (!leagueName) return;
+        publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Lade Teams...</p>';
+        try {
+            const response = await fetch(`/public/teams/${encodeURIComponent(leagueName)}`);
+            if (!response.ok) throw new Error("Teams-API-Fehler");
+            const teams = await response.json();
+            publicTeamsList.innerHTML = '';
+            teams.forEach(team => {
+                const teamItem = document.createElement('div');
+                teamItem.className = 'league-team-item';
+                teamItem.innerHTML = `<strong>${team.name}</strong>`;
+                teamItem.onclick = () => showPublicTeamStats(team.id, team.name);
+                publicTeamsList.appendChild(teamItem);
+            });
+            if (teams.length === 0) {
+                 publicTeamsList.innerHTML = '<p style="opacity: 0.6;">Keine öffentlichen Teams in dieser Liga.</p>';
+            }
+        } catch (error) {
+            publicTeamsList.innerHTML = `<p class="error">Fehler beim Laden der Teams.</p>`;
+            console.error('Public Teams Error:', error);
+        }
+    }
+    
+    async function showPublicTeamStats(teamId, teamName) {
+        scoutingTeamName.textContent = teamName;
+        scoutingModal.style.display = 'block';
+        publicStatsField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
+        publicStatsGoalie.innerHTML = '';
+        publicStatsCustom.innerHTML = '';
+        publicStatsOpponent.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Statistik...</p>';
+        publicShotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Lade Wurfbild...</p>';
+        publicErrorChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Lade Fehlerbild...</p>';
+        publicOpponentShotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Lade Gegner-Wurfbild...</p>';
+
+        try {
+            const [
+                statsResponse,
+                publicShotDataResponse,
+                publicErrorDataResponse,
+                publicOpponentShotDataResponse
+            ] = await Promise.all([
+                fetch(`/public/stats/season/${teamId}`),
+                fetch(`/public/shots/season/${teamId}`),
+                fetch(`/public/stats/errors/season/${teamId}`),
+                fetch(`/public/shots/opponent/season/${teamId}`)
+            ]);
+
+            if (statsResponse.ok) {
+                const stats = await statsResponse.json();
+                displaySeasonPlayerStats(stats.player_stats, 'public-stats-table-');
+                displaySeasonOpponentStats(stats.opponent_stats, publicStatsOpponent);
+            } else { throw new Error('Öffentliche Statistik konnte nicht geladen werden.'); }
+            
+            if (publicShotDataResponse.ok) {
+                publicSeasonShotData = await publicShotDataResponse.json();
+                renderShotChart('all', publicShotChartOverlay, publicSeasonShotData); 
+                publicShotChartPlayerSelect.innerHTML = '<option value="all" selected>Alle Spieler</option>';
+                publicSeasonShotData.forEach(playerData => {
+                    const option = document.createElement('option');
+                    option.value = playerData.player_id;
+                    option.textContent = `#${playerData.player_number || '?'} ${playerData.player_name}`;
+                    publicShotChartPlayerSelect.appendChild(option);
+                });
+            } else { publicShotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden.</p>'; }
+            
+            if (publicErrorDataResponse.ok) {
+                publicSeasonErrorData = await publicErrorDataResponse.json();
+                renderErrorChart('all', publicErrorChartOverlay, publicSeasonErrorData); 
+                publicErrorChartPlayerSelect.innerHTML = '<option value="all" selected>Alle Spieler</option>';
+                publicSeasonErrorData.forEach(playerData => {
+                    const option = document.createElement('option');
+                    option.value = playerData.player_id;
+                    option.textContent = `#${playerData.player_number || '?'} ${playerData.player_name}`;
+                    publicErrorChartPlayerSelect.appendChild(option);
+                });
+            } else { publicErrorChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden.</p>'; }
+            
+            if (publicOpponentShotDataResponse.ok) {
+                const publicOpponentData = await publicOpponentShotDataResponse.json();
+                renderOpponentShotChart(publicOpponentShotChartOverlay, publicOpponentData);
+            } else { publicOpponentShotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden.</p>'; }
+            
+        } catch (error) {
+            publicStatsField.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
+            publicStatsGoalie.innerHTML = '';
+            publicStatsCustom.innerHTML = '';
+            publicStatsOpponent.innerHTML = `<p class="error">FEHLER: Statistik konnte nicht geladen werden.</p>`;
+            console.error('Public Stats Error:', error);
+        }
+    }
+    
+    // --- Abhängigkeiten für das Modal ---
+    // (Diese Funktionen werden vom Modal-Skript aufgerufen)
+    function displaySeasonOpponentStats(stats, targetContainer) {
+        if (!targetContainer) { return; }
+        let tableHtml = `<table class="opponent-stats-table"><tbody>
+            <tr><td>🟡 Gegner Tore (Gesamt)</td><td>${stats.opponent_goals}</td></tr>
+            <tr><td>💨 Gegner Fehlwürfe</td><td>${stats.opponent_misses}</td></tr>
+            <tr><td>🚫 Gegner Tech. Fehler</td><td>${stats.opponent_tech_errors}</td></tr>
+        </tbody></table>`;
+        targetContainer.innerHTML = tableHtml;
+    }
+    function displaySeasonPlayerStats(stats, containerPrefix) {
+        const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
+        const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
+        const customContainer = document.getElementById(`${containerPrefix}custom-season`);
+        if (!fieldContainer || !goalieContainer || !customContainer) { return; }
+        let fieldHeaders = [{ key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },{ key: 'games_played', name: 'Spiele' }, { key: 'goals', name: 'Tore (Quote)' }, { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, { key: 'misses', name: 'Fehlwürfe' },{ key: 'tech_errors', name: 'Tech. Fehler / Fehlpässe' }, { key: 'seven_meter_goals', name: '7m Tor' },{ key: 'seven_meter_misses', name: '7m Fehl' }, { key: 'seven_meter_caused', name: '7m Verursacht' }];
+        let goalieHeaders = [{ key: 'player_name', name: 'Spieler', isFixed: true }, { key: 'player_number', name: '#', isFixed: true },{ key: 'games_played', name: 'Spiele' }, { key: 'saves', name: 'Paraden Ges. (Quote)' }, { key: 'seven_meter_saves', name: '7m-Quote' }];
+        let fieldTableHtml = `<table class="stats-table"><thead><tr>`;
+        fieldHeaders.forEach(h => { fieldTableHtml += `<th>${h.name}</th>`; });
+        fieldTableHtml += `</tr></thead><tbody>`;
+        let goalieTableHtml = `<table class="stats-table"><thead><tr>`;
+        goalieHeaders.forEach(h => { goalieTableHtml += `<th>${h.name}</th>`; });
+        goalieTableHtml += `</tr></thead><tbody>`;
+        let fieldPlayersFound = false, goaliesFound = false;
+        if (stats.length === 0) {
+             fieldContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
+             goalieContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Torwartdaten.</p>';
+             customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen.</p>';
+             return;
+        }
+        let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0, totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0, totalGamesPlayed = 0, totalFieldPlayers = 0;
+        stats.forEach(player => {
+            if (player.position === 'Torwart') {
+                goaliesFound = true; goalieTableHtml += `<tr>`;
+                goalieHeaders.forEach(h => {
+                    let value = player[h.key] !== undefined ? player[h.key] : 0;
+                    if (h.name === 'Paraden Ges. (Quote)') { const totalSaves = player.saves + player.seven_meter_saves; const totalGoalsReceived = player.opponent_goals_received + player.seven_meter_received; const totalShotsOnGoal = totalSaves + totalGoalsReceived; const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${totalSaves} (${quote})`; }
+                    if (h.name === '7m-Quote') { const totalSevenMetersOnGoal = player.seven_meter_saves + player.seven_meter_received; const quote = totalSevenMetersOnGoal > 0 ? ((player.seven_meter_saves / totalSevenMetersOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${player.seven_meter_saves} / ${totalSevenMetersOnGoal} (${quote})`; }
+                    if (h.name === 'Tore (Quote)') { const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses; const totalGoals = player.goals + player.seven_meter_goals; const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; value = `${totalGoals} (${quote})`; }
+                    if (h.name === 'Tore/Spiel') { if (player.games_played > 0) { const totalGoals = player.goals + player.seven_meter_goals; value = (totalGoals / player.games_played).toFixed(1); } else { value = '0.0'; } }
+                    goalieTableHtml += `<td>${value}</td>`;
+                });
+                goalieTableHtml += `</tr>`;
+            } else {
+                fieldPlayersFound = true; totalFieldPlayers++; const currentTotalGoals = player.goals + player.seven_meter_goals; const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
+                fieldTableHtml += `<tr>`;
+                fieldHeaders.forEach(h => {
+                    let value = player[h.key] !== undefined ? player[h.key] : 0;
+                    if (h.name === 'Tore (Quote)') { const quote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—'; value = `${currentTotalGoals} (${quote})`; }
+                    if (h.name === 'Tore/Spiel') { if (player.games_played > 0) { value = (currentTotalGoals / player.games_played).toFixed(1); } else { value = '0.0'; } }
+                    if (h.name === 'Fehlwürfe') { value = player.misses + player.seven_meter_misses; }
+                    if (h.name === 'Tech. Fehler / Fehlpässe') { value = `${player.tech_errors} / ${player.fehlpaesse}`; }
+                    fieldTableHtml += `<td>${value}</td>`;
+                });
+                fieldTableHtml += `</tr>`;
+                totalGoals += currentTotalGoals; totalShots += currentTotalShots; totalTechErrors += player.tech_errors; totalFehlpaesse += player.fehlpaesse; totalSevenMeterCaused += player.seven_meter_caused; totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses; totalSevenMeterGoals += player.seven_meter_goals; totalGamesPlayed += player.games_played;
+            }
+        });
+        const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayed / totalFieldPlayers).toFixed(0) : 0; const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayed > 0 ? (totalGoals / totalGamesPlayed).toFixed(1) : "0.0");
+        fieldTableHtml += `</tbody><tfoot><tr><td>TOTAL TEAM</td><td>-</td><td>${avgGames}</td><td>${totalGoals} (${totalShotQuote})</td><td>${avgGoalsPerGame}</td><td>${totalShots - totalGoals}</td><td>${totalTechErrors} / ${totalFehlpaesse}</td><td>${totalSevenMeterGoals}</td><td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td><td>${totalSevenMeterCaused}</td></tr></tfoot></table>`;
+        goalieTableHtml += `</tbody></table>`;
+        fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
+        goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
+        const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
+        if (customActionNames.length === 0) { customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>'; } else {
+            let customTableHtml = `<table class="stats-table"><thead><tr><th>Spieler</th><th>#</th><th>Spiele</th>`;
+            customActionNames.forEach(name => { customTableHtml += `<th>${name}</th>`; });
+            customTableHtml += `</tr></thead><tbody>`;
+            stats.forEach(player => {
+                if (player.position !== 'Torwart' && player.games_played > 0) {
+                    customTableHtml += `<tr><td>${player.player_name}</td><td>${player.player_number || ''}</td><td>${player.games_played}</td>`; 
+                    customActionNames.forEach(name => { customTableHtml += `<td>${player.custom_counts[name] || 0}</td>`; });
+                    customTableHtml += `</tr>`;
+                }
+            });
+            customTableHtml += `</tbody></table>`; customContainer.innerHTML = customTableHtml;
+        }
+    }
+    
+    // WICHTIG: renderShotChart, renderErrorChart, und renderOpponentShotChart
+    // werden hier benötigt, da sie vom Modal-Code aufgerufen werden.
+    
+    function renderShotChart(playerId, targetOverlay, data) {
+        targetOverlay.innerHTML = ''; let shotsToRender = [];
+        if (playerId === 'all') { data.forEach(playerData => { shotsToRender.push(...playerData.shots); }); } else { const playerData = data.find(p => p.player_id == playerId); if (playerData) { shotsToRender = playerData.shots; } }
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half'); 
+        const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        if (shotsToRender.length === 0) { targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Wurfdaten.</p>`; return; }
+        shotsToRender.forEach(shot => {
+            const dot = document.createElement('div'); const isGoal = shot.action_type === 'Goal' || shot.action_type === 'Goal_7m'; dot.className = `shot-dot ${isGoal ? 'goal' : 'miss'}`;
+            if (shot.x_coordinate <= 50) { 
+                if (isHalfField) { dot.style.left = `${shot.x_coordinate * 2}%`; } else { dot.style.left = `${shot.x_coordinate}%`; }
+                dot.style.top = `${shot.y_coordinate}%`; targetOverlay.appendChild(dot);
+            }
+        });
+    }
+    function renderErrorChart(playerId, targetOverlay, data) {
+        targetOverlay.innerHTML = ''; let errorsToRender = [];
+        if (playerId === 'all') { data.forEach(playerData => { errorsToRender.push(...playerData.shots); }); } else { const playerData = data.find(p => p.player_id == playerId); if (playerData) { errorsToRender = playerData.shots; } }
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half'); const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        if (errorsToRender.length === 0) { targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Fehlerdaten.</p>`; return; }
+        errorsToRender.forEach(error => {
+            const dot = document.createElement('div'); const isFehlpass = error.action_type === 'Fehlpass'; dot.className = `shot-dot ${isFehlpass ? 'tech-error-pass' : 'miss'}`;
+            dot.style.left = `${error.x_coordinate}%`; dot.style.top = `${error.y_coordinate}%`;
+            targetOverlay.appendChild(dot);
+        });
+    }
+    function renderOpponentShotChart(targetOverlay, data) {
+        targetOverlay.innerHTML = ''; const shotsToRender = data;
+        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half'); const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        if (shotsToRender.length === 0) { targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Gegner-Wurfdaten.</p>`; return; }
+        shotsToRender.forEach(shot => {
+            const dot = document.createElement('div'); const isGoal = shot.action_type === 'OppGoal'; dot.className = `shot-dot ${isGoal ? 'opp-goal' : 'opp-miss'}`;
+            if (shot.x_coordinate > 50) { 
+                if (isHalfField) { const newX = (shot.x_coordinate - 50) * 2; dot.style.left = `${newX}%`; } else { dot.style.left = `${shot.x_coordinate}%`; }
+                dot.style.top = `${shot.y_coordinate}%`; targetOverlay.appendChild(dot);
+            }
+        });
+    }
+
+    // --- Initialisierung ---
+    function initLeagueScouting() {
+        console.log("initLeagueScouting() wird aufgerufen.");
+        loadPublicLeagues();
+    }
+    
+    publicShotChartPlayerSelect.addEventListener('change', (e) => {
+        renderShotChart(e.target.value, publicShotChartOverlay, publicSeasonShotData);
+    });
+    publicErrorChartPlayerSelect.addEventListener('change', (e) => {
+        renderErrorChart(e.target.value, publicErrorChartOverlay, publicSeasonErrorData);
+    });
+    
+    initLeagueScouting();
+</script>

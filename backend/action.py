@@ -1,8 +1,8 @@
 # DATEI: backend/action.py
 # (Version, die 'fehlpaesse' UND '/stats/errors/season' enthält)
-# KORRIGIERT: Fügt optionalen 'half'-Filter zu Live-Statistik-Endpunkten hinzu
+# KORRIGIERT: Enthält jetzt Halbzeit-Filter und Gegner-Wurfbild-Endpunkt
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query # Query hinzugefügt
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, distinct, and_
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ router = APIRouter()
 # --- Pydantic Modelle ---
 class ActionCreate(BaseModel):
     action_type: str 
-    time_in_game: Optional[str] = "N/A" # Wird jetzt 'H1' oder 'H2' sein
+    time_in_game: Optional[str] = "N/A" # H1, H2, N/A
     game_id: int 
     player_id: Optional[int] = None 
     is_seven_meter: Optional[bool] = False
@@ -83,6 +83,16 @@ def get_db():
     finally:
         db.close()
 
+# --- NEU: Helper-Funktion für Halbzeit-Filter ---
+def apply_half_filter(query, half: str):
+    """ Wendet einen Filter für H1, H2 oder ALL auf eine Query an. """
+    if half == 'H1':
+        return query.filter(Action.time_in_game == 'H1')
+    elif half == 'H2':
+        return query.filter(Action.time_in_game == 'H2')
+    # Bei 'ALL' oder None wird kein Filter angewendet
+    return query
+
 # --- Endpunkte ---
 
 @router.post("/add", response_model=ActionResponse)
@@ -105,7 +115,7 @@ def log_action(
 
     new_action = Action(
         action_type=action_data.action_type,
-        time_in_game=action_data.time_in_game, # Speichert jetzt 'H1' oder 'H2'
+        time_in_game=action_data.time_in_game, # Speichert jetzt H1/H2
         game_id=action_data.game_id,
         player_id=action_data.player_id,
         x_coordinate=action_data.x_coordinate,
@@ -125,7 +135,7 @@ def log_action(
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
     game_id: int,
-    half: Optional[str] = Query(None), # NEU: Filter-Parameter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -134,13 +144,8 @@ def list_actions(
     team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
 
-    # NEU: Basis-Query
     actions_query = db.query(Action).filter(Action.game_id == game_id)
-    
-    # NEU: Filter anwenden
-    if half in ['H1', 'H2']:
-        actions_query = actions_query.filter(Action.time_in_game == half)
-        
+    actions_query = apply_half_filter(actions_query, half) # NEU
     actions_data = actions_query.order_by(Action.id.desc()).all()
     
     response_list = []
@@ -163,7 +168,7 @@ def list_actions(
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
     game_id: int,
-    half: Optional[str] = Query(None), # NEU: Filter-Parameter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -189,25 +194,24 @@ def get_game_stats(
     custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
     custom_action_names = [ca.name for ca in custom_actions]
     
-    # NEU: Halbzeit-Filter-Bedingung erstellen
-    half_filter = and_() # Leerer Filter (entspricht "true")
-    if half in ['H1', 'H2']:
-        half_filter = and_(Action.time_in_game == half)
+    # NEU: Action-Subquery mit Halbzeit-Filter
+    action_subquery = db.query(Action).filter(Action.game_id == game_id)
+    action_subquery = apply_half_filter(action_subquery, half)
+    action_subquery = action_subquery.subquery()
     
-    # NEU: 'half_filter' in alle CASE-Statements integriert
     case_statements = [
-        func.count(case((and_(Action.action_type == 'Goal', half_filter), 1), else_=None)).label('goals'),
-        func.count(case((and_(Action.action_type == 'Miss', half_filter), 1), else_=None)).label('misses'),
-        func.count(case((and_(Action.action_type.in_(['TechError', 'Fehlpass']), half_filter), 1), else_=None)).label('tech_errors'),
-        func.count(case((and_(Action.action_type == 'Fehlpass', half_filter), 1), else_=None)).label('fehlpaesse'),
-        func.count(case((and_(Action.action_type == 'Goal_7m', half_filter), 1), else_=None)).label('seven_meter_goals'),
-        func.count(case((and_(Action.action_type == 'Miss_7m', half_filter), 1), else_=None)).label('seven_meter_misses'),
-        func.count(case((and_(Action.action_type == 'SEVEN_METER_CAUSED', half_filter), 1), else_=None)).label('seven_meter_caused'),
-        func.count(case((and_(Action.action_type == 'Save', half_filter), 1), else_=None)).label('saves'),
-        func.count(case((and_(Action.action_type == 'SEVEN_METER_SAVE', half_filter), 1), else_=None)).label('seven_meter_saves'),
-        func.count(case((and_(Action.action_type == 'SEVEN_METER_RECEIVED', half_filter), 1), else_=None)).label('seven_meter_received'),
+        func.count(case((action_subquery.c.action_type == 'Goal', 1), else_=None)).label('goals'),
+        func.count(case((action_subquery.c.action_type == 'Miss', 1), else_=None)).label('misses'),
+        func.count(case((action_subquery.c.action_type.in_(['TechError', 'Fehlpass']), 1), else_=None)).label('tech_errors'),
+        func.count(case((action_subquery.c.action_type == 'Fehlpass', 1), else_=None)).label('fehlpaesse'),
+        func.count(case((action_subquery.c.action_type == 'Goal_7m', 1), else_=None)).label('seven_meter_goals'),
+        func.count(case((action_subquery.c.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
+        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
+        func.count(case((action_subquery.c.action_type == 'Save', 1), else_=None)).label('saves'),
+        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
+        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
         func.count(case(
-            (and_(Action.action_type == 'OppGoal', Action.active_goalie_id == Player.id, half_filter), 1),
+            (and_(action_subquery.c.action_type == 'OppGoal', action_subquery.c.active_goalie_id == Player.id), 1),
             else_=None
         )).label('opponent_goals_received')
     ]
@@ -217,16 +221,16 @@ def get_game_stats(
         safe_label = f"custom_{re.sub(r'[^A-Za-z0-9_]', '_', name)}"
         safe_custom_labels[name] = safe_label
         case_statements.append(
-            func.count(case((and_(Action.action_type == name, half_filter), 1), else_=None)).label(safe_label)
+            func.count(case((action_subquery.c.action_type == name, 1), else_=None)).label(safe_label)
         )
         
     stats_query = (
         db.query(Player.id, Player.name, Player.number, Player.position, *case_statements)
         .select_from(Player)
-        .outerjoin(Action, 
+        .outerjoin(action_subquery, # NEU: Join mit Subquery
             and_(
-                (Action.player_id == Player.id) | (Action.active_goalie_id == Player.id),
-                Action.game_id == game_id
+                (action_subquery.c.player_id == Player.id) | (action_subquery.c.active_goalie_id == Player.id)
+                # game_id und half filter sind schon in der Subquery
             )
         )
         .filter(Player.team_id == team.id, Player.id.in_(participating_player_ids)) 
@@ -239,10 +243,15 @@ def get_game_stats(
     for row in stats_results:
         row_data = row._asdict()
         custom_counts_dict = {name: row_data.get(safe_label, 0) for name, safe_label in safe_custom_labels.items()}
+        
+        # NEU: Setze games_played=1 nur, wenn der Filter 'ALL' ist (sonst ist es irreführend)
+        games_played = 1 if half == 'ALL' else 0 
+        
         final_stats.append(PlayerStats(
             player_id=row_data.get('id'), player_name=row_data.get('name'),
             player_number=row_data.get('number'), position=row_data.get('position'),
-            games_played=1, goals=row_data.get('goals', 0),
+            games_played=games_played, # NEU
+            goals=row_data.get('goals', 0),
             misses=row_data.get('misses', 0),
             tech_errors=row_data.get('tech_errors', 0),
             fehlpaesse=row_data.get('fehlpaesse', 0), 
@@ -260,7 +269,7 @@ def get_game_stats(
 @router.get("/stats/opponent/{game_id}", response_model=OpponentStats)
 def get_opponent_stats(
     game_id: int,
-    half: Optional[str] = Query(None), # NEU: Filter-Parameter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -269,17 +278,13 @@ def get_opponent_stats(
     team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
 
-    # NEU: Halbzeit-Filter-Bedingung erstellen
-    half_filter = and_() # Leerer Filter
-    if half in ['H1', 'H2']:
-        half_filter = and_(Action.time_in_game == half)
-
-    # NEU: 'half_filter' in CASE-Statements integriert
     stats_query = db.query(
-        func.count(case((and_(Action.action_type == 'OppGoal', half_filter), 1), else_=None)).label('opponent_goals'),
-        func.count(case((and_(Action.action_type == 'OppMiss', Action.player_id.is_(None), half_filter), 1), else_=None)).label('opponent_misses'),
-        func.count(case((and_(Action.action_type == 'OppTechError', Action.player_id.is_(None), half_filter), 1), else_=None)).label('opponent_tech_errors')
+        func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals'),
+        func.count(case((and_(Action.action_type == 'OppMiss', Action.player_id.is_(None)), 1), else_=None)).label('opponent_misses'),
+        func.count(case((and_(Action.action_type == 'OppTechError', Action.player_id.is_(None)), 1), else_=None)).label('opponent_tech_errors')
     ).filter(Action.game_id == game_id)
+    
+    stats_query = apply_half_filter(stats_query, half) # NEU
     
     stats_result = stats_query.first()
     if not stats_result: return OpponentStats(opponent_goals=0, opponent_misses=0, opponent_tech_errors=0)
@@ -288,24 +293,6 @@ def get_opponent_stats(
         opponent_misses=stats_result.opponent_misses,
         opponent_tech_errors=stats_result.opponent_tech_errors
     )
-
-@router.delete("/delete/{action_id}")
-def delete_action(
-    action_id: int,
-    current_trainer: Trainer = Depends(get_current_trainer),
-    db: Session = Depends(get_db)
-):
-    action = db.query(Action).filter(Action.id == action_id).first()
-    if not action: raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
-    game = db.query(Game).filter(Game.id == action.game_id).first()
-    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
-    if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
-    db.delete(action); db.commit()
-    return {"message": "Aktion erfolgreich gelöscht."}
-
-
-# --- SAISON-STATISTIKEN (BLEIBEN UNVERÄNDERT) ---
-# ... (Hier beginnt der Code für /stats/season/... , der nicht geändert wurde)
 
 @router.get("/stats/season/{team_id}", response_model=List[PlayerStats])
 def get_season_stats(
@@ -431,6 +418,22 @@ def get_season_opponent_stats(
         opponent_tech_errors=stats_result.opponent_tech_errors
     )
 
+@router.delete("/delete/{action_id}")
+def delete_action(
+    action_id: int,
+    # 'half' wird hier nicht benötigt, da wir einfach die Aktion löschen,
+    # unabhängig vom aktuellen Filter
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    action = db.query(Action).filter(Action.id == action_id).first()
+    if not action: raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
+    game = db.query(Game).filter(Game.id == action.game_id).first()
+    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+    if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+    db.delete(action); db.commit()
+    return {"message": "Aktion erfolgreich gelöscht."}
+
 
 @router.get("/shots/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_shot_charts(
@@ -444,7 +447,7 @@ def get_season_shot_charts(
         Game.team_id == team_id, Game.game_category == 'Saison'
     ).all()]
     if not saison_games_ids: return [] 
-    shot_action_types = ['Goal', 'Miss'] # 7m entfernt
+    shot_action_types = ['Goal', 'Miss', 'Goal_7m', 'Miss_7m'] # 7m hinzugefügt
     shots_query = db.query(
         Action.player_id, Action.action_type,
         Action.x_coordinate, Action.y_coordinate,
@@ -472,7 +475,7 @@ def get_season_shot_charts(
     return list(player_shots.values())
 
 # ==================================================
-# HIER IST DER ENDPUNKT (BEHEBT 404-FEHLER)
+# KORREKTUR: '/stats/errors/season' (Behebt 404-Fehler)
 # ==================================================
 @router.get("/stats/errors/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_error_charts(
@@ -512,3 +515,45 @@ def get_season_error_charts(
             y_coordinate=error.y_coordinate
         ))
     return list(player_errors.values())
+
+# ==================================================
+# NEU: Endpunkt für Gegner-Wurfbilder (Phase 9)
+# ==================================================
+@router.get("/shots/opponent/season/{team_id}", response_model=List[ShotData])
+def get_season_opponent_shot_charts(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
+    if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
+        
+    saison_games_ids = [g[0] for g in db.query(Game.id).filter(
+        Game.team_id == team_id, Game.game_category == 'Saison'
+    ).all()]
+    
+    if not saison_games_ids: return [] 
+
+    shot_action_types = ['OppGoal', 'OppMiss']
+    
+    shots_query = db.query(
+        Action.action_type,
+        Action.x_coordinate,
+        Action.y_coordinate
+    ).filter(
+        Action.game_id.in_(saison_games_ids),
+        Action.action_type.in_(shot_action_types),
+        Action.x_coordinate.isnot(None),
+        Action.y_coordinate.isnot(None)
+    ).all()
+
+    response_list = []
+    for shot in shots_query:
+        response_list.append(ShotData(
+            action_type=shot.action_type,
+            x_coordinate=shot.x_coordinate,
+            y_coordinate=shot.y_coordinate
+        ))
+    
+    return response_list
+

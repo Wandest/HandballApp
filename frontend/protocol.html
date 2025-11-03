@@ -106,23 +106,54 @@
             margin: 0; /* Überschreibt .btn margin */
         }
         
-        .score-board-display { font-size: 2em; font-weight: bold; color: #38E838; }
-        
-        /* NEU: Header-Styling für Halbzeit-Buttons */
+        /* KORRIGIERT: Layout für Score-Block (für Halbzeit-Buttons) */
         .score-info {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 5px;
+            gap: 10px; /* Abstand zwischen Score und Buttons */
         }
-        .score-info h3 {
+        .score-board-display { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #38E838; 
             margin: 0;
-            font-size: 0.9em;
-            font-weight: normal;
-            color: #ffcc00;
         }
-        .score-info .score-board-display {
-             margin: 0;
+        
+        /* NEU: Buttons für Halbzeit-Auswahl (im Header) */
+        .header-half-toggle-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .header-half-button {
+            padding: 5px 12px;
+            border: 2px solid #ffcc00;
+            background: none;
+            color: #ffcc00;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9em;
+            opacity: 0.6;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+        .header-half-button:hover:not(.active) {
+            opacity: 1;
+            background-color: rgba(255, 204, 0, 0.1);
+        }
+        .header-half-button.active {
+            background: #ffcc00;
+            color: #1e3c72;
+            opacity: 1;
+        }
+        #current-half-display {
+            font-size: 0.9em;
+            color: #ffcc00;
+            font-weight: bold;
+            margin: 0;
+            text-align: center;
+            display: none; /* Wird nicht mehr gebraucht, da Buttons im Header */
         }
         
         .protocol-grid {
@@ -201,6 +232,36 @@
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        
+        /* NEU: Filter-Container für Statistik-Tabs */
+        .stats-filter-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: flex-start;
+        }
+        .filter-button {
+            padding: 6px 12px;
+            border: 2px solid #607d8b;
+            background: none;
+            color: #607d8b;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .filter-button:hover:not(.active) {
+            background-color: rgba(96, 125, 139, 0.2);
+            color: #78909c;
+        }
+        .filter-button.active {
+            background: #607d8b;
+            color: white;
+            border-color: #607d8b;
+        }
+
+        
         .stats-table {
             width: 100%; border-collapse: collapse; margin-top: 15px;
         }
@@ -214,6 +275,7 @@
         }
         .stats-table td:first-child, .stats-table th:first-child { text-align: left; }
         
+        /* Total-Zeile Style */
         .stats-table tfoot tr {
             background-color: rgba(0,0,0,0.3); 
             font-weight: bold; 
@@ -350,12 +412,16 @@
             cursor: pointer;
         }
         
+        /* ================================================== */
+        /* KORREKTUREN FÜR WEISS/SCHWARZ & GANZFELD         */
+        /* ================================================== */
         .pitch-container {
             position: relative;
             width: 100%;
+            /* KORREKTUR: 2:1 Seitenverhältnis für Ganzfeld */
             padding-bottom: 50%; 
-            background-color: #ffffff; 
-            border: 2px solid #000;    
+            background-color: #ffffff; /* NEU: Weiss */
+            border: 2px solid #000;    /* NEU: Schwarz */
             box-sizing: border-box;
             border-radius: 5px;
             overflow: hidden;
@@ -388,56 +454,18 @@
         .svg-handball-pitch path,
         .svg-handball-pitch line,
         .svg-handball-pitch rect {
-            stroke: black;         
-            stroke-width: 1px;     
+            stroke: black;         /* NEU: Schwarz */
+            stroke-width: 1px;     /* Dünnere Linien für 400er Viewbox */
             fill: none;
         }
         .svg-handball-pitch .dashed-line {
-            stroke-dasharray: 4, 4; 
+            stroke-dasharray: 4, 4; /* Gekürzte Strichelung */
         }
         
+        /* CSS für aktiven Torwart */
         .player-list button.active-goalie {
             border: 3px solid #38E838;
             box-shadow: 0 0 10px rgba(56, 232, 56, 0.7);
-        }
-        
-        /* KORRIGIERT: Styles für Halbzeit-Buttons (jetzt im Header) */
-        .half-toggle-container {
-            display: flex; /* Von Grid zu Flex geändert */
-            gap: 10px;
-            margin-bottom: 0; /* Margin entfernt */
-        }
-        .half-btn {
-            padding: 6px 12px; /* Verkleinert */
-            font-size: 0.85em; /* Verkleinert */
-            opacity: 0.6;
-            background-color: #455a64;
-            margin: 0; /* Sicherstellen, dass kein alter Margin greift */
-        }
-        .half-btn.active {
-            opacity: 1;
-            background-color: #ff9800; /* Orange für aktiv */
-            color: #1e3c72;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-
-        /* NEU: Styles für Statistik-Filter-Buttons */
-        .stats-filter-container {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .stats-filter-container .filter-btn {
-            padding: 8px 12px;
-            font-size: 0.9em;
-            background-color: #607d8b;
-            opacity: 0.7;
-        }
-        .stats-filter-container .filter-btn.active {
-            opacity: 1;
-            background-color: #ffcc00;
-            color: #1e3c72;
         }
         
     </style>
@@ -454,12 +482,15 @@
         <div class="score-info">
             <p id="score-board" class="score-board-display">0 - 0</p>
             
-            <!-- NEU: Halbzeit-Auswahl (hierher verschoben) -->
-            <h3 style="color: #ffcc00;">Aktuell: <span id="current-half-display" style="color: #ff9800;">Hälfte 1</span></h3>
-            <div class="half-toggle-container">
-                <button id="half-btn-1" class="btn half-btn active" onclick="setHalf('H1')">Hälfte 1</button>
-                <button id="half-btn-2" class="btn half-btn" onclick="setHalf('H2')">Hälfte 2</button>
+            <!-- NEU: Halbzeit-Auswahl in Header verschoben -->
+            <p id="current-half-display" style="font-size: 0.9em; color: #ffcc00; font-weight: bold; margin: 0;">
+                Aktuell: <strong>Hälfte 1</strong>
+            </p>
+            <div class="header-half-toggle-container">
+                <button id="half-btn-H1" class="header-half-button active" onclick="setHalf('H1')">Hälfte 1</button>
+                <button id="half-btn-H2" class="header-half-button" onclick="setHalf('H2')">Hälfte 2</button>
             </div>
+            
         </div>
         <button class="btn btn-info header-button" onclick="updateAllStats()">🔄 Aktualisieren</button>
     </div>
@@ -475,10 +506,9 @@
         </div>
 
         <div class="action-controls">
-            <!-- NEU: Halbzeit-Auswahl von hier entfernt -->
-            <h3>Aktionen</h3>
-            
+            <!-- NEU: Titel "Aktionen" (ohne Halbzeit) -->
             <h3>Meine Aktionen</h3>
+            
             <button class="btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
             <button class="btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
             <button class="btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
@@ -501,8 +531,10 @@
             
             <hr class="divider">
             <h3>Gegner-Aktionen</h3>
-            <button class="btn-opp-goal" onclick="handleOpponentAction('OppGoal')">🟡 Gegner Tor</button>
-            <button class="btn-opp-miss" onclick="handleOpponentAction('OppMiss')">💨 Gegner Fehlwurf</button>
+            <!-- KORRIGIERT: Rufen jetzt showShotModal statt handleOpponentAction auf -->
+            <button class="btn-opp-goal" onclick="showShotModal('OppGoal', false)">🟡 Gegner Tor</button>
+            <button class="btn-opp-miss" onclick="showShotModal('OppMiss', false)">💨 Gegner Fehlwurf</button>
+            <!-- Dieser Button bleibt, da wir hier (noch) keine Coords brauchen -->
             <button class="btn-opp-error" onclick="handleOpponentAction('OppTechError')">🚫 Gegner Tech. Fehler</button>
         </div>
         <div class="right-column-area">
@@ -515,12 +547,12 @@
             <div id="stats-tab" class="tab-content active">
                 
                 <!-- NEU: Filter-Buttons für Statistik -->
-                <div class="stats-filter-container" id="stats-filter-buttons">
-                    <button class="btn filter-btn active" onclick="filterStats('ALL', this)">Gesamt</button>
-                    <button class="btn filter-btn" onclick="filterStats('H1', this)">Hälfte 1</button>
-                    <button class="btn filter-btn" onclick="filterStats('H2', this)">Hälfte 2</button>
+                <div class="stats-filter-container">
+                    <button id="filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL')">Gesamt</button>
+                    <button id="filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1')">Hälfte 1</button>
+                    <button id="filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2')">Hälfte 2</button>
                 </div>
-                
+
                 <h3 style="margin-top: 20px;">Gegner-Statistik</h3>
                 <div id="stats-table-container-opponent">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
@@ -543,15 +575,13 @@
             </div>
 
             <div id="log-tab" class="tab-content">
-                <h3>Protokoll Tabelle</h3>
-                
+                <h3>Protokoll Tabelle (Letzte Aktionen zuerst)</h3>
                 <!-- NEU: Filter-Buttons auch für Log -->
-                <div class="stats-filter-container" id="log-filter-buttons">
-                    <button class="btn filter-btn active" onclick="filterStats('ALL', this)">Gesamt</button>
-                    <button class="btn filter-btn" onclick="filterStats('H1', this)">Hälfte 1</button>
-                    <button class="btn filter-btn" onclick="filterStats('H2', this)">Hälfte 2</button>
+                <div class="stats-filter-container">
+                    <button id="log-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', true)">Gesamt</button>
+                    <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', true)">Hälfte 1</button>
+                    <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', true)">Hälfte 2</button>
                 </div>
-                
                 <div id="action-log-container"></div>
             </div>
             
@@ -616,7 +646,7 @@
         const ROSTER_CHECKLIST_CONTAINER = document.getElementById('roster-checklist-container');
         const ROSTER_MESSAGE = document.getElementById('roster-message');
         const SAVE_ROSTER_BTN = document.getElementById('save-roster-btn');
-        const CURRENT_HALF_DISPLAY = document.getElementById('current-half-display'); // NEU
+        const CURRENT_HALF_DISPLAY = document.getElementById('current-half-display');
 
         // Shot Modal DOM
         const SHOT_MODAL = document.getElementById('shot-modal');
@@ -626,15 +656,15 @@
         let participatingPlayers = []; 
         let customActions = [];
         let selectedPlayerId = null; 
-        let activeGoalieId = null;
-        
-        // NEU: Globale Variablen für Halbzeit-Status
-        let protocolCurrentHalf = 'H1'; // Status für Eingabe
-        let statsCurrentFilter = 'ALL'; // Status für Anzeige
+        let activeGoalieId = null; 
 
         // Temporäre Variablen für die Modal-Aktion
         let pendingActionType = null;
         let pendingIsSevenMeter = false;
+        
+        // NEU: Globale Variablen für Halbzeit-Filter
+        let protocolCurrentHalf = 'H1'; // Welche Halbzeit wird *geloggt*?
+        let currentFilterHalf = 'ALL'; // Welche Halbzeit wird *angezeigt*?
         
         // --- Verifizierungs-Logik ---
         const IS_VERIFIED = (localStorage.getItem('is_verified') === 'true');
@@ -687,15 +717,15 @@
         // --- Hilfsfunktionen ---
         function leaveProtocol() { window.location.href = "/dashboard"; } 
         
-        // NEU: updateAllStats ruft jetzt mit dem aktuellen Filter auf
         function updateAllStats() {
-            updateScoreDisplay(statsCurrentFilter);
+            // Lädt jetzt Stats basierend auf dem 'currentFilterHalf'
+            updateScoreDisplay(); 
             if (document.getElementById('stats-tab').classList.contains('active')) {
-                loadStats(statsCurrentFilter);
-                loadOpponentStats(statsCurrentFilter);
+                loadStats();
+                loadOpponentStats();
             }
             if (document.getElementById('log-tab').classList.contains('active')) {
-                loadActionLog(statsCurrentFilter);
+                loadActionLog();
             }
         }
 
@@ -709,66 +739,78 @@
             document.getElementById(`${tabName}-tab`).classList.add('active');
             document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
             
-            // NEU: Ruft Statistiken mit dem aktuellen Filter auf
-            if (tabName === 'stats' || tabName === 'log') { 
-                filterStats(statsCurrentFilter, null); // Lädt alles neu mit dem Filter
-            }
+            // Setzt die Filter-Buttons auf den aktuellen Filter-Status
+            setFilterHalf(currentFilterHalf, tabName === 'log');
+            
+            if (tabName === 'stats') { 
+                loadStats();
+                loadOpponentStats();
+            } 
+            else if (tabName === 'log') { loadActionLog(); }
         }
         
         function selectPlayer(playerId, playerName, isGoalie) {
             selectedPlayerId = playerId;
             SELECTED_PLAYER_INFO.textContent = playerName;
         
+            // Alle Buttons de-selektieren
             document.querySelectorAll('.player-list button').forEach(btn => {
                 btn.classList.remove('selected');
             });
+            // Geklickten Button selektieren
             document.getElementById(`player-btn-${playerId}`).classList.add('selected');
             
+            // Logik für aktiven Torwart
             if (isGoalie) {
+                // Alte "active" Markierung entfernen
                 document.querySelectorAll('.player-list button.active-goalie').forEach(btn => {
                     btn.classList.remove('active-goalie');
                 });
+                // Neuen Torwart als "active" markieren
                 document.getElementById(`player-btn-${playerId}`).classList.add('active-goalie');
                 activeGoalieId = playerId;
             }
         }
         
-        // --- NEU: Funktionen für Halbzeit-Status ---
+        // --- NEUE FUNKTIONEN: Halbzeit-Filter ---
         
+        /** Setzt die *EINGABE*-Halbzeit (welche HZ wird geloggt?) */
         function setHalf(half) {
             protocolCurrentHalf = half;
-            CURRENT_HALF_DISPLAY.textContent = (half === 'H1') ? 'Hälfte 1' : 'Hälfte 2';
+            CURRENT_HALF_DISPLAY.innerHTML = `Aktuell: <strong>${half === 'H1' ? 'Hälfte 1' : 'Hälfte 2'}</strong>`;
             
-            // Buttons (de)aktivieren
-            document.getElementById('half-btn-1').classList.toggle('active', half === 'H1');
-            document.getElementById('half-btn-2').classList.toggle('active', half === 'H2');
+            // Visuelles Feedback für Header-Buttons
+            document.getElementById('half-btn-H1').classList.toggle('active', half === 'H1');
+            document.getElementById('half-btn-H2').classList.toggle('active', half === 'H2');
         }
         
-        function filterStats(halfFilter, clickedButton) {
-            statsCurrentFilter = halfFilter; // Globalen Filter-Status setzen
+        /** Setzt die *ANZEIGE*-Halbzeit (welche HZ wird in Stats/Log gezeigt?) */
+        function setFilterHalf(half, isLogTab = false) {
+            currentFilterHalf = half;
             
-            // Alle Filter-Buttons (in beiden Tabs) aktualisieren
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelectorAll(`.stats-filter-container .filter-btn:nth-child(${ (halfFilter === 'H1') ? 2 : (halfFilter === 'H2' ? 3 : 1) })`).forEach(btn => {
-                 btn.classList.add('active');
-            });
+            // 1. Buttons im Stats-Tab aktualisieren
+            document.getElementById('filter-btn-ALL').classList.toggle('active', half === 'ALL');
+            document.getElementById('filter-btn-H1').classList.toggle('active', half === 'H1');
+            document.getElementById('filter-btn-H2').classList.toggle('active', half === 'H2');
             
-            // Lade alle relevanten Daten mit dem neuen Filter
-            // (Funktionen müssen 'halfFilter' akzeptieren)
-            if (document.getElementById('stats-tab').classList.contains('active')) {
-                loadStats(halfFilter);
-                loadOpponentStats(halfFilter);
+            // 2. Buttons im Log-Tab aktualisieren
+            document.getElementById('log-filter-btn-ALL').classList.toggle('active', half === 'ALL');
+            document.getElementById('log-filter-btn-H1').classList.toggle('active', half === 'H1');
+            document.getElementById('log-filter-btn-H2').classList.toggle('active', half === 'H2');
+
+            // 3. Daten neu laden (basierend auf dem aktiven Tab)
+            if (isLogTab) {
+                loadActionLog();
+            } else {
+                loadStats();
+                loadOpponentStats();
             }
-            if (document.getElementById('log-tab').classList.contains('active')) {
-                loadActionLog(halfFilter);
-            }
-            updateScoreDisplay(halfFilter);
         }
+
 
         // --- Wurf Modal Logik ---
         
+        // KORRIGIERT: Beinhaltet jetzt "Fehlpass" und Gegner-Aktionen
         function getActionLabel(actionType, isSevenMeter) {
             if (isSevenMeter) {
                 return actionType === 'Goal' ? '7m Tor' : '7m verworfen';
@@ -777,16 +819,24 @@
             if (actionType === 'Miss') return 'Wurf verworfen';
             if (actionType === 'TechError') return 'Technischer Fehler';
             if (actionType === 'Fehlpass') return 'Fehlpass';
-            return actionType; 
+            // NEU: Gegner-Labels
+            if (actionType === 'OppGoal') return 'Gegner Tor';
+            if (actionType === 'OppMiss') return 'Gegner Fehlwurf';
+            return actionType; // Fallback für Custom Actions
         }
 
+        // KORRIGIERT: Behandelt jetzt auch Gegner-Aktionen
         function showShotModal(actionType, isSevenMeter) {
             if (!checkVerification()) return;
-            if (selectedPlayerId === null) {
+            
+            const isOpponentAction = (actionType === 'OppGoal' || actionType === 'OppMiss');
+
+            if (!isOpponentAction && selectedPlayerId === null) {
+                 // Nur bei EIGENEN Aktionen einen Spieler fordern
                  alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
                  return;
             }
-            if (selectedPlayerId === 0) {
+            if (!isOpponentAction && selectedPlayerId === 0) {
                  alert("Diese Aktion kann nur eigenen Spielern zugewiesen werden.");
                  return;
             }
@@ -794,11 +844,19 @@
             pendingActionType = actionType;
             pendingIsSevenMeter = isSevenMeter;
             
-            const player = participatingPlayers.find(p => p.id === selectedPlayerId);
             const actionLabel = getActionLabel(actionType, isSevenMeter);
+            let titleText = "";
+
+            if (isOpponentAction) {
+                // NEU: Titel für Gegner-Aktion
+                titleText = `Position für: GEGNER - ${actionLabel}`;
+            } else {
+                // Bisherige Logik
+                const player = participatingPlayers.find(p => p.id === selectedPlayerId);
+                titleText = `Position für: ${player.name} - ${actionLabel}`;
+            }
             
-            SHOT_MODAL_TITLE.textContent = `Position für: ${player.name} - ${actionLabel}`;
-            
+            SHOT_MODAL_TITLE.textContent = titleText;
             SHOT_MODAL.style.display = 'block';
         }
         
@@ -814,6 +872,8 @@
             }
         });
         
+        // KORRIGIERT: Unterscheidet jetzt, ob die Aktion vom Gegner oder Spieler kam
+        // BUGFIX: `currentHalf` zu `protocolCurrentHalf` korrigiert
         function logShotWithCoordinates(event) {
             event.stopPropagation(); 
             
@@ -828,7 +888,16 @@
 
             console.log(`Koordinaten: X=${xCoord.toFixed(1)}%, Y=${yCoord.toFixed(1)}%`);
             
-            logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, xCoord, yCoord);
+            const isOpponentAction = (pendingActionType === 'OppGoal' || pendingActionType === 'OppMiss');
+
+            if (isOpponentAction) {
+                // NEU: Aktion für Gegner loggen
+                // Loggt mit 'null' für player_id, aber mit 'activeGoalieId'
+                logAction(pendingActionType, null, false, protocolCurrentHalf, xCoord, yCoord, activeGoalieId); // BUGFIX
+            } else {
+                // Bisherige Logik: Aktion für eigenen Spieler loggen
+                logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, protocolCurrentHalf, xCoord, yCoord, null); // BUGFIX
+            }
             
             closeShotModal();
         }
@@ -842,7 +911,7 @@
                  return;
             }
             if (actionType === 'SEVEN_METER_CAUSED') {
-                logAction(actionType, selectedPlayerId, false, null, null);
+                logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
             } else {
                  alert("Diese Aktion sollte das Shot-Modal öffnen, ist aber nicht als Wurf konfiguriert.");
             }
@@ -855,12 +924,14 @@
                  return;
             }
             
+            // ANNAHME: Nur "Eigene Aktionen" (Custom Actions) die "Fehlpass" heißen,
+            // sollen das Modal öffnen (falls der fixe Button nicht existiert)
             const actionsWithCoords = ['Fehlpass']; 
             
             if (actionsWithCoords.includes(actionName)) {
                  showShotModal(actionName, false);
             } else {
-                 logAction(actionName, selectedPlayerId, false, null, null);
+                 logAction(actionName, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
             }
         }
         
@@ -876,32 +947,47 @@
                 return;
             }
             
-            logAction(actionType, selectedPlayerId, false, null, null);
+            logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
         }
 
+        // KORRIGIERT: Nimmt jetzt "activeGoalieId" entgegen
+        // BUGFIX: `currentHalf` zu `protocolCurrentHalf` korrigiert
         function handleOpponentAction(actionType) {
             if (!checkVerification()) return;
-            logAction(actionType, null, false, null, null, activeGoalieId);
+            // Gegner-Aktionen werden jetzt mit der ID des aktiven Torwarts geloggt
+            // Diese Funktion wird jetzt nur noch für "OppTechError" genutzt
+            logAction(actionType, null, false, protocolCurrentHalf, null, null, activeGoalieId); // BUGFIX
         }
 
-        // NEU: logAction sendet jetzt 'protocolCurrentHalf'
-        async function logAction(actionType, playerId = null, isSevenMeter = false, xCoord = null, yCoord = null, activeGoalieIdForOpponentAction = null) {
+        // KORRIGIERT: Nimmt active_goalie_id an und fixt 7m-Typ
+        // NEU: Nimmt 'half' (Halbzeit) entgegen
+        async function logAction(
+            actionType, 
+            playerId = null, 
+            isSevenMeter = false, 
+            half = 'H1', // NEU
+            xCoord = null, 
+            yCoord = null, 
+            activeGoalieIdForOpponentAction = null
+        ) {
             
+            // --- NEUER 7M BUGFIX ---
             let finalActionType = actionType;
             if (isSevenMeter) {
                 if (actionType === 'Goal') { finalActionType = 'Goal_7m'; }
                 if (actionType === 'Miss') { finalActionType = 'Miss_7m'; }
             }
+            // --- ENDE 7M BUGFIX ---
 
             const payload = {
-                action_type: finalActionType,
-                time_in_game: protocolCurrentHalf, // KORRIGIERT: Sendet 'H1' oder 'H2'
+                action_type: finalActionType, 
+                time_in_game: half, // NEU: Speichert H1 oder H2
                 game_id: GAME_ID, 
                 player_id: playerId,
-                is_seven_meter: isSevenMeter,
+                is_seven_meter: isSevenMeter, // (wird eigentlich nicht mehr gebraucht, aber ok)
                 x_coordinate: xCoord, 
                 y_coordinate: yCoord,
-                active_goalie_id: activeGoalieIdForOpponentAction
+                active_goalie_id: activeGoalieIdForOpponentAction 
             };
 
             try {
@@ -911,7 +997,7 @@
                     body: JSON.stringify(payload),
                 });
                 if (response.ok) { 
-                    updateAllStats(); // Ruft jetzt mit dem aktuellen Filter auf
+                    updateAllStats(); 
                     selectedPlayerId = null;
                     SELECTED_PLAYER_INFO.textContent = "Keiner";
                     document.querySelectorAll('.player-list button').forEach(btn => {
@@ -933,7 +1019,8 @@
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
 
             try {
-                const response = await fetch(`/actions/delete/${actionId}`, {
+                // NEU: API-Aufruf nutzt Filter
+                const response = await fetch(`/actions/delete/${actionId}?half=${currentFilterHalf}`, {
                     method: 'DELETE' 
                 });
                 if (response.ok) { updateAllStats(); } 
@@ -941,15 +1028,12 @@
             } catch (error) { console.error('Löschfehler:', error); }
         }
         
-        // NEU: Akzeptiert 'halfFilter'
-        async function updateScoreDisplay(halfFilter = 'ALL') {
-            let url = `/actions/list/${GAME_ID}`;
-            if (halfFilter !== 'ALL') {
-                url += `?half=${halfFilter}`;
-            }
-            
+        // NEU: Lädt Score basierend auf Filter
+        async function updateScoreDisplay() {
             try {
-                const response = await fetch(url, { method: 'GET' });
+                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`, {
+                    method: 'GET' 
+                });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) { 
                     SCORE_BOARD.textContent = "N/A";
@@ -968,17 +1052,13 @@
             }
         }
 
-        // NEU: Akzeptiert 'halfFilter'
-        async function loadOpponentStats(halfFilter = 'ALL') {
+        // NEU: Lädt Gegner-Stats basierend auf Filter
+        async function loadOpponentStats() {
             STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
-            
-            let url = `/actions/stats/opponent/${GAME_ID}`;
-            if (halfFilter !== 'ALL') {
-                url += `?half=${halfFilter}`;
-            }
-            
             try {
-                const response = await fetch(url, { method: 'GET' });
+                const response = await fetch(`/actions/stats/opponent/${GAME_ID}?half=${currentFilterHalf}`, {
+                    method: 'GET' 
+                });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Gegner-Stats-Daten nicht gefunden');
                 
@@ -1007,22 +1087,19 @@
             }
         }
 
-        // NEU: Akzeptiert 'halfFilter'
-        async function loadActionLog(halfFilter = 'ALL') {
-            let url = `/actions/list/${GAME_ID}`;
-            if (halfFilter !== 'ALL') {
-                url += `?half=${halfFilter}`;
-            }
-            
+        // NEU: Lädt Log basierend auf Filter
+        async function loadActionLog() {
             try {
-                const response = await fetch(url, { method: 'GET' });
+                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`, {
+                    method: 'GET' 
+                });
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Log-Daten nicht gefunden');
                 
                 const actions = await response.json();
                 
                 if (actions.length === 0) {
-                    ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Aktionen für diesen Filter.</p>';
+                    ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Aktionen protokolliert.</p>';
                     return;
                 }
                 
@@ -1030,7 +1107,7 @@
                     'Goal': '⚽ TOR (Feld)', 'Miss': '💨 Fehlwurf (Feld)',
                     'Goal_7m': '🎯 TOR (7m)', 'Miss_7m': '🧱 Fehlwurf (7m)', 
                     'TechError': '🚫 Technischer Fehler', 
-                    'Fehlpass': '🚫 Fehlpass',
+                    'Fehlpass': '🚫 Fehlpass', 
                     'Save': '🛑 Parade',
                     'SEVEN_METER_CAUSED': '🚨 7m verursacht',
                     'SEVEN_METER_SAVE': '🧱 7m Gehalten',
@@ -1041,7 +1118,7 @@
                 };
                 
                 let tableHtml = `<table class="log-table"><thead><tr>
-                                    <th>Aktion</th><th>Spieler</th><th>#</th><th>Hälfte</th><th>Löschen</th>
+                                    <th>Hälfte</th><th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
                 
                 actions.forEach(action => { 
@@ -1057,8 +1134,8 @@
                     }
                     const playerNumber = action.player_number !== null ? action.player_number : '';
                     tableHtml += `<tr>
+                            <td>${action.time_in_game || 'N/A'}</td>
                             <td>${actionText}</td><td>${playerInfo}</td><td>${playerNumber}</td>
-                            <td>${action.time_in_game || '?'}</td>
                             <td><button class="btn btn-danger btn-inline-delete btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button></td>
                          </tr>`;
                 });
@@ -1109,19 +1186,17 @@
             }
         }
 
-        // NEU: Akzeptiert 'halfFilter'
-        async function loadStats(halfFilter = 'ALL') {
+        // KORREKTUR: 'Fehlpass' zur Statistik-Tabelle hinzugefügt
+        // NEU: Lädt Stats basierend auf Filter
+        async function loadStats() {
             STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
 
-            let url = `/actions/stats/${GAME_ID}`;
-            if (halfFilter !== 'ALL') {
-                url += `?half=${halfFilter}`;
-            }
-
             try {
-                const response = await fetch(url, { method: 'GET' });
+                const response = await fetch(`/actions/stats/${GAME_ID}?half=${currentFilterHalf}`, {
+                    method: 'GET' 
+                });
 
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Statistik-Ladefehler.');
@@ -1135,6 +1210,7 @@
                     return;
                 }
 
+                // KORREKTUR 1: Header geändert
                 let fieldTableHtml = `<table class="stats-table"><thead><tr>
                                         <th>Spieler</th><th>#</th>
                                         <th>Tore (Quote)</th>
@@ -1161,10 +1237,11 @@
                 let goaliesFound = false;
                 let fieldPlayersFound = false;
                 
+                // KORREKTUR 2: Neue 'total'-Variablen
                 let totalGoals = 0;
                 let totalShots = 0;
                 let totalTechErrors = 0;
-                let totalFehlpaesse = 0;
+                let totalFehlpaesse = 0; // <-- NEU
                 let totalSevenMeterCaused = 0;
                 let totalSevenMeterAttempts = 0;
                 let totalSevenMeterGoals = 0;
@@ -1174,21 +1251,21 @@
                         goaliesFound = true;
                         const totalSaves = player.saves + player.seven_meter_saves;
                         
-                        // KORRIGIERTE FORMEL (Bug #7)
+                        // KORREKTUR (BUGFIX): 7m-Received (Kassiert) zu den normalen Gegentoren addieren
                         const totalGoalsReceived = player.opponent_goals_received + player.seven_meter_received;
                         
                         const totalShotsOnGoal = totalSaves + totalGoalsReceived;
                         const saveQuote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
                         
-                        // 7m Paraden / 7m Gesamt (Gehalten + Kassiert)
-                        const totalSevenMeters = player.seven_meter_saves + player.seven_meter_received;
-                        const sevenMeterQuote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
+                        // 7m Gehalten / (7m Gehalten + 7m Kassiert)
+                        const totalSevenMeterOnGoal = player.seven_meter_saves + player.seven_meter_received;
+                        const sevenMeterQuote = totalSevenMeterOnGoal > 0 ? ((player.seven_meter_saves / totalSevenMeterOnGoal) * 100).toFixed(0) + '%' : '—';
 
                         goalieTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>
                             <td>${totalSaves} (${saveQuote})</td>
-                            <td>${player.seven_meter_saves} / ${totalSevenMeters} (${sevenMeterQuote})</td>
+                            <td>${player.seven_meter_saves} / ${totalSevenMeterOnGoal} (${sevenMeterQuote})</td>
                         </tr>`;
                     } else {
                         fieldPlayersFound = true;
@@ -1196,6 +1273,7 @@
                         const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
                         const shotQuote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—';
 
+                        // KORREKTUR 3: Zelle geändert
                         fieldTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>
@@ -1214,16 +1292,18 @@
                         });
                         customTableHtml += `</tr>`;
                         
+                        // Summen addieren
                         totalGoals += currentTotalGoals;
                         totalShots += currentTotalShots;
                         totalTechErrors += player.tech_errors;
-                        totalFehlpaesse += player.fehlpaesse;
+                        totalFehlpaesse += player.fehlpaesse; // <-- NEU
                         totalSevenMeterCaused += player.seven_meter_caused;
                         totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses;
                         totalSevenMeterGoals += player.seven_meter_goals;
                     }
                 });
 
+                // KORREKTUR 4: Total-Zeile (tfoot) geändert
                 const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
                 fieldTableHtml += `</tbody>
                                   <tfoot>
@@ -1294,6 +1374,7 @@
                 if (!response.ok) throw new Error('Fehler beim Laden des Spiel-Kaders.');
                 participatingPlayers = await response.json();
                 
+                // NEU: Setze den ersten TW als aktiv, falls vorhanden
                 const firstGoalie = participatingPlayers.find(p => p.position === 'Torwart');
                 if (firstGoalie) {
                     activeGoalieId = firstGoalie.id;
@@ -1302,6 +1383,7 @@
                 updateRosterChecklist();
                 buildActionPlayerButtons();
                 
+                // NEU: Markiere den aktiven TW
                 if (activeGoalieId) {
                     const goalieBtn = document.getElementById(`player-btn-${activeGoalieId}`);
                     if(goalieBtn) goalieBtn.classList.add('active-goalie');
@@ -1326,21 +1408,28 @@
             });
         }
         
+        // ==================================================
+        // KORRIGIERT: Sortiert die Spielerliste
+        // ==================================================
         function buildActionPlayerButtons() {
             PLAYER_BUTTONS_CONTAINER.innerHTML = '';
             
+            // NEU: Sortierlogik
             participatingPlayers.sort((a, b) => {
+                // 1. Nach Position (Torwart zuerst)
                 if (a.position === 'Torwart' && b.position !== 'Torwart') {
-                    return -1;
+                    return -1; // a (Torwart) kommt vor b
                 }
                 if (a.position !== 'Torwart' && b.position === 'Torwart') {
-                    return 1;
+                    return 1; // b (Torwart) kommt vor a
                 }
                 
+                // 2. Nach Nummer (innerhalb der Positionsgruppe)
                 const numA = a.number !== null ? a.number : 999;
                 const numB = b.number !== null ? b.number : 999;
                 return numA - numB;
             });
+            // ENDE Sortierlogik
 
             let hasPlayers = false;
             participatingPlayers.forEach(player => {
@@ -1380,6 +1469,7 @@
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Speichern.');
                 
+                // Lade Kader neu (wichtig für "aktiven TW" und Sortierung)
                 await loadGameRoster(); 
                 
                 selectedPlayerId = null;
@@ -1399,12 +1489,16 @@
             try {
                 showVerificationBanner();
                 
+                // Setzt die Halbzeit-Buttons auf H1 beim Start
+                setHalf('H1');
+                
                 Promise.all([
                     loadFullTeamRoster(),
                     loadCustomActions()
                 ]).then(() => {
                     loadGameRoster().then(() => {
-                        updateAllStats(); // Ruft jetzt mit Filter 'ALL' auf
+                        // Lädt initial mit Filter 'ALL'
+                        updateAllStats();
                     });
                 });
                 
