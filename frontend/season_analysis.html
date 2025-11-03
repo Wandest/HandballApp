@@ -1,38 +1,45 @@
 <style>
-    .shot-chart-container {
+    /* Container-Typen */
+    .shot-chart-container-half,
+    .shot-chart-container-full {
         position: relative;
         width: 100%;
-        padding-bottom: 100%; 
-        background-color: #ffffff; /* NEU: Weiss */
-        border: 2px solid #000;    /* NEU: Schwarz */
+        background-color: #ffffff;
+        border: 2px solid #000;
         box-sizing: border-box;
         border-radius: 5px;
         overflow: hidden;
         margin-top: 15px;
     }
+    
+    /* Container für HALBFELD (Wurfbild) */
+    .shot-chart-container-half {
+        padding-bottom: 100%; /* 1:1 Seitenverhältnis (Quadratisch) */
+        max-width: 400px; 
+        margin-left: auto;
+        margin-right: auto;
+    }
 
-    .shot-chart-container .svg-handball-pitch {
+    /* Container für GANZFELD (Fehlerbild) */
+    .shot-chart-container-full {
+        padding-bottom: 50%; /* 2:1 Seitenverhältnis (Breit) */
+    }
+
+    /* SVG-Pitch (Gilt für beide) */
+    .shot-chart-container-half .svg-handball-pitch,
+    .shot-chart-container-full .svg-handball-pitch {
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         z-index: 1; 
+        object-fit: fill; /* <-- KORREKTUR 1: Von 'cover' zu 'fill' geändert */
     }
 
-    .svg-handball-pitch path,
-    .svg-handball-pitch line,
-    .svg-handball-pitch rect {
-        stroke: black;             /* NEU: Schwarz */
-        stroke-width: 2px;
-        fill: none;
-    }
-    
-    .svg-handball-pitch .dashed-line {
-        stroke-dasharray: 8, 8;
-    }
-
-    .shot-chart-container .shot-overlay {
+    /* Overlay für die Punkte (Gilt für beide) */
+    .shot-chart-container-half .shot-overlay,
+    .shot-chart-container-full .shot-overlay {
         position: absolute;
         top: 0;
         left: 0;
@@ -40,6 +47,49 @@
         height: 100%;
         z-index: 2; 
     }
+    
+    /* Style für Total-Zeile */
+    .stats-table tfoot tr {
+        background-color: rgba(0,0,0,0.3); 
+        font-weight: bold; 
+        border-top: 2px solid #ffcc00;
+    }
+
+    /* ================================================== */
+    /* KORREKTUR 1: FEHLENDE STYLES FÜR DIE PUNKTE (DOTS) */
+    /* ================================================== */
+    .shot-dot {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        border: 2px solid rgba(0,0,0,0.7);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .shot-dot.goal { background-color: #38E838; } /* Grün (Tor) */
+    .shot-dot.miss { background-color: #f44336; } /* Rot (Fehlwurf / Tech. Fehler) */
+    .shot-dot.tech-error-pass { background-color: #ff9800; } /* Orange (Fehlpass) */
+
+    /* CSS für die Legende (war auch nicht definiert) */
+    .shot-chart-legend {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 15px;
+    }
+    .legend-item { display: flex; align-items: center; }
+    .legend-color-box {
+        width: 15px;
+        height: 15px;
+        margin-right: 8px;
+        border: 1px solid rgba(0,0,0,0.5);
+        border-radius: 3px;
+    }
+    .legend-color-box.goal { background-color: #38E838; }
+    .legend-color-box.miss { background-color: #f44336; }
+    .legend-color-box.tech-error-pass { background-color: #ff9800; }
+    
 </style>
 <div class="analysis-grid-2-col">
     
@@ -100,19 +150,9 @@
                     <option value="" disabled selected>Statistik laden...</option>
                 </select>
                 
-                <div class="shot-chart-container">
+                <div class="shot-chart-container-full">
                     
-                    <svg viewBox="0 0 200 200" class="svg-handball-pitch" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="-2" y="92.5" width="2" height="15" fill="black" stroke="black" />
-    
-                        <path d="M 0 32.5 A 60 60 0 0 1 60 92.5 L 60 107.5 A 60 60 0 0 1 0 167.5" />
-                        
-                        <path d="M 0 2.5 A 90 90 0 0 1 90 92.5 L 90 107.5 A 90 90 0 0 1 0 197.5" class="dashed-line" />
-                        
-                        <line x1="70" y1="95" x2="70" y2="105" />
-                        
-                        <line x1="40" y1="95" x2="40" y2="105" />
-                    </svg>
+                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
                     
                     <div class="shot-overlay" id="shot-chart-overlay">
                         </div>
@@ -126,6 +166,37 @@
                     <div class="legend-item">
                         <span class="legend-color-box miss"></span>
                         <span>Fehlwurf</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-content">
+                <h2>Saison Fehlerbild (Error Chart)</h2>
+                <p style="opacity: 0.8; font-size: 0.9em;">
+                    Zeigt alle Technischen Fehler & Fehlpässe aus Saisonspielen.
+                </p>
+                
+                <label for="error-chart-player-select">Spieler auswählen:</label>
+                <select id="error-chart-player-select">
+                    <option value="" disabled selected>Statistik laden...</option>
+                </select>
+                
+                <div class="shot-chart-container-full">
+                    
+                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                    
+                    <div class="shot-overlay" id="error-chart-overlay">
+                        </div>
+                </div>
+                
+                <div class="shot-chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color-box miss"></span> <span>Tech. Fehler</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box tech-error-pass"></span> <span>Fehlpass</span>
                     </div>
                 </div>
             </div>
@@ -175,12 +246,14 @@
     </div>
 </div>
 
+
 <script>
     // Globale Variablen
     let selectedTeamId = localStorage.getItem('selected_team_id');
     let selectedTeamName = localStorage.getItem('selected_team_name');
-    let seasonShotData = []; 
-    
+    let seasonShotData = [];
+    let seasonErrorData = []; // NEU
+
     // DOM-Elemente
     const seasonStatsTeamName = document.getElementById('season-stats-team-name');
     const loadSeasonStatsBtn = document.getElementById('load-season-stats-btn');
@@ -203,11 +276,15 @@
     const publicStatsCustom = document.getElementById('public-stats-table-custom-season');
     const publicStatsOpponent = document.getElementById('public-stats-table-opponent-season');
     
-    // NEU: Shot Chart Elemente
+    // Wurfbild (Shot Chart) Elemente
     const shotChartPlayerSelect = document.getElementById('shot-chart-player-select');
     const shotChartOverlay = document.getElementById('shot-chart-overlay');
     
-    // --- Hilfsfunktionen ---
+    // NEU: Fehlerbild (Error Chart) Elemente
+    const errorChartPlayerSelect = document.getElementById('error-chart-player-select');
+    const errorChartOverlay = document.getElementById('error-chart-overlay');
+
+    // --- Hilfsfunktionen (Unverändert) ---
     // `logout()` ist global
     // `checkVerification()` ist global
     // `showToast()` ist global
@@ -229,7 +306,9 @@
         statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere TW-Statistik...</p>';
         statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Aktualisiere Team-Statistik...</p>';
         
+        // NEU: Lade beide Charts
         loadShotChartData();
+        loadErrorChartData();
 
         try {
             const [playerStatsResponse, opponentStatsResponse] = await Promise.all([
@@ -287,6 +366,7 @@
         targetContainer.innerHTML = tableHtml;
     }
 
+    // KORRIGIERT: Zeigt jetzt 'Tech. Fehler / Fehlpässe' an
     function displaySeasonPlayerStats(stats, containerPrefix) {
         
         const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
@@ -298,6 +378,7 @@
              return;
         }
 
+        // KORREKTUR: Header-Text geändert
         let fieldHeaders = [
             { key: 'player_name', name: 'Spieler', isFixed: true }, 
             { key: 'player_number', name: '#', isFixed: true },
@@ -305,7 +386,7 @@
             { key: 'goals', name: 'Tore (Quote)' }, 
             { key: 'tore_pro_spiel', name: 'Tore/Spiel' }, 
             { key: 'misses', name: 'Fehlwürfe' },
-            { key: 'tech_errors', name: 'Tech. Fehler' }, 
+            { key: 'tech_errors', name: 'Tech. Fehler / Fehlpässe' }, // <-- NEUER TEXT
             { key: 'seven_meter_goals', name: '7m Tor' },
             { key: 'seven_meter_misses', name: '7m Fehl' }, 
             { key: 'seven_meter_caused', name: '7m Verursacht' },
@@ -335,6 +416,16 @@
              return;
         }
         
+        let totalGoals = 0;
+        let totalShots = 0;
+        let totalTechErrors = 0;
+        let totalFehlpaesse = 0; // <-- NEU
+        let totalSevenMeterCaused = 0;
+        let totalSevenMeterAttempts = 0;
+        let totalSevenMeterGoals = 0;
+        let totalGamesPlayed = 0; 
+        let totalFieldPlayers = 0;
+        
         stats.forEach(player => {
             if (player.position === 'Torwart') {
                 goaliesFound = true;
@@ -343,7 +434,7 @@
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
                     if (h.name === 'Paraden Ges. (Quote)') {
                         const totalSaves = player.saves + player.seven_meter_saves;
-                        const totalGoalsReceived = (player.opponent_goals !== undefined ? player.opponent_goals : 0) + (player.seven_meter_received - player.seven_meter_saves);
+                        const totalGoalsReceived = player.opponent_goals_received + (player.seven_meter_received - player.seven_meter_saves);
                         const totalShotsOnGoal = totalSaves + totalGoalsReceived;
                         const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
                         value = `${totalSaves} (${quote})`;
@@ -353,13 +444,13 @@
                         const quote = totalSevenMeters > 0 ? ((player.seven_meter_saves / totalSevenMeters) * 100).toFixed(0) + '%' : '—';
                         value = `${player.seven_meter_saves} / ${totalSevenMeters} (${quote})`;
                     }
-                    if (h.name === 'Tore (Quote)') {
+                    if (h.name === 'Tore (Quote)') { 
                         const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
                         const totalGoals = player.goals + player.seven_meter_goals;
                         const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
                         value = `${totalGoals} (${quote})`;
                     }
-                    if (h.name === 'Tore/Spiel') {
+                    if (h.name === 'Tore/Spiel') { 
                         if (player.games_played > 0) {
                             const totalGoals = player.goals + player.seven_meter_goals;
                             value = (totalGoals / player.games_played).toFixed(1);
@@ -372,30 +463,70 @@
                 goalieTableHtml += `</tr>`;
             } else {
                 fieldPlayersFound = true;
+                totalFieldPlayers++;
+                const currentTotalGoals = player.goals + player.seven_meter_goals;
+                const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
+                
                 fieldTableHtml += `<tr>`;
                 fieldHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
 
                     if (h.name === 'Tore (Quote)') {
-                        const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses;
-                        const totalGoals = player.goals + player.seven_meter_goals;
-                        const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
-                        value = `${totalGoals} (${quote})`;
+                        const quote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—';
+                        value = `${currentTotalGoals} (${quote})`;
                     }
                     if (h.name === 'Tore/Spiel') {
                         if (player.games_played > 0) {
-                            const totalGoals = player.goals + player.seven_meter_goals;
-                            value = (totalGoals / player.games_played).toFixed(1);
+                            value = (currentTotalGoals / player.games_played).toFixed(1);
                         } else {
                             value = '0.0'; 
                         }
                     }
+                    if (h.name === 'Fehlwürfe') {
+                        value = player.misses + player.seven_meter_misses;
+                    }
+                    // KORREKTUR: Zeigt jetzt X / Y an
+                    if (h.name === 'Tech. Fehler / Fehlpässe') {
+                        value = `${player.tech_errors} / ${player.fehlpaesse}`;
+                    }
                     fieldTableHtml += `<td>${value}</td>`;
                 });
                 fieldTableHtml += `</tr>`;
+                
+                // Für Total-Zeile addieren
+                totalGoals += currentTotalGoals;
+                totalShots += currentTotalShots;
+                totalTechErrors += player.tech_errors;
+                totalFehlpaesse += player.fehlpaesse; // <-- NEU
+                totalSevenMeterCaused += player.seven_meter_caused;
+                totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses;
+                totalSevenMeterGoals += player.seven_meter_goals;
+                totalGamesPlayed += player.games_played;
             }
         });
-        fieldTableHtml += `</tbody></table>`;
+        
+        // KORREKTUR: Total-Zeile (tfoot) angepasst
+        const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
+        const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayed / totalFieldPlayers).toFixed(0) : 0;
+        const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayed > 0 ? (totalGoals / totalGamesPlayed).toFixed(1) : "0.0");
+
+        fieldTableHtml += `</tbody>
+                          <tfoot>
+                            <tr>
+                                <td>TOTAL TEAM</td>
+                                <td>-</td>
+                                <td>${avgGames}</td>
+                                <td>${totalGoals} (${totalShotQuote})</td>
+                                <td>${avgGoalsPerGame}</td>
+                                <td>${totalShots - totalGoals}</td>
+                                <td>${totalTechErrors} / ${totalFehlpaesse}</td>
+                                <td>${totalSevenMeterGoals}</td>
+                                <td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td>
+                                <td>${totalSevenMeterCaused}</td>
+                            </tr>
+                          </tfoot>
+                          </table>`;
+                          
         goalieTableHtml += `</tbody></table>`;
         fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
         goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
@@ -429,7 +560,7 @@
     }
 
 
-    // --- Archivierungs-Funktion ---
+    // --- Archivierungs-Funktion (Unverändert) ---
     archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
     async function handleArchiveSeason() {
         if (!checkVerification()) { return; }
@@ -473,7 +604,7 @@
         }
     }
 
-    // --- LIGA-SCOUTING FUNKTIONEN ---
+    // --- LIGA-SCOUTING FUNKTIONEN (Unverändert) ---
     
     function closeModal() {
         scoutingModal.style.display = 'none';
@@ -568,7 +699,7 @@
         }
     }
     
-    // --- NEUE FUNKTIONEN (PHASE 8): SHOT CHART ---
+    // --- KORREKTUR: FUNKTIONEN FÜR WURFBILD (SHOT CHART) ---
     
     shotChartPlayerSelect.addEventListener('change', (e) => {
         renderShotChart(e.target.value);
@@ -615,6 +746,9 @@
         }
     }
 
+    // ==================================================
+    // KORREKTUR 2: KOORDINATEN-UMRECHNUNG FÜR LINKES HALBFELD
+    // ==================================================
     function renderShotChart(playerId) {
         shotChartOverlay.innerHTML = '';
         
@@ -632,7 +766,6 @@
         }
         
         if (shotsToRender.length === 0) {
-            // KORREKTUR: Textfarbe auf Schwarz geändert
             shotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 45%; color: black;">Keine Wurfdaten für diese Auswahl vorhanden.</p>';
             return;
         }
@@ -642,10 +775,104 @@
             const isGoal = shot.action_type === 'Goal' || shot.action_type === 'Goal_7m';
             dot.className = `shot-dot ${isGoal ? 'goal' : 'miss'}`;
             
-            dot.style.left = `${shot.x_coordinate}%`;
-            dot.style.top = `${shot.y_coordinate}%`;
+            // KORREKTUR: Keine Umrechnung mehr nötig, da wir
+            // die 0-100% Koordinaten auf einem 0-100% Feld (Ganzfeld) plotten.
+            const newX = shot.x_coordinate;
             
-            shotChartOverlay.appendChild(dot);
+            // Zeige nur Würfe aus der Angriffshälfte (x <= 50)
+            if (shot.x_coordinate <= 50) { 
+                dot.style.left = `${newX}%`; // <-- KORRIGIERT
+                dot.style.top = `${shot.y_coordinate}%`;
+                shotChartOverlay.appendChild(dot);
+            }
+        });
+    }
+
+    // --- NEUE FUNKTIONEN (PHASE 8B): FEHLERBILD (ERROR CHART) ---
+    
+    errorChartPlayerSelect.addEventListener('change', (e) => {
+        renderErrorChart(e.target.value);
+    });
+    
+    async function loadErrorChartData() {
+        if (!selectedTeamId) {
+            errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
+            return;
+        }
+        
+        errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Lade Fehlerdaten...</option>';
+        errorChartOverlay.innerHTML = '';
+        
+        try {
+            // NEU: Ruft den Endpunkt für FEHLER ab
+            const response = await fetch(`/actions/stats/errors/season/${selectedTeamId}`, { // <-- KORREKTUR 2: '/actions' hinzugefügt
+                method: 'GET'
+            });
+            if (response.status === 401 || response.status === 403) { logout(); return; }
+            if (!response.ok) {
+                // Zeigt den 404-Fehler (oder anderen) jetzt korrekt an
+                throw new Error(`Fehlerdaten konnten nicht geladen werden. Status: ${response.status}`);
+            }
+
+            seasonErrorData = await response.json(); // Speichert in neuer Variable
+            
+            errorChartPlayerSelect.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'Alle Spieler';
+            errorChartPlayerSelect.appendChild(allOption);
+            
+            seasonErrorData.forEach(playerData => {
+                const option = document.createElement('option');
+                option.value = playerData.player_id;
+                option.textContent = `#${playerData.player_number || '?'} ${playerData.player_name}`;
+                errorChartPlayerSelect.appendChild(option);
+            });
+            
+            errorChartPlayerSelect.value = 'all';
+            renderErrorChart('all'); // Ruft neue Render-Funktion auf
+
+        } catch (error) {
+            errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden</option>';
+            errorChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden der Fehlerdaten.</p>';
+            console.error("Error Chart Error:", error);
+        }
+    }
+
+    function renderErrorChart(playerId) {
+        errorChartOverlay.innerHTML = '';
+        
+        let errorsToRender = [];
+        
+        if (playerId === 'all') {
+            seasonErrorData.forEach(playerData => {
+                errorsToRender.push(...playerData.shots); // (interne Variable heißt 'shots')
+            });
+        } else {
+            const playerData = seasonErrorData.find(p => p.player_id == playerId);
+            if (playerData) {
+                errorsToRender = playerData.shots;
+            }
+        }
+        
+        if (errorsToRender.length === 0) {
+            errorChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Keine Fehlerdaten für diese Auswahl vorhanden.</p>';
+            return;
+        }
+
+        errorsToRender.forEach(error => {
+            const dot = document.createElement('div');
+            
+            // NEU: Unterscheidung TechError / Fehlpass
+            const isFehlpass = error.action_type === 'Fehlpass';
+            // Wendet 'miss' (Rot) oder 'tech-error-pass' (Orange) an
+            dot.className = `shot-dot ${isFehlpass ? 'tech-error-pass' : 'miss'}`;
+            
+            // Keine Umrechnung, da Ganzfeld (0-100)
+            dot.style.left = `${error.x_coordinate}%`;
+            dot.style.top = `${error.y_coordinate}%`;
+            
+            errorChartOverlay.appendChild(dot);
         });
     }
 
@@ -662,7 +889,9 @@
             loadSeasonStatsBtn.disabled = false;
             archiveSeasonBtn.disabled = false;
             
-            loadShotChartData();
+            // Lade Statistik (welche dann die Charts lädt)
+            loadSeasonStats();
+            
         } else {
             seasonStatsTeamName.textContent = "(Team wählen)";
             loadSeasonStatsBtn.disabled = true;
@@ -670,6 +899,8 @@
             
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             shotChartOverlay.innerHTML = '';
+            errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
+            errorChartOverlay.innerHTML = '';
         }
         loadPublicLeagues();
     }

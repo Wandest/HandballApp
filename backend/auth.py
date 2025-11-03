@@ -1,5 +1,5 @@
 # DATEI: backend/auth.py
-# (STARK ÜBERARBEITET FÜR COOKIE-AUTHENTIFIZIERUNG)
+# (WIEDERHERGESTELLT - Dieser Code war beschädigt)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 # OAuth2PasswordBearer wird nicht mehr benötigt
@@ -23,8 +23,6 @@ pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 SECRET_KEY = "supergeheimeschluessel123" 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 1 Tag Gültigkeit
-
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") # <-- ENTFERNT
 
 # Datenbanksession
 def get_db():
@@ -51,7 +49,6 @@ class TrainerCreate(BaseModel):
 
     @model_validator(mode='after')
     def validate_username_and_password_strength(self):
-        # ... (Validierung bleibt gleich)
         username = self.username
         if not re.match(r'^[a-zA-Z0-9]+$', username):
              raise ValueError("Der Benutzername darf nur Buchstaben und Zahlen enthalten (keine Leerzeichen oder Sonderzeichen).")
@@ -110,7 +107,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
     to_encode.update({"exp": expire})
-    # 'sub' (subject) ist der Standard-Claim für die Identität (z.B. username)
     to_encode.update({"sub": data["username"]}) 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -133,33 +129,27 @@ def get_current_trainer_from_token(token: str, db: Session):
     return trainer
 
 # --- NEUE ZENTRALE AUTH-FUNKTION (COOKIE-BASIERT) ---
-# Diese Funktion wird jetzt von main.py und allen anderen Routern importiert.
 def get_current_trainer(
     request: Request, 
     db: SessionLocal = Depends(get_db)
 ) -> Trainer:
     
-    # 1. Hole den Token aus dem Cookie namens "access_token"
     token = request.cookies.get("access_token")
     
-    # 2. Wenn kein Token da ist -> 401
     if not token:
         print("AUTH-FEHLER: Kein Cookie 'access_token' gefunden.")
         raise CREDENTIALS_EXCEPTION
     
     try:
-        # 3. Validiere den Token aus dem Cookie
         trainer = get_current_trainer_from_token(token, db)
         if trainer is None:
             raise HTTPException(status_code=401, detail="Trainer nicht gefunden oder Token ungültig.")
         
         return trainer
     except HTTPException as e:
-        # Falls get_current_trainer_from_token einen Fehler wirft (z.B. Token abgelaufen)
         print(f"AUTH-FEHLER: Token-Validierung fehlgeschlagen: {e.detail}")
         raise CREDENTIALS_EXCEPTION
     except Exception as e:
-        # Fange andere mögliche Fehler ab
         print(f"AUTH-FEHLER: Unerwarteter Fehler bei Token-Validierung: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -173,7 +163,6 @@ def get_current_trainer(
 # -----------------------------
 @router.post("/check-username")
 def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
-    # ... (Keine Änderungen)
     identifier = user_check.username
     is_email = re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', identifier)
     trainer = db.query(Trainer).filter(Trainer.username == identifier).first()
@@ -187,7 +176,6 @@ def check_username(user_check: UsernameCheck, db: Session = Depends(get_db)):
 
 @router.post("/check-email-availability", response_model=AvailabilityResponse)
 def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_db)):
-    # ... (Keine Änderungen)
     trainer = db.query(Trainer).filter(Trainer.email == email_check.email).first()
     if trainer:
         return AvailabilityResponse(available=False, alternatives=[])
@@ -197,7 +185,6 @@ def check_email_availability(email_check: EmailCheck, db: Session = Depends(get_
 
 @router.post("/check-availability", response_model=AvailabilityResponse)
 def check_availability(user_check: UsernameCheck, db: Session = Depends(get_db)):
-    # ... (Keine Änderungen)
     username = user_check.username
     alternatives = []
     if not re.match(r'^[a-zA-Z0-9]+$', username):
@@ -219,7 +206,6 @@ def check_availability(user_check: UsernameCheck, db: Session = Depends(get_db))
 
 @router.post("/register")
 def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
-    # ... (Keine Änderungen)
     if db.query(Trainer).filter(Trainer.username == trainer.username).first():
         raise HTTPException(status_code=400, detail="Dieser Benutzername ist bereits vergeben.")
     if db.query(Trainer).filter(Trainer.email == trainer.email).first():
@@ -243,7 +229,6 @@ def register_trainer(trainer: TrainerCreate, db: Session = Depends(get_db)):
 
 @router.get("/verify")
 def verify_trainer(token: str, db: Session = Depends(get_db)):
-    # ... (Keine Änderungen)
     trainer = db.query(Trainer).filter(Trainer.verification_token == token).first()
     if not trainer:
         raise HTTPException(status_code=400, detail="Ungültiger oder abgelaufener Verifizierungs-Token.")
@@ -256,9 +241,9 @@ def verify_trainer(token: str, db: Session = Depends(get_db)):
 
 
 # --- LOGIN ENDPUNKT (JETZT MIT COOKIE) ---
-@router.post("/login") # response_model=Token entfernt
+@router.post("/login") 
 def login_trainer(
-    response: Response, # FastAPI Response-Objekt hinzugefügt
+    response: Response, 
     credentials: TrainerLogin, 
     db: Session = Depends(get_db)
 ):
@@ -278,17 +263,15 @@ def login_trainer(
         expires_delta=token_expires
     )
     
-    # SETZE DAS COOKIE
     response.set_cookie(
         key="access_token",
         value=access_token,
-        httponly=True,       # WICHTIG: Sicher gegen JS-Diebstahl (XSS)
-        secure=False,        # Für localhost. Auf True setzen für HTTPS in Produktion.
-        samesite="strict",   # Bester Schutz gegen CSRF
-        max_age=int(token_expires.total_seconds()) # Gültigkeit
+        httponly=True,       
+        secure=False,        
+        samesite="strict",   
+        max_age=int(token_expires.total_seconds()) 
     )
     
-    # Sende eine normale JSON-Antwort, das Cookie wird im Header mitgesendet
     return {"message": "Login erfolgreich", "username": trainer.username}
 
 
@@ -304,3 +287,4 @@ def logout(response: Response):
         samesite="strict"
     )
     return {"message": "Erfolgreich ausgeloggt"}
+

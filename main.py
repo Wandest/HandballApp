@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles # <--- 1. HINZUGEFÜGT
 from typing import Optional
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
@@ -21,6 +22,11 @@ from backend.database import init_db, Trainer, SessionLocal, Game, Team
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
 
 app = FastAPI(title="HandballApp Backend")
+
+# --- 2. HINZUGEFÜGT: Statische Dateien (für SVGs, CSS) bereitstellen ---
+# Erfordert einen Ordner: 'frontend/static'
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+
 
 # Router einbinden
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
@@ -175,11 +181,12 @@ if __name__ == "__main__":
     t.start()
 
     # KORREKTUR: Der fehlerhafte 'cache_dir'-Parameter wurde entfernt.
+    # Die fehlerhafte webview.clear_cache() Zeile ist entfernt.
     webview.create_window(
         "Handball Auswertung", 
         "http://127.0.0.1:8000", 
         width=1400, 
         height=800
     )
-    webview.start()
-
+    # WICHTIG: debug=True beibehalten, um Caching-Probleme zu minimieren
+    webview.start(debug=True)

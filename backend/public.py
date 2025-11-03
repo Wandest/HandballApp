@@ -1,5 +1,6 @@
 # DATEI: backend/public.py
-# (KEINE ÄNDERUNGEN NÖTIG - Nutzt keine Authentifizierung)
+# (KORREKTUR DER STATISTIK-LOGIK)
+# (KORRIGIERT: TypeError/SyntaxError Bugfix)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -89,7 +90,6 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
     if not team:
         raise HTTPException(status_code=403, detail="Keine Berechtigung oder Team nicht öffentlich.")
         
-    # --- Spieler-Statistiken (Logik wie in action.py) ---
     saison_games_query = db.query(Game.id).filter(
         Game.team_id == team_id,
         Game.game_category == 'Saison'
@@ -119,25 +119,33 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
 
         custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
         custom_action_names = [ca.name for ca in custom_actions]
+        
+        # ==================================================
+        # KORRIGIERTE "case" SYNTAX (TypeError Bugfix)
+        # ==================================================
         case_statements = [
-            func.count(case((Action.action_type == 'Goal', 1), else_=None)).label('goals'),
-            func.count(case((Action.action_type == 'Miss', 1), else_=None)).label('misses'),
-            func.count(case((Action.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
-            func.count(case((Action.action_type == 'Goal_7m', 1), else_=None)).label('seven_meter_goals'),
-            func.count(case((Action.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
-            func.count(case((Action.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
-            func.count(case((Action.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
-            func.count(case((Action.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
-            func.count(case((Action.action_type == 'Save', 1), else_=None)).label('saves'),
-            func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals_received')
+            func.count(case([(Action.action_type == 'Goal', 1)], else_=None)).label('goals'),
+            func.count(case([(Action.action_type == 'Miss', 1)], else_=None)).label('misses'),
+            func.count(case([(Action.action_type == 'TechError', 1)], else_=None)).label('tech_errors'),
+            func.count(case([(Action.action_type == 'Goal_7m', 1)], else_=None)).label('seven_meter_goals'),
+            func.count(case([(Action.action_type == 'Miss_7m', 1)], else_=None)).label('seven_meter_misses'),
+            func.count(case([(Action.action_type == 'SEVEN_METER_CAUSED', 1)], else_=None)).label('seven_meter_caused'),
+            func.count(case([(Action.action_type == 'SEVEN_METER_SAVE', 1)], else_=None)).label('seven_meter_saves'),
+            func.count(case([(Action.action_type == 'SEVEN_METER_RECEIVED', 1)], else_=None)).label('seven_meter_received'),
+            func.count(case([(Action.action_type == 'Save', 1)], else_=None)).label('saves'),
+            func.count(case(
+                [((Action.action_type == 'OppGoal') & (Action.active_goalie_id == Player.id), 1)], 
+                else_=None
+            )).label('opponent_goals_received')
         ]
+        # ==================================================
         
         safe_custom_labels = {}
         for name in custom_action_names:
             safe_label = f"custom_{re.sub(r'[^A-Za-z0-9_]', '_', name)}"
             safe_custom_labels[name] = safe_label
             case_statements.append(
-                func.count(case((Action.action_type == name, 1), else_=None)).label(safe_label)
+                func.count(case([(Action.action_type == name, 1)], else_=None)).label(safe_label)
             )
         
         stats_query = db.query(
@@ -147,10 +155,10 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
         ).select_from(Player)\
         .outerjoin(games_played_count, Player.id == games_played_count.c.player_id)\
         .outerjoin(Action, 
-            (Action.player_id == Player.id) & 
+            ((Action.player_id == Player.id) | (Action.active_goalie_id == Player.id)) & 
             (Action.game_id.in_(saison_games_ids))
         )\
-        .filter(Player.team_id == team_id)\
+        .filter(Player.team_id == team.id)\
         .group_by(
             Player.id, Player.name, Player.number, Player.position, 
             games_played_count.c.games_played
@@ -184,14 +192,19 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
     # --- Gegner-Statistiken ---
     opponent_stats_result = OpponentStats(opponent_goals=0, opponent_misses=0, opponent_tech_errors=0)
     if saison_games_ids:
+        # ==================================================
+        # KORRIGIERTE "case" SYNTAX (TypeError Bugfix)
+        # ==================================================
         opponent_stats_query = db.query(
-            func.count(case((Action.action_type == 'OppGoal', 1), else_=None)).label('opponent_goals'),
-            func.count(case((Action.action_type == 'OppMiss', 1), else_=None)).label('opponent_misses'),
-            func.count(case((Action.action_type == 'OppTechError', 1), else_=None)).label('opponent_tech_errors')
+           func.count(case([(Action.action_type == 'OppGoal', 1)], else_=None)).label('opponent_goals'),
+            func.count(case([((Action.action_type == 'OppMiss') & Action.player_id.is_(None), 1)], else_=None)).label('opponent_misses'),
+            func.count(case([((Action.action_type == 'OppTechError') & Action.player_id.is_(None), 1)], else_=None)).label('opponent_tech_errors')
+
         ).filter(
-            Action.game_id.in_(saison_games_ids), 
-            Action.player_id.is_(None) 
+            Action.game_id.in_(saison_games_ids)
         )
+        # ==================================================
+        
         stats_result = opponent_stats_query.first()
         if stats_result:
             opponent_stats_result = OpponentStats(
@@ -204,3 +217,4 @@ def get_public_season_stats(team_id: int, db: Session = Depends(get_db)):
         player_stats=player_stats_list,
         opponent_stats=opponent_stats_result
     )
+

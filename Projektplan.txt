@@ -1,6 +1,6 @@
 Projektplan: Handball-Auswertungs-App (Non-Plus-Ultra)
 
-Ziel: Entwicklung eines kompletten Team-Ökosystems, das von der Kreisliga bis zur Bundesliga alle Aspekte der Leistungsanalyse, Athletik-Steuerung und Trainingsplanung abdeckt und zur unverzichtbaren täglichen Ressource für Trainer UND Spieler wird.
+Ziel: Entwicklung eines kompletten Team-Ökosystems, das von der Kreisliga bis zur Bundesliga alle Aspekte der Leistungsanalyse, Athletik-Steuerung und des Team-Managements abdeckt und zur unverzichtbaren täglichen Ressource für Trainer UND Spieler wird.
 
 ==================================================
 BLOCK 1: FUNDAMENT (ABGESCHLOSSEN)
@@ -50,63 +50,78 @@ Status: ✅ ABGESCHLOSSEN
 [x] Visuelles Design: Modernes, responsives Layout, saubere Formulare und korrigierte UI-Elemente (z.B. kleine Lösch-Buttons)
 
 ==================================================
-BLOCK 2: PRO-FEATURES: SPIEL-ANALYSE (AKTUELL)
+BLOCK 2: PRO-FEATURES: SPIEL-ANALYSE (AKTUELL & ÜBERARBEITET)
 
 Phase 8: Pro-Level: Wurfbild- & Video-Analyse
 Status: 🟢 IN ARBEIT
 [x] Datenbank: Action-Modell erweitert um x_coordinate und y_coordinate
-[x] UI Protokoll (Wurfbild): Klickbares SVG-Handball-Halbfeld (protocol.html) zur präzisen Positionserfassung
+[x] UI Protokoll (Wurfbild): Klickbares SVG-Handball-Feld (protocol.html) zur Positionserfassung
 [ ] Datenbank: Action-Modell erweitern um video_timestamp (z.B. "04:32")
-[ ] Backend/UI: Video-Quellen-Management pro Spiel (z.B. YouTube-Link, Vimeo-Link oder lokaler Datei-Upload-Pfad)
+[ ] Backend/UI: Video-Quellen-Management pro Spiel (YouTube-Link, Vimeo, Upload-Pfad)
 [ ] UI Protokoll (Video): Integration eines Video-Players (z.B. Plyr.io). Beim Klick auf einen Action-Button wird der aktuelle Zeitstempel des Videos mitgespeichert.
-[ ] Statistik-UI (Wurfbilder): Neue Ansicht "Shot Charts". Zeigt eine Heatmap aller Würfe (Tore/Fehlwürfe) auf dem SVG-Feld für einzelne Spieler oder das ganze Team.
-[ ] Statistik-UI (Video-Schnitt): DAS Pro-Feature. Trainer filtert Aktionen (z.B. "Alle Paraden von TW #1" oder "Alle Tech. Fehler Team Y"). Die App generiert eine Schnitt-Liste (Playlist), die nur diese Szenen (basierend auf den Timestamps) aus dem Video abspielt.
+[ ] Statistik-UI (Wurfbilder): Neue Ansicht "Shot Charts". Zeigt eine Heatmap aller Würfe (Tore/Fehlwürfe) für Spieler/Team.
+[ ] DAS PRO-FEATURE: Statistik-UI (Video-Schnitt). Trainer filtert Aktionen (z.B. "Alle Paraden von TW #1"). Die App generiert eine Schnitt-Liste (Playlist), die nur diese Szenen (basierend auf Timestamps) aus dem Video abspielt.
+
+Phase 8.5: (NEU) UX-Refinement: Kontext-Modale & Analyse-Layout
+Status: ⬜ ZU TUN
+[ ] Strategisch (UX): Analyse-UI aufteilen. Das "Saison Wurfbild" (nur eigene Tore/Fehlwürfe) auf einem Halbfeld anzeigen, um Details zu maximieren. Das "Saison Fehlerbild" (Fehlpässe, Tech. Fehler) auf dem Ganzfeld belassen.
+[ ] Technisch (Protokoll): protocol.html anpassen. Klick auf "Tor" / "Fehlwurf" öffnet ein Halbfeld-Modal (neues SVG). Klick auf "Fehlpass" / "Tech. Fehler" öffnet das bestehende Ganzfeld-Modal. Dies ist die saubere Trennung, die Pro-Tools nutzen.
 
 Phase 9: Pro-Level: Detailliertes Gegner-Scouting & Live-Sync
 Status: ⬜ ZU TUN
-[ ] UI Protokoll (Scouting-Modus): Das Protokoll-System "umkehren". Ermöglichen, dass ein Trainer ein volles Protokoll (inkl. Wurfbilder) für den GEGNER führen kann (wichtig für die Spielvorbereitung).
-[ ] Statistik-UI: Integration mit Phase 6 & 8. Die "öffentlichen" Liga-Daten nutzen, um Wurfbilder und Tendenzen von Gegnern zu analysieren.
-[ ] (Optional - Sehr Komplex): Multi-Device-Protokoll. Ermöglichen, dass 2+ Geräte (Trainer, Co-Trainer) gleichzeitig am selben Spiel protokollieren (z.B. einer Team A, einer Team B). Benötigt WebSockets für Echtzeit-Sync.
+[ ] STRATEGISCHES KEY-FEATURE: protocol.html erweitern: Klick auf "Gegner Tor" / "Gegner Fehlwurf" öffnet ebenfalls das (Ganzfeld-)Modal zur Erfassung von x/y-Koordinaten. (Das ist die Grundlage für Phase 13 KI).
+[ ] Statistik-UI (Gegner): Neue Ansicht "Gegner-Wurfbild-Analyse". Zeigt Wurfbilder/Heatmaps des Gegners (basierend auf den neuen Daten). (Zentral für Torwart-Vorbereitung & Abwehr-Taktik).
+[ ] Statistik-UI (Integration): Die in Phase 6 und 8.5 erstellten Analyse-Module (Wurfbilder etc.) nutzen, um die öffentlichen Liga-Daten von Gegnern zu visualisieren.
+[ ] Scouting-Modus (Optional): Das Protokoll-System "umkehren", um ein volles Protokoll nur für den Gegner zu führen (z.B. bei Video-Analyse eines Spiels, an dem man nicht teilnimmt).
+[ ] (Optional - Sehr Komplex): Multi-Device-Protokoll via WebSockets für Echtzeit-Sync.
 
 ==================================================
-BLOCK 3: NON-PLUS-ULTRA: TEAM-ÖKOSYSTEM
+BLOCK 3: NON-PLUS-ULTRA: TEAM-ÖKOSYSTEM (STRATEGISCH NEU GEORDNET)
 
 Phase 10: Spieler-Portal & App (NEU & FUNDAMENTAL)
 Status: ⬜ ZU PLANEN
-[ ] Ziel: Eine separate, stark vereinfachte Web-Ansicht (oder PWA) für Spieler.
-[ ] Backend: Spieler-Login-System (Spieler-Account muss vom Trainer "eingeladen" oder erstellt werden und ist fest mit dem Team verknüpft).
-[ ] UI (Spieler): Spieler kann Kalender (Spiele/Training) sehen.
-[ ] UI (Spieler): Spieler kann eigene, freigegebene Statistiken und Video-Szenen (aus Phase 8) sehen.
-[ ] UI (Spieler): Spieler kann Anwesenheit für Training/Spiel melden (für Phase 12).
-[ ] UI (Spieler): Spieler kann Wellness-Log (für Phase 11) ausfüllen.
+[ ] Ziel: Separate, vereinfachte Web-Ansicht (PWA) für Spieler.
+[ ] Backend: Spieler-Login-System (Account wird vom Trainer "eingeladen").
+[ ] UI (Spieler): Kalender (Spiele/Training) sehen.
+[ ] UI (Spieler): Eigene, freigegebene Statistiken und Video-Szenen (aus Phase 8) sehen.
+[ ] UI (Spieler): Anwesenheit für Training/Spiel/Termine melden (Zu-/Absage mit Grund) (für Phase 12).
+[ ] UI (Spieler): Wellness-Log (für Phase 11) ausfüllen.
 
-Phase 11: Athletik & Belastungssteuerung (Baut auf Phase 10 auf)
+Phase 10.5: (NEU) Key-Feature: Spielzeit-Tracking
+(Strategische Voraussetzung für Phase 11)
+Status: ⬜ ZU PLANEN
+[ ] Fundament für Belastungssteuerung: protocol.html erweitern mit "Einwechseln" / "Auswechseln" Buttons für Spieler. (Muss den "aktiven" Kader-Status pro Zeitstempel loggen).
+[ ] Backend: Logik zur automatischen Berechnung der "Time on Court" (Spielzeit) aus den neuen Ein/Aus-Action-Logs.
+[ ] Statistik-UI: Spielzeit pro Spieler (pro Spiel / Saison) in den Statistik-Tabellen anzeigen.
+[ ] (Optional/Profi): Grafische "Timeline" der Aufstellungen während eines Spiels.
+
+Phase 11: Athletik & Belastungssteuerung
+(Baut auf Phase 10 & 10.5 auf)
 Status: ⬜ ZU PLANEN
 [ ] Datenbank: Neue Modelle für Injury (Verletzung) und WellnessLog.
-[ ] Feature (Spielzeit): Spielzeit pro Spieler automatisch aus den Protokolldaten berechnen (z.B. durch Ein-/Auswechslungs-Buttons im Protokoll).
-[ ] Feature (Wellness-Tracking): Spieler füllen TÄGLICH im Spieler-Portal (Phase 10) ihr Feedback aus:
-[ ] Schlafqualität (1-5)
-[ ] Muskelkater (1-5)
-[ ] Stresslevel (1-5)
-[ ] RPE (Rate of Perceived Exertion) nach Training/Spiel.
-[ ] Feature (Medical): Trainer/Physio kann Verletzungen loggen (player_id, injury_type, expected_return_date, status [z.B. "Kein Kontakt", "Lauftraining", "Voll belastbar"]).
-[ ] Dashboard-UI (Trainer): Warnungen für den Trainer (z.B. "Spieler X hat 3x schlecht geschlafen -> Belastung reduzieren?", "Spieler Y ist überlastet").
+[ ] Feature (Wellness-Tracking): Spieler füllen TÄGLICH im Spieler-Portal (Phase 10) ihr Feedback aus: Schlafqualität, Muskelkater, Stresslevel, RPE (Rate of Perceived Exertion).
+[ ] Feature (Medical): Trainer/Physio kann Verletzungen loggen (player_id, injury_type, status [z.B. "Kein Kontakt", "Lauftraining"]).
+[ ] Dashboard-UI (Trainer): Warnungen (z.B. "Spieler X: Hohe Spielzeit (Phase 10.5) + 3x schlechter Schlaf (Phase 11) -> Belastung reduzieren?").
 
-Phase 12: Trainings-Management (Baut auf Phase 10 auf)
+Phase 12: Trainings- & Termin-Management (Spielerplus-Funktionen)
+(Baut auf Phase 10 auf)
 Status: ⬜ ZU PLANEN
-[ ] Datenbank: Neue Modelle für TrainingSession (Trainingseinheit) und Drill (Übung).
-[ ] Feature (Planung): Kalender-Ansicht für den Trainer, um Trainingseinheiten zu planen (Datum, Fokus, Halle). (Spieler sehen dies in Phase 10).
-[ ] Feature (Übungs-DB): Eine Datenbank, in die Trainer eigene Übungen (mit Beschreibung, Skizze, Video-Link) eintragen können.
-[ ] Feature (Visuelle Taktiktafel): Ein einfaches Tool (z.B. mit HTML-Canvas), um Übungen/Spielzüge auf ein Handballfeld zu zeichnen und zu speichern.
-[ ] Feature (Anwesenheit): Trainer sieht, welche Spieler im Spieler-Portal (Phase 10) ihre Anwesenheit bestätigt/abgelehnt haben.
+[ ] Datenbank: Neue Modelle für TrainingSession, Drill (Übung) und TeamEvent (Termin).
+[ ] KEY-FEATURE (Termin-Management): Kalender-Ansicht für Trainer, um beliebige Termine (Spiele, Training, Team-Abend, Physio) zu erstellen.
+[ ] KEY-FEATURE (Anwesenheits-Tracking): Trainer sieht "Zusagen / Absagen / Vielleicht" (aus Phase 10) für alle Termine in einer klaren Übersicht.
+[ ] (Feature-Erweiterung): Automatische Erinnerungen (z.B. "Morgen Training, bitte eintragen!") für Spieler, die nicht geantwortet haben.
+[ ] Feature (Übungs-DB): Trainer legen eigene Übungen (Beschreibung, Skizze, Video-Link) an.
+[ ] Feature (Visuelle Taktiktafel): Ein Tool (z.B. HTML-Canvas), um Übungen/Spielzüge auf ein Feld zu zeichnen.
 
 ==================================================
 BLOCK 4: ENDGAME: KI & KONNEKTIVITÄT
 
 Phase 13: KI-Analyse & Integration
 Status: ⬜ ZU PLANEN
-[ ] KI-Analyse (Sequenzen): Backend analysiert die Action-Logs (Zeitstempel), um erfolgreiche/erfolglose Aktionsketten zu erkennen (z.B. "Pass [RM] -> Pass [KL] -> 7m verursacht" vs. "Fehlwurf [RL] nach Prell-Duell").
-[ ] KI-Analyse (Prognose): Basierend auf Gegner-Wurfbildern (aus Phase 9) vorschlagen, welche Abwehr-Formationen oder Torwart-Positionierungen sinnvoll sind.
-[ ] Konnektivität (API): Eine private, gesicherte API für Trainer bereitstellen, um Rohdaten (z.B. als CSV) zu exportieren/importieren.
-[ ] Konnektivität (Kalender): Export von Spiel- und Trainingsplänen via .ics (iCal-Format) für Google Calendar, Outlook etc.
+[ ] KI-Analyse (Sequenzen): Backend analysiert Action-Logs, um erfolgreiche/erfolglose Aktionsketten zu erkennen (z.B. "Pass [RM] -> Pass [KL] -> 7m verursacht").
+[ ] KI-Analyse (Prognose): Basierend auf Gegner-Wurfbildern (aus der neuen Phase 9) vorschlagen, welche Abwehr-Formationen oder Torwart-Positionierungen sinnvoll sind.
+
+[ ] KI-Analyse (Trainingsplanung): Basierend auf Wellness-Daten (Phase 11) und Spielzeit (Phase 10.5) individuelle Belastungs-Empfehlungen geben.
+[ ] Konnektivität (API): Private, gesicherte API für Trainer zum Export/Import von Rohdaten (CSV).
+[ ] Konnektivität (Kalender): Export von Spiel- und Trainingsplänen (aus Phase 12) via .ics (iCal-Format).
 [ ] Kommunikation: Internes, einfaches Messaging-System (Trainer an Team, Trainer an Spieler).

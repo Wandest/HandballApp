@@ -1,5 +1,5 @@
 # DATEI: backend/database.py
-# (KEINE ÄNDERUNGEN NÖTIG - Phase 8 Koordinaten sind bereits enthalten)
+# (KORRIGIERT: AmbiguousForeignKeysError behoben)
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float 
 from sqlalchemy.orm import sessionmaker, relationship
@@ -65,12 +65,30 @@ class Player(Base):
     position = Column(String, nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", back_populates="players")
-    actions = relationship("Action", back_populates="player", cascade="all, delete-orphan") 
+    
+    # ==================================================
+    # KORRIGIERTE RELATIONSHIPS (BUGFIX)
+    # ==================================================
+    # Aktionen, die dieser Spieler SELBST ausgeführt hat
+    actions = relationship(
+        "Action", 
+        foreign_keys="[Action.player_id]", 
+        back_populates="player", 
+        cascade="all, delete-orphan"
+    )
+    
+    # Aktionen (Gegentore), die passiert sind, als dieser Spieler (Torwart) AKTIV war
+    actions_as_goalie = relationship(
+        "Action", 
+        foreign_keys="[Action.active_goalie_id]", 
+        back_populates="active_goalie"
+    )
+    # ==================================================
     
     games_participated = relationship(
         "Game",
         secondary=game_participations_table,
-        back_populates="participating_players"
+        back_populates="participating_players" # <--- KORREKTUR
     )
 
 # ---------------------------------
@@ -100,16 +118,35 @@ class Action(Base):
     __tablename__ = "actions"
     id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"))
-    player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
     action_type = Column(String) 
     time_in_game = Column(String)
     
-    # (PHASE 8) Koordinaten für Wurfbilder
     x_coordinate = Column(Float, nullable=True)
     y_coordinate = Column(Float, nullable=True)
     
+    # ==================================================
+    # KORRIGIERTE FOREIGN KEYS (BUGFIX)
+    # ==================================================
+    player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
+    active_goalie_id = Column(Integer, ForeignKey("players.id"), nullable=True)
+    
+    # Beziehung zum Spieler, der die Aktion ausgeführt hat
+    player = relationship(
+        "Player", 
+        foreign_keys=[player_id], 
+        back_populates="actions"
+    )
+    
+    # Beziehung zum Torwart, der während der Aktion aktiv war
+    active_goalie = relationship(
+        "Player", 
+        foreign_keys=[active_goalie_id], 
+        back_populates="actions_as_goalie"
+    )
+    # ==================================================
+    
     game = relationship("Game", back_populates="actions")
-    player = relationship("Player", back_populates="actions")
+
 
 # ---------------------------------
 # 6. CustomAction (Definition) Modell
@@ -126,3 +163,4 @@ class CustomAction(Base):
 # Initialisierungsfunktion
 def init_db():
     Base.metadata.create_all(bind=engine)
+
