@@ -1,4 +1,3 @@
-<!-- DATEI: frontend/season_analysis.html (REPARIERT & AUFGERÄUMT) -->
 <style>
     /* ================================================== */
     /* REPARIERTE CSS-LOGIK FÜR WURFBILDER */
@@ -47,9 +46,6 @@
         z-index: 2; 
     }
     .shot-overlay p { color: #000; opacity: 0.7; }
-    /* ================================================== */
-    /* ENDE REPARIERTE CSS-LOGIK */
-    /* ================================================== */
     
     .stats-table tfoot tr {
         background-color: rgba(0,0,0,0.3); 
@@ -83,13 +79,146 @@
     .legend-color-box.tech-error-pass { background-color: #ff9800; }
     .legend-color-box.opp-goal { background-color: #9E9E9E; }
     .legend-color-box.opp-miss { background-color: #795548; }
+    
+    
+    /* ================================================== */
+    /* NEU (PHASE 8): Stile für Video-Schnitt-Center */
+    /* ================================================== */
+    .video-cutter-layout {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr; /* 2 Spalten: Filter & Video */
+        gap: 20px;
+        margin-top: 15px;
+    }
+    .cutter-controls .form-section {
+        margin-bottom: 15px;
+    }
+    .cutter-controls label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #ffcc00;
+    }
+    .cutter-controls select {
+        width: 100%;
+        padding: 10px;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        color: #333;
+        font-size: 1em;
+    }
+    #cutter-playlist-container {
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.1);
+    }
+    .playlist-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: background-color 0.15s;
+    }
+    .playlist-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .playlist-item.active {
+        background-color: #ffcc00;
+        color: #1e3c72;
+        font-weight: bold;
+    }
+    .playlist-item .time {
+        font-weight: bold;
+        color: #38E838;
+        margin-right: 10px;
+    }
+    .playlist-item .opponent {
+        font-size: 0.9em;
+        opacity: 0.8;
+        display: block;
+        margin-top: 4px;
+    }
+    
+    #cutter-player-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        height: 0;
+        overflow: hidden;
+        background: #000;
+        border-radius: 5px;
+    }
+    #cutter-youtube-player {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    #cutter-video-title {
+        margin-top: 10px;
+        margin-bottom: 0;
+        text-align: center;
+        color: #fff;
+        opacity: 0.9;
+    }
+    
 </style>
 
-<!-- Sauberes 1-Spalten-Layout. Das Liga-Scouting (rechte Spalte) ist ENTFERNT. -->
 <div class="analysis-grid-1-col">
     
+    <div class="card">
+        <div class="card-content">
+            <h2>🎬 Video-Schnitt-Center (Saison)</h2>
+            <p style="opacity: 0.8; font-size: 0.9em;">
+                Filtern Sie Aktionen aus allen Saisonspielen, für die ein Video-Zeitstempel
+                im Protokoll gesetzt wurde. Klicken Sie auf einen Eintrag, um die Szene abzuspielen.
+            </p>
+            
+            <div class="video-cutter-layout">
+                <div class="cutter-controls">
+                    <div class="form-section active">
+                        <label for="cutter-player-select">Spieler auswählen:</label>
+                        <select id="cutter-player-select">
+                            <option value="all" selected>Alle Spieler</option>
+                            </select>
+                    </div>
+                    <div class="form-section active">
+                        <label for="cutter-action-select">Aktion auswählen:</label>
+                        <select id="cutter-action-select">
+                            <option value="all" selected>Alle Aktionen</option>
+                            </select>
+                    </div>
+                    <div class="form-section active">
+                        <label for="cutter-game-select">Spiel auswählen:</label>
+                        <select id="cutter-game-select">
+                            <option value="all" selected>Alle Spiele</option>
+                            </select>
+                    </div>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px;">Schnitt-Liste (Playlist)</h3>
+                    <div id="cutter-playlist-container">
+                        <p style="opacity: 0.6; text-align: center; padding: 20px;">
+                            Bitte Team wählen und Statistik laden...
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="cutter-video">
+                    <div id="cutter-player-container">
+                        <div id="cutter-youtube-player" style="display: flex; align-items: center; justify-content: center; color: #aaa;">
+                            Video-Player
+                        </div>
+                    </div>
+                    <h4 id="cutter-video-title">(Kein Video geladen)</h4>
+                </div>
+            </div>
+            
+        </div>
+    </div>
     <div>
-        <div class="card">
+        <div class="card" style="margin-top: 20px;">
           <div class="card-content">
             <h2>Saison-Statistik (Aggregiert)</h2>
             <h3><span id="season-stats-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
@@ -141,10 +270,8 @@
                     <option value="" disabled selected>Statistik laden...</option>
                 </select>
                 
-                <!-- REPARIERT (Phase 8.5): Container "half" -->
-                <div class="shot-chart-container-half">
-                    <!-- REPARIERT (Phase 8.5): SVG auf ganzfeld.svg -->
-                    <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                <div class="shot-chart-container-half"> 
+                    <img src="/static/halbfeld_links.svg" class="svg-handball-pitch" alt="Handball-Halbfeld">
                     <div class="shot-overlay" id="shot-chart-overlay"></div>
                 </div>
                 
@@ -170,7 +297,6 @@
                     <option value="" disabled selected>Statistik laden...</option>
                 </select>
                 
-                <!-- REPARIERT (Phase 8.5): Container "full" (BLEIBT GANZ) -->
                 <div class="shot-chart-container-full">
                     <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
                     <div class="shot-overlay" id="error-chart-overlay"></div>
@@ -194,10 +320,8 @@
                     Zeigt alle erfassten Würfe (Tore/Fehlwürfe) des Gegners (zur Torwart-Analyse).
                 </p>
                 
-                <!-- REPARIERT (Phase 9): Container "half" -->
                 <div class="shot-chart-container-half">
-                    <!-- REPARIERT (Phase 9): SVG auf Ganzfeld.svg -->
-                    <img src="/static/Ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                    <img src="/static/halbfeld_links.svg" class="svg-handball-pitch" alt="Handball-Halbfeld (Gegner)">
                     <div class="shot-overlay" id="opponent-shot-chart-overlay"></div>
                 </div>
                 
@@ -214,8 +338,6 @@
         
     </div>
     
-    <!-- Das Liga-Scouting (rechte Spalte) und das Modal sind jetzt ENTFERNT -->
-    
 </div>
 
 <script>
@@ -225,6 +347,15 @@
     let seasonShotData = [];
     let seasonErrorData = [];
     let seasonOpponentShotData = [];
+    
+    // ==================================================
+    // NEU (PHASE 8): Globale Variablen für Video-Schnitt-Center
+    // ==================================================
+    let seasonActionData = []; // Speichert Roh-Aktionen vom neuen API-Endpunkt
+    let cutterPlayer = null; // YouTube-Player-Instanz
+    let cutterPlayerReady = false; // Status-Flag
+    let activePlaylistItem = null; // Für CSS-Highlighting
+    let lastLoadedVideoId = null; // Um unnötiges Neuladen zu verhindern
 
     // DOM-Elemente
     const seasonStatsTeamName = document.getElementById('season-stats-team-name');
@@ -249,7 +380,19 @@
     // Gegner-Wurfbild Elemente
     const opponentShotChartOverlay = document.getElementById('opponent-shot-chart-overlay');
     
-    // Alle "public..." DOM-Elemente und Scouting-Funktionen sind ENTFERNT
+    // ==================================================
+    // NEU (PHASE 8): DOM-Elemente für Video-Schnitt-Center
+    // ==================================================
+    const cutterPlayerSelect = document.getElementById('cutter-player-select');
+    const cutterActionSelect = document.getElementById('cutter-action-select');
+    const cutterGameSelect = document.getElementById('cutter-game-select');
+    const cutterPlaylistContainer = document.getElementById('cutter-playlist-container');
+    const cutterVideoTitle = document.getElementById('cutter-video-title');
+    
+    // Event Listeners für die neuen Filter
+    cutterPlayerSelect.addEventListener('change', renderCutterPlaylist);
+    cutterActionSelect.addEventListener('change', renderCutterPlaylist);
+    cutterGameSelect.addEventListener('change', renderCutterPlaylist);
 
     // --- Saison-Statistik Logik ---
     loadSeasonStatsBtn.addEventListener('click', loadSeasonStats);
@@ -267,9 +410,13 @@
         statsContainerGoalieSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
         statsContainerCustomSeason.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
         
+        // Wurfbild-Daten laden
         loadShotChartData();
         loadErrorChartData();
         loadOpponentShotChartData(); 
+        
+        // NEU (PHASE 8): Playlist-Daten laden
+        loadSeasonActionData();
 
         try {
             const [playerStatsResponse, opponentStatsResponse] = await Promise.all([
@@ -298,6 +445,7 @@
     }
     
     function displaySeasonOpponentStats(stats, targetContainer) {
+        // ... (Funktion unverändert) ...
         if (!targetContainer) { return; }
         let tableHtml = `<table class="opponent-stats-table"><tbody>
             <tr><td>🟡 Gegner Tore (Gesamt)</td><td>${stats.opponent_goals}</td></tr>
@@ -308,8 +456,7 @@
     }
 
     function displaySeasonPlayerStats(stats, containerPrefix) {
-        // Diese Funktion ist lang, aber unverändert und korrekt.
-        // Sie wird hierher kopiert, da sie auch in league_scouting.html benötigt wird.
+        // ... (Funktion unverändert) ...
         const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
         const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
         const customContainer = document.getElementById(`${containerPrefix}custom-season`);
@@ -382,6 +529,7 @@
     // --- Archivierungs-Funktion (Unverändert) ---
     archiveSeasonBtn.addEventListener('click', handleArchiveSeason);
     async function handleArchiveSeason() {
+        // ... (Funktion unverändert) ...
         if (!checkVerification()) { return; }
         if (!selectedTeamId) return;
         const archiveName = archiveNameInput.value.trim();
@@ -427,6 +575,7 @@
     });
 
     async function loadShotChartData() {
+        // ... (Funktion unverändert) ...
         if (!selectedTeamId) {
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             return;
@@ -452,12 +601,13 @@
             renderShotChart('all', shotChartOverlay, seasonShotData); 
         } catch (error) {
             shotChartPlayerSelect.innerHTML = '<option value="" disabled selected>Fehler beim Laden</option>';
-            shotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 45%; color: black;">Fehler beim Laden der Wurfdaten.</p>';
+            shotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden der Wurfdaten.</p>';
             console.error("Shot Chart Error:", error);
         }
     }
 
     function renderShotChart(playerId, targetOverlay, data) {
+        // ... (Funktion KORRIGIERT für Phase 8.5) ...
         targetOverlay.innerHTML = ''; let shotsToRender = [];
         if (playerId === 'all') {
             data.forEach(playerData => { shotsToRender.push(...playerData.shots); });
@@ -466,9 +616,9 @@
             if (playerData) { shotsToRender = playerData.shots; }
         }
         
-        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
+        // KORRIGIERT: Prüft, ob es ein Halbfeld ist
         const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
-        const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        const emptyMessagePadding = isHalfField ? '45%' : '22%'; // Passt "Keine Daten" an
         
         if (shotsToRender.length === 0) {
             targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Wurfdaten.</p>`;
@@ -480,7 +630,7 @@
             dot.className = `shot-dot ${isGoal ? 'goal' : 'miss'}`;
             if (shot.x_coordinate <= 50) { 
                 if (isHalfField) {
-                    // Mappe 0-50 (Ganzfeld) auf 0-100 (Halbfeld)
+                    // Mappt 0-50 (Ganzfeld) auf 0-100 (Halbfeld)
                     dot.style.left = `${shot.x_coordinate * 2}%`; 
                 } else {
                     dot.style.left = `${shot.x_coordinate}%`; 
@@ -497,6 +647,7 @@
     });
     
     async function loadErrorChartData() {
+        // ... (Funktion unverändert) ...
         if (!selectedTeamId) {
             errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             return;
@@ -528,6 +679,7 @@
     }
 
     function renderErrorChart(playerId, targetOverlay, data) {
+        // ... (Funktion unverändert) ...
         targetOverlay.innerHTML = ''; let errorsToRender = [];
         if (playerId === 'all') {
             data.forEach(playerData => { errorsToRender.push(...playerData.shots); });
@@ -536,9 +688,8 @@
             if (playerData) { errorsToRender = playerData.shots; }
         }
         
-        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
-        const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
-        const emptyMessagePadding = isHalfField ? '45%' : '22%'; // (Fehlerbild ist 'full', also 22%)
+        // DIESES BLEIBT IMMER GANZFELD
+        const emptyMessagePadding = '22%';
         
         if (errorsToRender.length === 0) {
             targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Fehlerdaten.</p>`;
@@ -556,11 +707,12 @@
 
     // --- FUNKTIONEN FÜR GEGNER-WURFBILD (Phase 9) ---
     async function loadOpponentShotChartData() {
+        // ... (Funktion unverändert) ...
         if (!selectedTeamId) {
             opponentShotChartOverlay.innerHTML = '';
             return;
         }
-        opponentShotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 45%; color: black;">Lade Gegner-Wurfdaten...</p>';
+        opponentShotChartOverlay.innerHTML = '<p style="opacity: 0.6; text-align: center; padding-top: 22%; color: black;">Lade Gegner-Wurfdaten...</p>';
         try {
             const response = await fetch(`/actions/shots/opponent/season/${selectedTeamId}`);
             if (response.status === 401) { logout(); return; }
@@ -568,17 +720,18 @@
             seasonOpponentShotData = await response.json(); 
             renderOpponentShotChart(opponentShotChartOverlay, seasonOpponentShotData); 
         } catch (error) {
-            opponentShotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 45%; color: black;">Fehler beim Laden der Gegner-Wurfdaten.</p>';
+            opponentShotChartOverlay.innerHTML = '<p class="error" style="text-align: center; padding-top: 22%; color: black;">Fehler beim Laden der Gegner-Wurfdaten.</p>';
             console.error("Opponent Shot Chart Error:", error);
         }
     }
 
     function renderOpponentShotChart(targetOverlay, data) {
+        // ... (Funktion KORRIGIERT für Phase 8.5) ...
         targetOverlay.innerHTML = ''; const shotsToRender = data;
         
-        // REPARIERT: Finde Padding basierend auf Eltern-Container-Klasse
+        // KORRIGIERT: Prüft, ob es ein Halbfeld ist
         const isHalfField = targetOverlay.parentElement.classList.contains('shot-chart-container-half');
-        const emptyMessagePadding = isHalfField ? '45%' : '22%';
+        const emptyMessagePadding = isHalfField ? '45%' : '22%'; // Passt "Keine Daten" an
         
         if (shotsToRender.length === 0) {
             targetOverlay.innerHTML = `<p style="opacity: 0.6; text-align: center; padding-top: ${emptyMessagePadding}; color: black;">Keine Gegner-Wurfdaten.</p>`;
@@ -588,11 +741,9 @@
             const dot = document.createElement('div');
             const isGoal = shot.action_type === 'OppGoal';
             dot.className = `shot-dot ${isGoal ? 'opp-goal' : 'opp-miss'}`;
-            if (shot.x_coordinate > 50) { // Nur Würfe auf unser Tor (rechte Hälfte)
-                
-                // REPARIERTE JS-LOGIK FÜR HALBFELD
+            if (shot.x_coordinate > 50) { // Nur Würfe auf das eigene Tor (rechte Hälfte)
                 if (isHalfField) {
-                    // Mappe 50-100 (Ganzfeld rechts) auf 0-100 (Halbfeld links)
+                    // Mappt 50-100 (Ganzfeld) auf 0-100 (Halbfeld)
                     const newX = (shot.x_coordinate - 50) * 2;
                     dot.style.left = `${newX}%`;
                 } else {
@@ -603,19 +754,301 @@
             }
         });
     }
+    
+    
+    // ==================================================
+    // KORRIGIERT (PHASE 8): Funktionen für Video-Schnitt-Center
+    // ==================================================
+
+    // 1. YouTube API laden (wird von init aufgerufen)
+    function loadYouTubeAPI() {
+        if (typeof(YT) == 'undefined' || typeof(YT.Player) == 'undefined') {
+            var tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            var firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            
+            // Setze den globalen Callback
+            window.onYouTubeIframeAPIReady = onCutterYouTubeIframeAPIReady;
+        } else {
+            onCutterYouTubeIframeAPIReady();
+        }
+    }
+    
+    // 2. KORRIGIERTER Callback: Erstellt den Player NICHT sofort
+    function onCutterYouTubeIframeAPIReady() {
+        console.log("Saison-Analyse: YouTube API ist bereit.");
+        // Setze NUR das Flag. Erstelle den Player noch NICHT.
+        // Der Player wird beim ersten Klick auf "playScene" erstellt.
+        cutterPlayerReady = true;
+    }
+    
+    // 3. Hilfsfunktion: Video-ID aus URL extrahieren (kopiert aus protocol.html)
+    function extractVideoID(url) {
+        if (!url) return null;
+        let videoID = url; 
+        try {
+            const urlObj = new URL(url, 'https://www.youtube.com');
+            if (urlObj.hostname === 'youtu.be') {
+                videoID = urlObj.pathname.substring(1);
+            } else {
+                const urlParams = urlObj.searchParams;
+                if (urlParams.has('v')) {
+                    videoID = urlParams.get('v');
+                }
+            }
+        } catch(e) {}
+        if (/^[a-zA-Z0-9_-]{11}$/.test(videoID)) {
+            return videoID;
+        }
+        return null; 
+    }
+    
+    // 4. Rohdaten aller Saison-Aktionen laden
+    async function loadSeasonActionData() {
+        if (!selectedTeamId) return;
+        cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Lade Aktionsdaten...</p>';
+        
+        try {
+            const response = await fetch(`/actions/list/season/${selectedTeamId}`);
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) throw new Error('Aktions-Rohdaten konnten nicht geladen werden.');
+            
+            seasonActionData = await response.json();
+            populateCutterFilters();
+            renderCutterPlaylist();
+            
+        } catch (error) {
+            console.error("Fehler beim Laden der Saison-Aktionen:", error);
+            cutterPlaylistContainer.innerHTML = '<p class="error">Fehler beim Laden der Aktionsdaten.</p>';
+        }
+    }
+
+    // 5. KORRIGIERTE Filter-Dropdowns-Befüllung
+    function populateCutterFilters() {
+        const players = new Map();
+        const actions = new Map();
+        const games = new Map();
+
+        // (Text-Map für Aktionen, kopiert aus protocol.html)
+        const actionTextMap = {
+            'Goal': '⚽ TOR (Feld)', 'Miss': '💨 Fehlwurf (Feld)',
+            'Goal_7m': '🎯 TOR (7m)', 'Miss_7m': '🧱 Fehlwurf (7m)', 
+            'TechError': '🚫 Technischer Fehler', 'Fehlpass': '🚫 Fehlpass', 
+            'Save': '🛑 Parade', 'SEVEN_METER_CAUSED': '🚨 7m verursacht',
+            'SEVEN_METER_SAVE': '🧱 7m Gehalten', 'SEVEN_METER_RECEIVED': '🟡 7m Bekommen', 
+            'OppGoal': '🟡 Gegner Tor', 'OppMiss': '💨 Gegner Fehlwurf',
+            'OppTechError': '🚫 Gegner Tech. Fehler'
+        };
+
+        seasonActionData.forEach(a => {
+            // KORRIGIERT: Nur Aktionen mit gesetztem Zeitstempel in Filter aufnehmen
+            if (a.video_timestamp !== null) {
+                if (a.player_name && !players.has(a.player_id)) {
+                    players.set(a.player_id, `#${a.player_number || '?'} ${a.player_name}`);
+                }
+                if (!actions.has(a.action_type)) {
+                    actions.set(a.action_type, actionTextMap[a.action_type] || a.action_type);
+                }
+                if (!games.has(a.game_id)) {
+                    games.set(a.game_id, `vs. ${a.game_opponent}`);
+                }
+            }
+        });
+
+        // Spieler-Filter füllen
+        cutterPlayerSelect.innerHTML = '<option value="all" selected>Alle Spieler</option>';
+        players.forEach((name, id) => {
+            cutterPlayerSelect.innerHTML += `<option value="${id}">${name}</option>`;
+        });
+        
+        // Aktionen-Filter füllen
+        cutterActionSelect.innerHTML = '<option value="all" selected>Alle Aktionen</option>';
+        actions.forEach((name, id) => {
+            cutterActionSelect.innerHTML += `<option value="${id}">${name}</option>`;
+        });
+        
+        // Spiele-Filter füllen
+        cutterGameSelect.innerHTML = '<option value="all" selected>Alle Spiele</option>';
+        games.forEach((name, id) => {
+            cutterGameSelect.innerHTML += `<option value="${id}">${name}</option>`;
+        });
+    }
+
+    // 6. KORRIGIERTE Playlist-Render-Funktion
+    function renderCutterPlaylist() {
+        const playerId = cutterPlayerSelect.value;
+        const actionType = cutterActionSelect.value;
+        const gameId = cutterGameSelect.value;
+        
+        let filteredActions = seasonActionData;
+        
+        // KORRIGIERT: Filtert Aktionen, bei denen nie ein Zeitstempel gesetzt wurde (null)
+        filteredActions = filteredActions.filter(a => a.video_timestamp !== null);
+        
+        if (playerId !== 'all') {
+            filteredActions = filteredActions.filter(a => a.player_id == playerId);
+        }
+        if (actionType !== 'all') {
+            filteredActions = filteredActions.filter(a => a.action_type === actionType);
+        }
+        if (gameId !== 'all') {
+            filteredActions = filteredActions.filter(a => a.game_id == gameId);
+        }
+        
+        cutterPlaylistContainer.innerHTML = '';
+        activePlaylistItem = null; // Reset Highlight
+        
+        if (filteredActions.length === 0) {
+            cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Keine Szenen für diese Filter gefunden.</p>';
+            return;
+        }
+        
+        // (Text-Map für Aktionen, kopiert aus protocol.html)
+        const actionTextMap = {
+            'Goal': '⚽ TOR (Feld)', 'Miss': '💨 Fehlwurf (Feld)',
+            'Goal_7m': '🎯 TOR (7m)', 'Miss_7m': '🧱 Fehlwurf (7m)', 
+            'TechError': '🚫 Technischer Fehler', 'Fehlpass': '🚫 Fehlpass', 
+            'Save': '🛑 Parade', 'SEVEN_METER_CAUSED': '🚨 7m verursacht',
+            'SEVEN_METER_SAVE': '🧱 7m Gehalten', 'SEVEN_METER_RECEIVED': '🟡 7m Bekommen', 
+            'OppGoal': '🟡 Gegner Tor', 'OppMiss': '💨 Gegner Fehlwurf',
+            'OppTechError': '🚫 Gegner Tech. Fehler'
+        };
+
+        filteredActions.forEach(a => {
+            const videoUrlJs = a.game_video_url ? `'${a.game_video_url.replace(/'/g, "\\'")}'` : "null";
+            const opponentJs = `'${a.game_opponent.replace(/'/g, "\\'")}'`;
+            const actionText = actionTextMap[a.action_type] || a.action_type;
+            const playerText = a.player_name ? `(${a.player_name})` : '';
+            
+            const item = document.createElement('div');
+            item.className = 'playlist-item';
+            // KORREKTUR: "item" (das Element selbst) als erstes Argument übergeben
+            item.onclick = () => playScene(item, videoUrlJs, a.video_timestamp, opponentJs);
+            item.innerHTML = `
+                <span class="time">${formatVideoTime(a.video_timestamp)}</span>
+                <span>${actionText} ${playerText}</span>
+                <span class="opponent">vs. ${a.game_opponent}</span>
+            `;
+            cutterPlaylistContainer.appendChild(item);
+        });
+    }
+
+    // 7. KORRIGIERTE Szene-Abspielfunktion
+    function playScene(element, gameVideoUrl, timestamp, opponentName) {
+        if (!cutterPlayerReady) {
+            showToast("Video-API ist noch nicht bereit. Moment...", "error");
+            return;
+        }
+        if (!gameVideoUrl || gameVideoUrl === 'null') {
+            showToast("Für dieses Spiel wurde keine Video-URL hinterlegt.", "error");
+            return;
+        }
+
+        // Highlight
+        if (activePlaylistItem) {
+            activePlaylistItem.classList.remove('active');
+        }
+        element.classList.add('active');
+        activePlaylistItem = element;
+        
+        cutterVideoTitle.textContent = `Spiel: vs. ${opponentName}`;
+        const videoId = extractVideoID(gameVideoUrl);
+        const timeInSeconds = parseFloat(timestamp);
+
+        if (!videoId) {
+            showToast("Ungültige Video-URL für diese Aktion.", "error");
+            return;
+        }
+
+        if (cutterPlayer === null) {
+            // ===============================================
+            // FALL 1: Player existiert nicht. Erstelle ihn JETZT.
+            // ===============================================
+            console.log(`Erstelle Player mit Video-ID: ${videoId}`);
+            lastLoadedVideoId = videoId;
+            cutterPlayer = new YT.Player('cutter-youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: { 
+                    'playsinline': 1, 
+                    'modestbranding': 1, 
+                    'rel': 0,
+                    'start': Math.floor(timeInSeconds) // Starte direkt an der Zeit
+                },
+                events: {
+                    'onReady': (event) => { event.target.playVideo(); }
+                }
+            });
+        
+        } else if (videoId === lastLoadedVideoId) {
+            // ===============================================
+            // FALL 2: Player existiert, Video ist das GLEICHE.
+            // ===============================================
+            console.log(`Video ist gleich. Springe zu: ${timeInSeconds}`);
+            cutterPlayer.seekTo(timeInSeconds, true);
+            cutterPlayer.playVideo();
+        
+        } else {
+            // ===============================================
+            // FALL 3: Player existiert, Video ist NEU.
+            // ===============================================
+            console.log(`Lade neues Video: ${videoId}`);
+            lastLoadedVideoId = videoId;
+            // Lade das neue Video und starte es an der Zeit
+            cutterPlayer.loadVideoById({
+                videoId: videoId,
+                startSeconds: Math.floor(timeInSeconds)
+            });
+            // YouTube API spielt nach loadVideoById oft automatisch ab,
+            // wenn es in einem Event-Handler passiert.
+        }
+    }
+    
+    // 8. KORRIGIERTE Hilfsfunktion (kopiert aus protocol.html)
+    function formatVideoTime(seconds) {
+        // KORRIGIERT: Erlaube "0.00" als gültigen Zeitstempel "00:00"
+        if (seconds === null || seconds === undefined) return '—';
+        
+        const totalSec = Math.floor(parseFloat(seconds));
+        
+        if (isNaN(totalSec) || totalSec < 0) return '—';
+        
+        try {
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+            return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        } catch (e) {
+            return 'N/A';
+        }
+    }
+
+    // ==================================================
+    // ENDE KORRIGIERTE JS-FUNKTIONEN
+    // ==================================================
+
 
     // --- Initialisierung ---
     function initSeasonAnalysis() {
         console.log("initSeasonAnalysis() wird aufgerufen.");
         const storedId = localStorage.getItem('selected_team_id');
         const storedName = localStorage.getItem('selected_team_name');
+        
         if (storedId && storedName) {
             selectedTeamId = storedId;
             selectedTeamName = storedName;
             seasonStatsTeamName.textContent = selectedTeamName;
             loadSeasonStatsBtn.disabled = false;
             archiveSeasonBtn.disabled = false;
-            loadSeasonStats();
+            
+            // Lade ALLE Daten für diese Seite
+            loadSeasonStats(); // Lädt Statistiken UND Wurfbilder
+            
+            // NEU (PHASE 8): Lade Video-API und Playlist-Daten
+            loadYouTubeAPI();
+            loadSeasonActionData(); 
+            
         } else {
             seasonStatsTeamName.textContent = "(Team wählen)";
             loadSeasonStatsBtn.disabled = true;
@@ -625,8 +1058,9 @@
             errorChartPlayerSelect.innerHTML = '<option value="" disabled selected>Team wählen...</option>';
             errorChartOverlay.innerHTML = '';
             if (opponentShotChartOverlay) { opponentShotChartOverlay.innerHTML = ''; }
+            // NEU: Playlist leeren
+            cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Bitte zuerst ein Team auswählen.</p>';
         }
-        // loadPublicLeagues() ist ENTFERNT
     }
     
     // Ruft die init-Funktion dieser Seite auf

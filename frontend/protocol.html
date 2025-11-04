@@ -2,7 +2,6 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- Titel wird von main.py übergeben -->
     <title>{{ title }}</title>
     <style>
         /* ================================================== */
@@ -74,10 +73,19 @@
         .modal-content {
             background-color: #1e3c72;
             margin: 5% auto; padding: 30px; border-radius: 10px;
-            width: 80%; max-width: 700px; /* Schmaler für Wurfmodal */
+            width: 80%;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             max-height: 80vh; overflow-y: auto;
         }
+        /* NEU: Eigene Breite für Halbfeld-Modal */
+        .modal-content.modal-content-half {
+            max-width: 450px;
+        }
+        /* Breite für Ganzfeld-Modal */
+        .modal-content.modal-content-full {
+             max-width: 700px;
+        }
+        
         .close-btn {
             color: #aaa; float: right; font-size: 28px; font-weight: bold;
         }
@@ -103,13 +111,22 @@
         /* ================================================== */
         /* STYLES FÜR SHOT CHARTS (im Modal) */
         /* ================================================== */
-        .shot-chart-container-full {
+        .shot-chart-container-full,
+        .shot-chart-container-half {
             position: relative; width: 100%;
             background-color: #ffffff; border: 2px solid #000;
             box-sizing: border-box; border-radius: 5px;
             overflow: hidden; margin-top: 15px;
-            max-width: 700px; margin-left: auto; margin-right: auto;
+            margin-left: auto; margin-right: auto;
         }
+        .shot-chart-container-full {
+            max-width: 700px;
+        }
+        /* NEU: Eigene Klasse für Halbfeld */
+        .shot-chart-container-half {
+            max-width: 400px; /* Schmaler */
+        }
+        
         .svg-handball-pitch {
             width: 100%; height: auto; 
             display: block; z-index: 1; 
@@ -131,15 +148,13 @@
             gap: 20px; 
             margin: 0 auto;
         }
-        /* Alle 3 Spalten bekommen den .card Look */
         .player-list, .action-controls, .right-column-area {
-             background: rgba(0, 0, 0, 0.2); /* Dunklerer Hintergrund für Kontrast */
+             background: rgba(0, 0, 0, 0.2);
              padding: 15px;
              border-radius: 8px;
              min-height: 75vh;
         }
         
-        /* Header-Leiste (wie im Referenzbild) */
         .header {
             background: rgba(0, 0, 0, 0.2);
             padding: 15px 20px;
@@ -149,26 +164,21 @@
             justify-content: space-between;
             align-items: center;
         }
-        .header .match-info {
-            text-align: center;
-        }
+        .header .match-info { text-align: center; }
         .header .match-info h2 { 
             margin: 0 0 5px 0; 
             color: #ffcc00; 
-            font-size: 1.5em; /* Etwas kleiner */
+            font-size: 1.5em;
         }
         .header .match-info p { margin: 0; font-size: 0.9em; opacity: 0.8; }
-        
         .header .header-button {
             padding: 10px 15px;
             margin: 0; 
             font-size: 0.9em;
         }
-        .header .score-info {
-            text-align: center;
-        }
+        .header .score-info { text-align: center; }
         .header .score-board-display { 
-            font-size: 2.5em; /* Größer */
+            font-size: 2.5em;
             font-weight: bold; 
             color: #38E838; 
             margin: 0;
@@ -177,7 +187,7 @@
         .header .header-half-toggle-container {
             display: flex;
             gap: 10px;
-            margin-top: 10px; /* Mehr Abstand */
+            margin-top: 10px;
         }
         .header .header-half-button {
             padding: 5px 12px; border: 2px solid #ffcc00;
@@ -191,9 +201,6 @@
         }
         .header .header-half-button.active {
             background: #ffcc00; color: #1e3c72; opacity: 1;
-        }
-        #current-half-display { /* Versteckt, da Buttons ausreichen */
-            display: none;
         }
         
         /* Spieler-Buttons */
@@ -317,6 +324,50 @@
             border-top: 2px solid #ffcc00;
         }
         
+        /* Stile für Video-Analyse (Log-Tab) */
+        .video-log-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 50% Log, 50% Video */
+            gap: 20px;
+            max-height: 70vh;
+        }
+        .video-log-layout .log-column {
+            overflow-y: auto;
+            max-height: 70vh;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .video-log-layout .video-column {
+            max-height: 70vh;
+        }
+        /* Klickbare Log-Zeilen */
+        .log-table tbody tr {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .log-table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .log-table tbody tr.active-log-row {
+            background-color: #ffcc00; /* Gelbe Hervorhebung */
+            color: #1e3c72;
+            font-weight: bold;
+        }
+        .log-table tbody tr.active-log-row:hover {
+             background-color: #ffd633;
+        }
+        .log-table .log-time-cell { /* Zelle für Zeitstempel */
+            font-weight: bold;
+            color: #38E838; /* Grüne Schrift für Zeit */
+            min-width: 50px;
+            text-align: center;
+        }
+        .log-table .log-time-cell.no-time {
+            color: rgba(255, 255, 255, 0.4);
+            font-weight: normal;
+        }
+        
         .opponent-stats-table {
             width: 100%; max-width: 400px;
             margin-top: 15px;
@@ -347,17 +398,14 @@
         
         /* Video-Analyse-Tab (PHASE 8) */
         .video-analysis-container {
-            width: 100%; max-width: 650px; 
-            margin: 10px auto; padding: 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
+            width: 100%; 
+            margin: 0; padding: 0;
         }
         .video-input-group {
             display: flex; gap: 10px; margin-bottom: 15px;
         }
         .video-input-group input[type="text"] {
             flex-grow: 1; margin-bottom: 0;
-            /* Styles aus app_layout kopiert */
             padding: 10px; border-radius: 5px; border: 1px solid #ccc;
             box-sizing: border-box; background: #f0f0f0;
             color: #333; font-size: 1em;
@@ -379,7 +427,6 @@
 </head>
 <body>
     
-    <!-- Toast-Container (für showToast) -->
     <div id="toast-message" class="toast"></div>
 
     <div class="header">
@@ -440,12 +487,10 @@
         
         <div class="right-column-area card protocol-card">
             
-            <!-- KORREKTUR: Video Analyse Tab hinzugefügt -->
             <div class="tab-nav">
                 <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
-                <button class="tab-button" onclick="showTab('log')">Protokoll</button>
+                <button class="tab-button" onclick="showTab('log')">Protokoll & Video</button>
                 <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
-                <button class="tab-button" onclick="showTab('video')">🎬 Video Analyse</button>
             </div>
 
             <div id="stats-tab" class="tab-content active">
@@ -478,13 +523,38 @@
             </div>
 
             <div id="log-tab" class="tab-content">
-                <h3>Protokoll Tabelle (Letzte Aktionen zuerst)</h3>
+                <h3>Protokoll & Video-Analyse (Älteste Aktionen zuerst)</h3>
                 <div class="stats-filter-container">
                     <button id="log-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', true)">Gesamt</button>
                     <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', true)">Hälfte 1</button>
                     <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', true)">Hälfte 2</button>
                 </div>
-                <div id="action-log-container" class="stats-table-container"></div>
+                
+                <div class="video-log-layout">
+                    
+                    <div class="log-column">
+                        <p style="font-size: 0.9em; opacity: 0.8; margin-top: 0; padding: 0 5px;">
+                            <b>Workflow:</b> Video (rechts) starten. Auf eine Zeile klicken, um den Zeitstempel zu setzen. Erneut klicken, um zur Szene zu springen.
+                        </p>
+                        <div id="action-log-container" class="stats-table-container">
+                            </div>
+                    </div>
+                    
+                    <div class="video-column">
+                        <div class="video-analysis-container">
+                            <div class="video-input-group">
+                                <input type="text" id="video-url-input" placeholder="YouTube Video URL oder ID...">
+                                <button class="btn btn-primary" onclick="loadVideo()">Laden</button>
+                            </div>
+                            <div id="player-container">
+                                <div id="youtube-player" style="display: flex; align-items: center; justify-content: center; color: #aaa;">
+                                    Video-Player.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
             </div>
             
             <div id="roster-tab" class="tab-content">
@@ -497,38 +567,15 @@
                 <div id="roster-message" class="message"></div>
             </div>
             
-            <!-- NEUER TAB-INHALT FÜR VIDEO -->
-            <div id="video-tab" class="tab-content">
-                
-                <div class="video-analysis-container">
-                    <h3 style="margin-top: 0;">Video Analyse</h3>
-                    <p style="font-size: 0.9em; opacity: 0.8;">
-                        Füge eine YouTube-URL (oder Video-ID) ein, um das Video hier zu laden.
-                        Die Zeitstempel werden dann automatisch beim Loggen von Aktionen erfasst.
-                    </p>
-                    <div class="video-input-group">
-                        <input type="text" id="video-url-input" placeholder="YouTube Video URL oder ID einfügen...">
-                        <button class="btn btn-primary" onclick="loadVideo()">Video laden</button>
-                    </div>
-                    <div id="player-container">
-                        <div id="youtube-player" style="display: flex; align-items: center; justify-content: center; color: #aaa;">
-                            Video-Player.
-                        </div>
-                    </div>
-                </div>
-                
-            </div>
-            
         </div>
     </div>
     
-    <!-- Shot Modal -->
-    <div id="shot-modal" class="modal">
-        <div class="modal-content">
+    <div id="shot-modal-full" class="modal">
+        <div class="modal-content modal-content-full">
             <span class="close-btn" onclick="closeShotModal()">&times;</span>
-            <h3 id="shot-modal-title" class="pitch-instructions">Aktion eintragen:</h3>
+            <h3 id="shot-modal-title-full" class="pitch-instructions">Aktion eintragen:</h3>
             
-            <div class="shot-chart-container-full" onclick="logShotWithCoordinates(event)">
+            <div class="shot-chart-container-full" onclick="logShotWithCoordinatesFull(event)">
                 <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
                 <div class="shot-overlay"></div>
             </div>
@@ -538,8 +585,24 @@
             </p>
         </div>
     </div>
+    
+    <div id="shot-modal-half" class="modal">
+        <div class="modal-content modal-content-half">
+            <span class="close-btn" onclick="closeShotModal()">&times;</span>
+            <h3 id="shot-modal-title-half" class="pitch-instructions">Aktion eintragen:</h3>
+            
+            <div class="shot-chart-container-half" onclick="logShotWithCoordinatesHalf(event)">
+                <img src="/static/halbfeld_links.svg" class="svg-handball-pitch" alt="Handball-Halbfeld">
+                <div class="shot-overlay"></div>
+            </div>
+            
+            <p style="text-align: center; font-size: 0.9em; margin-top: 10px;">
+                Klicke (oder tippe) auf dem Spielfeld, um die Wurfposition festzuhalten.
+            </p>
+        </div>
+    </div>
 
-    <!-- YouTube IFrame API Script -->
+
     <script src="https://www.youtube.com/iframe_api"></script>
     
     <script>
@@ -561,11 +624,14 @@
         const ROSTER_CHECKLIST_CONTAINER = document.getElementById('roster-checklist-container');
         const ROSTER_MESSAGE = document.getElementById('roster-message');
         const SAVE_ROSTER_BTN = document.getElementById('save-roster-btn');
-        // const CURRENT_HALF_DISPLAY = document.getElementById('current-half-display'); // Wird nicht mehr gebraucht
 
-        // Shot Modal DOM
-        const SHOT_MODAL = document.getElementById('shot-modal');
-        const SHOT_MODAL_TITLE = document.getElementById('shot-modal-title');
+        // ==================================================
+        // KORRIGIERT (PHASE 8.5): DOM-Elemente für Modale
+        // ==================================================
+        const SHOT_MODAL_FULL = document.getElementById('shot-modal-full');
+        const SHOT_MODAL_TITLE_FULL = document.getElementById('shot-modal-title-full');
+        const SHOT_MODAL_HALF = document.getElementById('shot-modal-half');
+        const SHOT_MODAL_TITLE_HALF = document.getElementById('shot-modal-title-half');
 
         let fullTeamRoster = []; 
         let participatingPlayers = []; 
@@ -579,10 +645,11 @@
         
         // Globale Player-Variable
         let youtubePlayer = null;
+        let activeLogRow = null; 
         
         // --- Verifizierungs-Logik ---
         function showVerificationBanner() {
-            // Diese Funktion prüft localStorage (gesetzt von app_layout)
+            // ... (Funktion unverändert) ...
             if (localStorage.getItem('is_verified') !== 'true') {
                 const banner = document.createElement('div');
                 banner.className = 'verification-banner visible';
@@ -594,11 +661,11 @@
                         Refresh
                     </button>
                 `;
-                // Füge das Banner am Anfang des Grids ein, nicht ganz oben
                 document.querySelector('.protocol-grid').prepend(banner);
             }
         }
         function checkVerification() {
+            // ... (Funktion unverändert) ...
              if (localStorage.getItem('is_verified') === 'true') {
                 return true;
             } else {
@@ -611,6 +678,7 @@
         function leaveProtocol() { window.location.href = "/dashboard"; } 
         
         function updateAllStats() {
+            // ... (Funktion unverändert) ...
             updateScoreDisplay(); 
             if (document.getElementById('stats-tab').classList.contains('active')) {
                 loadStats();
@@ -622,6 +690,7 @@
         }
 
         function showTab(tabName) {
+            // ... (Funktion unverändert) ...
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -639,8 +708,6 @@
             } 
             else if (tabName === 'log') { 
                 loadActionLog(); 
-            }
-            else if (tabName === 'video') {
                 if (!youtubePlayer && (document.getElementById('video-url-input').value || PRELOADED_VIDEO_URL)) {
                     loadVideo();
                 }
@@ -648,6 +715,7 @@
         }
         
         function selectPlayer(playerId, playerName, isGoalie) {
+            // ... (Funktion unverändert) ...
             selectedPlayerId = playerId;
             SELECTED_PLAYER_INFO.textContent = playerName;
             document.querySelectorAll('.player-list button').forEach(btn => {
@@ -664,15 +732,15 @@
         }
         
         function setHalf(half) {
+            // ... (Funktion unverändert) ...
             protocolCurrentHalf = half;
-            // CURRENT_HALF_DISPLAY.innerHTML = `Aktuell: <strong>${half === 'H1' ? 'Hälfte 1' : 'Hälfte 2'}</strong>`;
             document.getElementById('half-btn-H1').classList.toggle('active', half === 'H1');
             document.getElementById('half-btn-H2').classList.toggle('active', half === 'H2');
         }
         
         function setFilterHalf(half, isLogTab = false) {
+            // ... (Funktion unverändert) ...
             currentFilterHalf = half;
-            // Aktualisiere beide Filter-Gruppen (Stats & Log)
             document.querySelectorAll('.filter-button').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -690,6 +758,7 @@
 
         // --- Wurf Modal Logik ---
         function getActionLabel(actionType, isSevenMeter) {
+            // ... (Funktion unverändert) ...
             if (isSevenMeter) { return actionType === 'Goal' ? '7m Tor' : '7m verworfen'; }
             if (actionType === 'Goal') return 'Tor erzielt (Feld)';
             if (actionType === 'Miss') return 'Wurf verworfen';
@@ -699,19 +768,24 @@
             if (actionType === 'OppMiss') return 'Gegner Fehlwurf';
             return actionType; 
         }
+        
+        // ==================================================
+        // KORRIGIERT (PHASE 8.5): Intelligente Modal-Weiche
+        // ==================================================
         function showShotModal(actionType, isSevenMeter) {
             if (!checkVerification()) return;
             const isOpponentAction = (actionType === 'OppGoal' || actionType === 'OppMiss');
             if (!isOpponentAction && selectedPlayerId === null) {
                  showToast("Bitte wähle zuerst einen Spieler aus der Liste (links).", "error"); return;
             }
-            // Gegner (ID 0) kann keine eigenen Aktionen ausführen
             if (!isOpponentAction && selectedPlayerId === 0) {
                  showToast("Diese Aktion kann nur eigenen Spielern zugewiesen werden.", "error"); return;
             }
+            
             pendingActionType = actionType;
             pendingIsSevenMeter = isSevenMeter;
             const actionLabel = getActionLabel(actionType, isSevenMeter);
+            
             let titleText = "";
             if (isOpponentAction) {
                 titleText = `Position für: GEGNER - ${actionLabel}`;
@@ -719,20 +793,36 @@
                 const player = participatingPlayers.find(p => p.id === selectedPlayerId);
                 titleText = `Position für: ${player.name} - ${actionLabel}`;
             }
-            SHOT_MODAL_TITLE.textContent = titleText;
-            SHOT_MODAL.style.display = 'block';
+
+            // DIE NEUE LOGIK:
+            if ((actionType === 'Goal' || actionType === 'Miss') && !isSevenMeter) {
+                // FALL 1: Wurf-Aktion (nicht 7m) -> Halbfeld öffnen
+                SHOT_MODAL_TITLE_HALF.textContent = titleText;
+                SHOT_MODAL_HALF.style.display = 'block';
+            } else {
+                // FALL 2: Andere Aktion (Fehler, 7m, Gegner) -> Ganzfeld öffnen
+                SHOT_MODAL_TITLE_FULL.textContent = titleText;
+                SHOT_MODAL_FULL.style.display = 'block';
+            }
         }
+        
         function closeShotModal() {
-            SHOT_MODAL.style.display = 'none';
+            // Schließt BEIDE Modale, um sicherzugehen
+            SHOT_MODAL_FULL.style.display = 'none';
+            SHOT_MODAL_HALF.style.display = 'none';
             pendingActionType = null;
             pendingIsSevenMeter = false;
         }
-        SHOT_MODAL.addEventListener('click', function(event) {
-            if (event.target === SHOT_MODAL) {
+        
+        // Event Listener, um Modale bei Klick daneben zu schließen
+        window.addEventListener('click', function(event) {
+            if (event.target == SHOT_MODAL_FULL || event.target == SHOT_MODAL_HALF) {
                 closeShotModal();
             }
         });
-        function logShotWithCoordinates(event) {
+
+        // FUNKTION FÜR GANZES FELD (Unverändert)
+        function logShotWithCoordinatesFull(event) {
             event.stopPropagation(); 
             const container = event.currentTarget; 
             const rect = container.getBoundingClientRect();
@@ -740,17 +830,44 @@
             const y = event.clientY - rect.top;
             const xCoord = (x / rect.width) * 100;
             const yCoord = (y / rect.height) * 100;
+            
             const isOpponentAction = (pendingActionType === 'OppGoal' || pendingActionType === 'OppMiss');
             if (isOpponentAction) {
                 logAction(pendingActionType, null, false, protocolCurrentHalf, xCoord, yCoord, activeGoalieId);
             } else {
+                // (z.B. TechError, Fehlpass, 7m)
                 logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, protocolCurrentHalf, xCoord, yCoord, null);
             }
             closeShotModal();
         }
         
+        // ==================================================
+        // NEU (PHASE 8.5): Funktion für HALBES FELD
+        // ==================================================
+        function logShotWithCoordinatesHalf(event) {
+            event.stopPropagation(); 
+            const container = event.currentTarget; 
+            const rect = container.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            const xCoordHalf = (x / rect.width) * 100;
+            const yCoordHalf = (y / rect.height) * 100;
+            
+            // Umrechnung: Halbfeld (0-100%) auf linkes Ganzfeld (0-50%)
+            // Da das SVG "halbfeld_links.svg" heißt, ist dies die korrekte Logik.
+            const xCoordFull = xCoordHalf / 2.0; 
+            
+            // Aktionen vom Halbfeld sind NIE Gegner-Aktionen und (per Definition) keine 7m
+            logAction(pendingActionType, selectedPlayerId, false, protocolCurrentHalf, xCoordFull, yCoordHalf, null);
+            
+            closeShotModal();
+        }
+
+        
         // --- Video Player Logik (PHASE 8) ---
         function onYouTubeIframeAPIReady() {
+            // ... (Funktion unverändert) ...
             console.log("YouTube API ist bereit.");
             if (PRELOADED_VIDEO_URL) {
                 document.getElementById('video-url-input').value = PRELOADED_VIDEO_URL;
@@ -758,6 +875,7 @@
             }
         }
         function extractVideoID(url) {
+            // ... (Funktion unverändert) ...
             if (!url) return null;
             let videoID = url; 
             try {
@@ -770,15 +888,14 @@
                         videoID = urlParams.get('v');
                     }
                 }
-            } catch(e) {
-                // Fällt zurück auf die Annahme, dass es eine ID ist
-            }
+            } catch(e) {}
             if (/^[a-zA-Z0-9_-]{11}$/.test(videoID)) {
                 return videoID;
             }
             return null; 
         }
         function loadVideo() {
+            // ... (Funktion unverändert) ...
             const urlInput = document.getElementById('video-url-input').value;
             const videoID = extractVideoID(urlInput);
             if (!videoID) {
@@ -797,13 +914,17 @@
             });
         }
         function getCurrentVideoTime() {
+            // ... (Funktion unverändert) ...
             if (youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
                 const time = youtubePlayer.getCurrentTime();
-                return time > 0 ? time.toFixed(2) : null; 
+                if (time >= 0) {
+                    return time.toFixed(2);
+                }
             }
             return null;
         }
         function formatVideoTime(seconds) {
+            // ... (Funktion unverändert) ...
             if (!seconds || seconds <= 0) return '—';
             try {
                 const totalSec = Math.floor(parseFloat(seconds));
@@ -817,6 +938,7 @@
 
         // --- Aktion verarbeiten (mit Koordinaten) ---
         function handleAction(actionType) {
+            // ... (Funktion unverändert) ...
             if (!checkVerification()) return;
             if (selectedPlayerId === null || selectedPlayerId === 0) {
                  showToast("Bitte wähle einen eigenen Spieler.", "error"); return;
@@ -828,6 +950,7 @@
             }
         }
         function handleCustomAction(actionName) {
+            // ... (Funktion unverändert) ...
              if (!checkVerification()) return;
              if (selectedPlayerId === null || selectedPlayerId === 0) {
                  showToast("Bitte wähle einen eigenen Spieler.", "error"); return;
@@ -840,6 +963,7 @@
             }
         }
         function handleGoalieAction(actionType) {
+            // ... (Funktion unverändert) ...
             if (!checkVerification()) return;
             if (selectedPlayerId === null || selectedPlayerId === 0) {
                  showToast("Bitte wähle einen eigenen Torwart.", "error"); return;
@@ -851,6 +975,7 @@
             logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null);
         }
         function handleOpponentAction(actionType) {
+            // ... (Funktion unverändert) ...
             if (!checkVerification()) return;
             logAction(actionType, null, false, protocolCurrentHalf, null, null, activeGoalieId);
         }
@@ -859,7 +984,9 @@
             actionType, playerId = null, isSevenMeter = false, half = 'H1',
             xCoord = null, yCoord = null, activeGoalieIdForOpponentAction = null
         ) {
-            const videoTimestamp = getCurrentVideoTime();
+            // ... (Funktion unverändert) ...
+            const videoTimestamp = null; 
+            
             let finalActionType = actionType;
             if (isSevenMeter) {
                 if (actionType === 'Goal') { finalActionType = 'Goal_7m'; }
@@ -870,7 +997,7 @@
                 player_id: playerId, is_seven_meter: isSevenMeter,
                 x_coordinate: xCoord, y_coordinate: yCoord,
                 active_goalie_id: activeGoalieIdForOpponentAction,
-                video_timestamp: videoTimestamp
+                video_timestamp: videoTimestamp // Ist jetzt immer null
             };
             try {
                 const response = await fetch('/actions/add', {
@@ -896,7 +1023,9 @@
             } catch (error) { console.error('Protokollfehler:', error); }
         }
         
-        async function deleteAction(actionId) {
+        async function deleteAction(event, actionId) {
+            // ... (Funktion unverändert) ...
+            event.stopPropagation();
             if (!checkVerification()) return;
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
             try {
@@ -909,6 +1038,7 @@
         }
         
         async function updateScoreDisplay() {
+            // ... (Funktion unverändert) ...
             try {
                 const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`);
                 if (response.status === 401 || response.status === 403) {
@@ -927,6 +1057,7 @@
         }
 
         async function loadOpponentStats() {
+            // ... (Funktion unverändert) ...
             STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             try {
                 const response = await fetch(`/actions/stats/opponent/${GAME_ID}?half=${currentFilterHalf}`);
@@ -946,11 +1077,15 @@
         }
 
         async function loadActionLog() {
+            // ... (Funktion unverändert) ...
             try {
-                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`);
+                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`); 
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Log-Daten nicht gefunden');
                 const actions = await response.json();
+                
+                activeLogRow = null; 
+                
                 if (actions.length === 0) {
                     ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Aktionen protokolliert.</p>';
                     return;
@@ -965,7 +1100,7 @@
                     'OppTechError': '🚫 Gegner Tech. Fehler'
                 };
                 let tableHtml = `<table class="log-table"><thead><tr>
-                                    <th>Hälfte</th><th>Zeit</th><th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
+                                    <th>Hälfte</th><th>Video-Zeit</th><th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
                 actions.forEach(action => { 
                     let actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
@@ -977,12 +1112,16 @@
                         playerInfo = 'GEGNER';
                     }
                     const playerNumber = action.player_number !== null ? action.player_number : '';
+                    
                     const videoTimeFormatted = formatVideoTime(action.video_timestamp);
-                    tableHtml += `<tr>
+                    const timeCellClass = videoTimeFormatted === '—' ? 'log-time-cell no-time' : 'log-time-cell';
+                    const timestampParam = action.video_timestamp ? `'${action.video_timestamp}'` : "'null'";
+                    
+                    tableHtml += `<tr id="log-row-${action.id}" onclick="handleLogRowClick(this, ${action.id}, ${timestampParam})">
                             <td>${action.time_in_game || 'N/A'}</td>
-                            <td>${videoTimeFormatted}</td>
+                            <td class="${timeCellClass}">${videoTimeFormatted}</td>
                             <td>${actionText}</td><td>${playerInfo}</td><td>${playerNumber}</td>
-                            <td><button class="btn btn-danger btn-inline-delete btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button></td>
+                            <td><button class="btn btn-danger btn-inline-delete btn-delete-log" onclick="deleteAction(event, ${action.id})">Löschen</button></td>
                          </tr>`;
                 });
                 tableHtml += `</tbody></table>`;
@@ -993,7 +1132,69 @@
             }
         }
         
+        async function handleLogRowClick(element, actionId, currentTimestampStr) {
+            // ... (Funktion unverändert) ...
+            if (!checkVerification()) return;
+            
+            if (activeLogRow) {
+                activeLogRow.classList.remove('active-log-row');
+            }
+            activeLogRow = element;
+            element.classList.add('active-log-row');
+
+            const currentTimestamp = (currentTimestampStr === 'null') ? null : parseFloat(currentTimestampStr);
+
+            if (!youtubePlayer || typeof youtubePlayer.getCurrentTime !== 'function') {
+                showToast("Bitte zuerst Video (rechts) laden.", "error");
+                document.getElementById('video-url-input').focus();
+                return;
+            }
+            
+            if (currentTimestamp === null) {
+                // FALL A: Zeitstempel SETZEN
+                const newTimestampInSeconds = getCurrentVideoTime();
+                if (newTimestampInSeconds === null) {
+                    showToast("Video ist nicht bereit. Bitte Play drücken.", "error");
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/actions/update-timestamp/${actionId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ video_timestamp: newTimestampInSeconds })
+                    });
+                    
+                    if (response.status === 401) { logout(); return; }
+                    if (!response.ok) throw new Error("Fehler beim Speichern der Zeit.");
+                    
+                    const updatedAction = await response.json();
+                    
+                    const timeCell = element.querySelector('.log-time-cell');
+                    timeCell.textContent = formatVideoTime(updatedAction.video_timestamp);
+                    timeCell.className = 'log-time-cell';
+                    
+                    element.setAttribute('onclick', `handleLogRowClick(this, ${actionId}, '${updatedAction.video_timestamp}')`);
+                    
+                    showToast("✅ Zeitstempel gespeichert.", "success");
+                    
+                } catch (error) {
+                    console.error("Timestamp Set Error:", error);
+                    showToast(error.message, "error");
+                    element.classList.remove('active-log-row');
+                }
+                
+            } else {
+                // FALL B: Zu Zeitstempel SPRINGEN
+                youtubePlayer.seekTo(currentTimestamp, true);
+                youtubePlayer.playVideo();
+                showToast(`Springe zu ${formatVideoTime(currentTimestamp)}...`, "info");
+            }
+        }
+        
+        
         async function loadCustomActions() {
+            // ... (Funktion unverändert) ...
             CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Aktionen...</p>';
             try {
                 const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`);
@@ -1024,6 +1225,7 @@
         }
 
         async function loadStats() {
+            // ... (Funktion unverändert) ...
             STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
@@ -1136,6 +1338,7 @@
         }
         
         async function loadFullTeamRoster() {
+            // ... (Funktion unverändert) ...
             try {
                 const response = await fetch(`/players/list/${TEAM_ID}`);
                 if (response.status === 401 || response.status === 403) return logout();
@@ -1149,6 +1352,7 @@
         }
         
         function buildRosterChecklist() {
+            // ... (Funktion unverändert) ...
             ROSTER_CHECKLIST_CONTAINER.innerHTML = '';
             fullTeamRoster.forEach(player => {
                 const item = document.createElement('div');
@@ -1164,6 +1368,7 @@
         }
         
         async function loadGameRoster() {
+            // ... (Funktion unverändert) ...
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`);
                 if (response.status === 401 || response.status === 403) return logout();
@@ -1186,6 +1391,7 @@
         }
         
         function updateRosterChecklist() {
+            // ... (Funktion unverändert) ...
             const participatingIds = participatingPlayers.map(p => p.id);
             ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
                  checkbox.checked = false;
@@ -1199,6 +1405,7 @@
         }
         
         function buildActionPlayerButtons() {
+            // ... (Funktion unverändert) ...
             PLAYER_BUTTONS_CONTAINER.innerHTML = '';
             participatingPlayers.sort((a, b) => {
                 if (a.position === 'Torwart' && b.position !== 'Torwart') { return -1; }
@@ -1224,6 +1431,7 @@
         }
         
         async function handleSaveRoster() {
+            // ... (Funktion unverändert) ...
             if (!checkVerification()) return;
             ROSTER_MESSAGE.textContent = 'Speichere Kader...';
             ROSTER_MESSAGE.className = 'message';
@@ -1253,11 +1461,8 @@
 
         // --- Seite initialisieren ---
         function initProtocol() {
+            // ... (Funktion unverändert) ...
             try {
-                // Die globale Funktion checkVerification() ist in app_layout.html definiert
-                // und prüft localStorage.
-                // KORREKTUR: showVerificationBanner() wird von der (nicht existenten) app_layout.html aufgerufen
-                // Wir müssen es hier selbst tun.
                 if (localStorage.getItem('is_verified') !== 'true') {
                     const banner = document.createElement('div');
                     banner.className = 'verification-banner visible';
@@ -1269,7 +1474,6 @@
                             Refresh
                         </button>
                     `;
-                    // Füge das Banner GANZ OBEN ein, über dem Header
                     document.body.prepend(banner);
                 }
                 
@@ -1291,7 +1495,7 @@
             }
         }
         
-        // Globale Toast-Funktion (Fallback, falls app_layout nicht geladen wird)
+        // Globale Toast-Funktion (Fallback)
         if (typeof showToast === 'undefined') {
             var showToast = function(message, type = 'info') {
                 const toast = document.getElementById('toast-message');
@@ -1310,4 +1514,3 @@
     </script>
 </body>
 </html>
-

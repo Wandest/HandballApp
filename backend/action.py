@@ -1,6 +1,6 @@
 # DATEI: backend/action.py
-# (Version, die 'fehlpaesse' UND '/stats/errors/season' enthält)
-# KORRIGIERT: Enthält jetzt Halbzeit-Filter und Gegner-Wurfbild-Endpunkt
+# (KORRIGIERT: Enthält jetzt den NEUEN Endpunkt /list/season/{team_id}
+#  für das Video-Schnitt-Center)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ class ActionCreate(BaseModel):
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
     active_goalie_id: Optional[int] = None
-    video_timestamp: Optional[str] = None # NEU (PHASE 8)
+    video_timestamp: Optional[str] = None # (PHASE 8)
 
 class ActionResponse(BaseModel):
     id: int
@@ -36,11 +36,32 @@ class ActionResponse(BaseModel):
     player_id: Optional[int]
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
-    video_timestamp: Optional[str] = None # NEU (PHASE 8)
+    video_timestamp: Optional[str] = None # (PHASE 8)
     class Config: from_attributes = True
 
+class ActionTimestampUpdate(BaseModel):
+    video_timestamp: str
+
+# ==================================================
+# NEUES Pydantic-Modell für die Video-Schnitt-Playlist (Phase 8)
+# ==================================================
+class ActionPlaylistResponse(BaseModel):
+    id: int # Action ID
+    action_type: str
+    time_in_game: str
+    player_name: Optional[str] = None
+    player_number: Optional[int] = None
+    video_timestamp: Optional[str] = None
+    
+    game_id: int
+    game_opponent: str
+    game_video_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class PlayerStats(BaseModel):
-# ... (Rest des Modells unverändert) ...
     player_id: int
     player_name: str
     player_number: Optional[int]
@@ -49,7 +70,7 @@ class PlayerStats(BaseModel):
     goals: int
     misses: int
     tech_errors: int
-    fehlpaesse: int  # <-- Wichtig
+    fehlpaesse: int
     seven_meter_goals: int
     seven_meter_misses: int
     seven_meter_caused: int
@@ -61,21 +82,18 @@ class PlayerStats(BaseModel):
     class Config: from_attributes = True
 
 class OpponentStats(BaseModel):
-# ... (Rest des Modells unverändert) ...
     opponent_goals: int
     opponent_misses: int
     opponent_tech_errors: int
     class Config: from_attributes = True
 
 class ShotData(BaseModel):
-# ... (Rest des Modells unverändert) ...
     action_type: str
     x_coordinate: float
     y_coordinate: float
     class Config: from_attributes = True
 
 class ShotDataResponse(BaseModel):
-# ... (Rest des Modells unverändert) ...
     player_id: int
     player_name: str
     player_number: Optional[int]
@@ -83,22 +101,19 @@ class ShotDataResponse(BaseModel):
     class Config: from_attributes = True
 
 def get_db():
-# ... (Funktion unverändert) ...
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# --- NEU: Helper-Funktion für Halbzeit-Filter ---
+# --- Helper-Funktion für Halbzeit-Filter ---
 def apply_half_filter(query, half: str):
-# ... (Funktion unverändert) ...
     """ Wendet einen Filter für H1, H2 oder ALL auf eine Query an. """
     if half == 'H1':
         return query.filter(Action.time_in_game == 'H1')
     elif half == 'H2':
         return query.filter(Action.time_in_game == 'H2')
-    # Bei 'ALL' oder None wird kein Filter angewendet
     return query
 
 # --- Endpunkte ---
@@ -123,13 +138,13 @@ def log_action(
 
     new_action = Action(
         action_type=action_data.action_type,
-        time_in_game=action_data.time_in_game, # Speichert jetzt H1/H2
+        time_in_game=action_data.time_in_game, 
         game_id=action_data.game_id,
         player_id=action_data.player_id,
         x_coordinate=action_data.x_coordinate,
         y_coordinate=action_data.y_coordinate,
         active_goalie_id=action_data.active_goalie_id,
-        video_timestamp=action_data.video_timestamp # NEU (PHASE 8)
+        video_timestamp=action_data.video_timestamp 
     )
     db.add(new_action); db.commit(); db.refresh(new_action)
     
@@ -139,13 +154,13 @@ def log_action(
         player_id=new_action.player_id, player_name=player_name_for_action,
         player_number=player_number_for_action, x_coordinate=new_action.x_coordinate,
         y_coordinate=new_action.y_coordinate,
-        video_timestamp=new_action.video_timestamp # NEU (PHASE 8)
+        video_timestamp=new_action.video_timestamp 
     )
 
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
     game_id: int,
-    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), 
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
@@ -155,8 +170,10 @@ def list_actions(
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
 
     actions_query = db.query(Action).filter(Action.game_id == game_id)
-    actions_query = apply_half_filter(actions_query, half) # NEU
-    actions_data = actions_query.order_by(Action.id.desc()).all()
+    actions_query = apply_half_filter(actions_query, half) 
+    
+    # KORRIGIERT (PHASE 8.1): Sortierung auf Chronologisch (ASC) geändert
+    actions_data = actions_query.order_by(Action.id.asc()).all()
     
     response_list = []
     team_players = {p.id: p for p in db.query(Player).filter(Player.team_id == game.team_id).all()}
@@ -172,18 +189,18 @@ def list_actions(
             player_id=action.player_id, player_name=player_name,
             player_number=player_number, x_coordinate=action.x_coordinate,
             y_coordinate=action.y_coordinate,
-            video_timestamp=action.video_timestamp # NEU (PHASE 8)
+            video_timestamp=action.video_timestamp
         ))
     return response_list
 
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
-# ... (Rest der Datei unverändert) ...
     game_id: int,
-    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), 
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game: raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
     team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
@@ -206,7 +223,6 @@ def get_game_stats(
     custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team.id).all()
     custom_action_names = [ca.name for ca in custom_actions]
     
-    # NEU: Action-Subquery mit Halbzeit-Filter
     action_subquery = db.query(Action).filter(Action.game_id == game_id)
     action_subquery = apply_half_filter(action_subquery, half)
     action_subquery = action_subquery.subquery()
@@ -239,10 +255,9 @@ def get_game_stats(
     stats_query = (
         db.query(Player.id, Player.name, Player.number, Player.position, *case_statements)
         .select_from(Player)
-        .outerjoin(action_subquery, # NEU: Join mit Subquery
+        .outerjoin(action_subquery, 
             and_(
                 (action_subquery.c.player_id == Player.id) | (action_subquery.c.active_goalie_id == Player.id)
-                # game_id und half filter sind schon in der Subquery
             )
         )
         .filter(Player.team_id == team.id, Player.id.in_(participating_player_ids)) 
@@ -255,14 +270,12 @@ def get_game_stats(
     for row in stats_results:
         row_data = row._asdict()
         custom_counts_dict = {name: row_data.get(safe_label, 0) for name, safe_label in safe_custom_labels.items()}
-        
-        # NEU: Setze games_played=1 nur, wenn der Filter 'ALL' ist (sonst ist es irreführend)
         games_played = 1 if half == 'ALL' else 0 
         
         final_stats.append(PlayerStats(
             player_id=row_data.get('id'), player_name=row_data.get('name'),
             player_number=row_data.get('number'), position=row_data.get('position'),
-            games_played=games_played, # NEU
+            games_played=games_played,
             goals=row_data.get('goals', 0),
             misses=row_data.get('misses', 0),
             tech_errors=row_data.get('tech_errors', 0),
@@ -280,12 +293,12 @@ def get_game_stats(
 
 @router.get("/stats/opponent/{game_id}", response_model=OpponentStats)
 def get_opponent_stats(
-# ... (Rest der Datei unverändert) ...
     game_id: int,
-    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
+    half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), 
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game: raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
     team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
@@ -297,7 +310,7 @@ def get_opponent_stats(
         func.count(case((and_(Action.action_type == 'OppTechError', Action.player_id.is_(None)), 1), else_=None)).label('opponent_tech_errors')
     ).filter(Action.game_id == game_id)
     
-    stats_query = apply_half_filter(stats_query, half) # NEU
+    stats_query = apply_half_filter(stats_query, half) 
     
     stats_result = stats_query.first()
     if not stats_result: return OpponentStats(opponent_goals=0, opponent_misses=0, opponent_tech_errors=0)
@@ -309,11 +322,11 @@ def get_opponent_stats(
 
 @router.get("/stats/season/{team_id}", response_model=List[PlayerStats])
 def get_season_stats(
-# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
         
@@ -408,11 +421,11 @@ def get_season_stats(
 
 @router.get("/stats/season/opponent/{team_id}", response_model=OpponentStats)
 def get_season_opponent_stats(
-# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
         
@@ -435,13 +448,11 @@ def get_season_opponent_stats(
 
 @router.delete("/delete/{action_id}")
 def delete_action(
-# ... (Rest der Datei unverändert) ...
     action_id: int,
-    # 'half' wird hier nicht benötigt, da wir einfach die Aktion löschen,
-    # unabhängig vom aktuellen Filter
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     action = db.query(Action).filter(Action.id == action_id).first()
     if not action: raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
     game = db.query(Game).filter(Game.id == action.game_id).first()
@@ -453,18 +464,18 @@ def delete_action(
 
 @router.get("/shots/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_shot_charts(
-# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     saison_games_ids = [g[0] for g in db.query(Game.id).filter(
         Game.team_id == team_id, Game.game_category == 'Saison'
     ).all()]
     if not saison_games_ids: return [] 
-    shot_action_types = ['Goal', 'Miss', 'Goal_7m', 'Miss_7m'] # 7m hinzugefügt
+    shot_action_types = ['Goal', 'Miss', 'Goal_7m', 'Miss_7m']
     shots_query = db.query(
         Action.player_id, Action.action_type,
         Action.x_coordinate, Action.y_coordinate,
@@ -491,16 +502,13 @@ def get_season_shot_charts(
         ))
     return list(player_shots.values())
 
-# ==================================================
-# KORREKTUR: '/stats/errors/season' (Behebt 404-Fehler)
-# ==================================================
 @router.get("/stats/errors/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_error_charts(
-# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
     saison_games_ids = [g[0] for g in db.query(Game.id).filter(
@@ -534,16 +542,13 @@ def get_season_error_charts(
         ))
     return list(player_errors.values())
 
-# ==================================================
-# NEU: Endpunkt für Gegner-Wurfbilder (Phase 9)
-# ==================================================
 @router.get("/shots/opponent/season/{team_id}", response_model=List[ShotData])
 def get_season_opponent_shot_charts(
-# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
     if not team: raise HTTPException(status_code=403, detail="Keine Berechtigung.")
         
@@ -576,3 +581,111 @@ def get_season_opponent_shot_charts(
     
     return response_list
 
+
+@router.put("/update-timestamp/{action_id}", response_model=ActionResponse)
+def update_action_timestamp(
+    action_id: int,
+    timestamp_data: ActionTimestampUpdate,
+    current_trainer: Trainer = Depends(get_current_trainer), 
+    db: Session = Depends(get_db)
+):
+    # ... (Code unverändert) ...
+    action = db.query(Action).filter(Action.id == action_id).first()
+    if not action:
+        raise HTTPException(status_code=404, detail="Aktion nicht gefunden.")
+        
+    game = db.query(Game).filter(Game.id == action.game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Zugehöriges Spiel nicht gefunden.")
+        
+    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion.")
+        
+    try:
+        action.video_timestamp = timestamp_data.video_timestamp
+        db.commit()
+        db.refresh(action)
+        
+        player_name, player_number = None, None
+        if action.player_id:
+            player = db.query(Player).filter(Player.id == action.player_id).first()
+            if player:
+                player_name, player_number = player.name, player.number
+
+        return ActionResponse(
+            id=action.id, action_type=action.action_type,
+            time_in_game=action.time_in_game, game_id=action.game_id,
+            player_id=action.player_id, player_name=player_name,
+            player_number=player_number, x_coordinate=action.x_coordinate,
+            y_coordinate=action.y_coordinate,
+            video_timestamp=action.video_timestamp
+        )
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Fehler beim Speichern: {e}")
+
+# ==================================================
+# NEU (PHASE 8): Endpunkt für Video-Schnitt-Center (Playlist)
+# ==================================================
+@router.get("/list/season/{team_id}", response_model=List[ActionPlaylistResponse])
+def get_season_action_list(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    """
+    Holt ALLE Aktionen einer Saison, um die Video-Schnitt-Playlist
+    in der Saison-Analyse zu erstellen.
+    """
+    # 1. Berechtigung prüfen
+    team = db.query(Team).filter(Team.id == team_id, Team.trainer_id == current_trainer.id).first()
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+        
+    # 2. Alle Saisonspiel-IDs holen
+    saison_games_ids = [g[0] for g in db.query(Game.id).filter(
+        Game.team_id == team_id, Game.game_category == 'Saison'
+    ).all()]
+    
+    if not saison_games_ids:
+        return [] # Leere Liste, wenn keine Saisonspiele vorhanden sind
+
+    # 3. Alle Aktionen für diese Spiele abfragen und mit Game & Player joinen
+    actions_query = (
+        db.query(
+            Action.id,
+            Action.action_type,
+            Action.time_in_game,
+            Action.video_timestamp,
+            Game.id.label('game_id'),
+            Game.opponent.label('game_opponent'),
+            Game.video_url.label('game_video_url'),
+            Player.name.label('player_name'),
+            Player.number.label('player_number')
+        )
+        .join(Game, Action.game_id == Game.id)
+        .outerjoin(Player, Action.player_id == Player.id) # outerjoin falls player_id null ist (z.B. OppGoal)
+        .filter(Action.game_id.in_(saison_games_ids))
+        .order_by(Game.date.asc(), Action.id.asc()) # Sortiert nach Spieldatum, dann nach Aktion
+    )
+    
+    actions_data = actions_query.all()
+
+    # 4. Daten in das Response-Modell umwandeln
+    response_list = []
+    for action in actions_data:
+        response_list.append(ActionPlaylistResponse(
+            id=action.id,
+            action_type=action.action_type,
+            time_in_game=action.time_in_game,
+            video_timestamp=action.video_timestamp,
+            game_id=action.game_id,
+            game_opponent=action.game_opponent,
+            game_video_url=action.game_video_url,
+            player_name=action.player_name,
+            player_number=action.player_number
+        ))
+    
+    return response_list

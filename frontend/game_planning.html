@@ -15,9 +15,6 @@
                 <label for="game-date">Datum:</label>
                 <input type="date" id="game-date" required>
                 
-                <!-- ================================================== -->
-                <!-- NEU (PHASE 8): Video-URL Eingabefeld -->
-                <!-- ================================================== -->
                 <label for="game-video-url">Video URL (Optional):</label>
                 <input type="text" id="game-video-url" placeholder="https://www.youtube.com/watch?v=...">
             </div>
@@ -48,6 +45,27 @@
     </div>
 </div>
 
+<div id="video-url-modal" class="modal">
+  <div class="modal-content card">
+    <span class="close-btn" onclick="closeVideoModal()">&times;</span>
+    <div class="card-content">
+      <h3 id="video-modal-title">Video-URL bearbeiten</h3>
+      <p style="opacity: 0.8; font-size: 0.9em;">
+        Fügen Sie hier einen Link zu einer Video-Datei (MP4, M3U8) oder 
+        einen YouTube-Link ein (z.B. https://www.youtube.com/watch?v=VIDEO_ID).
+      </p>
+      <div class="form-section active">
+        <label for="video-url-input-modal">Video-URL:</label>
+        <input type="text" id="video-url-input-modal" placeholder="https://...">
+      </div>
+      <input type="hidden" id="video-modal-game-id">
+      <button id="save-video-url-btn" class="btn btn-primary btn-full-width" onclick="saveVideoUrl()">
+        Speichern
+      </button>
+      <div id="video-modal-message" class="message"></div>
+    </div>
+  </div>
+</div>
 <script>
     // Globale Variablen (müssen aus Local Storage geladen werden)
     let selectedTeamId = localStorage.getItem('selected_team_id');
@@ -118,7 +136,6 @@
         }
     }
     
-    // KORRIGIERT (PHASE 8): Event Listener für Formular-Submit
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         if (!checkVerification()) return;
@@ -130,7 +147,6 @@
         }
         const opponent = document.getElementById('game-opponent').value;
         const date = document.getElementById('game-date').value;
-        // NEU (PHASE 8): Video-URL auslesen
         const videoUrl = document.getElementById('game-video-url').value.trim();
         
         const category = activeGameCategoryInput.value;
@@ -155,14 +171,13 @@
         gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
         gameMessageDiv.className = 'message';
         
-        // NEU (PHASE 8): Payload um video_url erweitert
         const payload = {
             opponent: opponent,
             date: date,
             team_id: parseInt(selectedTeamId),
             game_category: category,
             tournament_name: tournamentName,
-            video_url: videoUrl || null // Sendet die URL oder null, wenn das Feld leer ist
+            video_url: videoUrl || null 
         };
         
         try {
@@ -238,7 +253,7 @@
                 }
             });
             
-            // KORRIGIERT (PHASE 8): renderGameList zeigt jetzt ein Video-Icon an
+            // KORRIGIERT (PHASE 8): renderGameList zeigt jetzt "Video/URL"-Button
             const renderGameList = (gameList) => {
                 let html = '';
                 gameList.forEach(game => {
@@ -246,9 +261,12 @@
                     const formattedDate = dateObj.toLocaleDateString('de-DE', {
                         year: 'numeric', month: '2-digit', day: '2-digit'
                     });
-                    // NEU (PHASE 8): Fügt ein Kamera-Icon hinzu, wenn eine URL vorhanden ist
-                    const videoIcon = game.video_url ? ' <span title="Video vorhanden">🎬</span>' : '';
                     
+                    // KORRIGIERT: Zeigt Kamera-Icon ODER leeren String
+                    const videoIcon = game.video_url ? ' 🎬' : '';
+                    // KORRIGIERT: String-URL sicher für JS-Aufruf escapen
+                    const videoUrlJs = game.video_url ? `'${game.video_url.replace(/'/g, "\\'")}'` : "''";
+
                     html += `
                         <div class="game-list-item">
                             <div class="game-info">
@@ -256,6 +274,11 @@
                                 <span>Kategorie: ${game.game_category === 'Turnier' ? game.tournament_name : game.game_category}</span>
                             </div>
                             <div class="game-actions">
+                                <button class="btn btn-secondary btn-small" 
+                                        style="margin: 0 5px 0 0; padding: 4px 8px; font-size: 0.9em;"
+                                        onclick="openVideoModal(${game.id}, ${videoUrlJs})">
+                                    Video/URL
+                                </button>
                                 <button class="btn btn-info btn-inline" onclick="startProtocol(${game.id})">Protokoll</button>
                                 <button class="btn btn-danger btn-inline-delete" onclick="deleteGame(${game.id})">Löschen</button>
                             </div>
@@ -290,9 +313,11 @@
             }
             gameListContainer.innerHTML = finalHtml;
         } catch (error) {
+            console.error("Fehler loadGames:", error);
             gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
         }
     }
+    
     async function loadTournaments(teamId) {
         tournamentSelect.innerHTML = '<option value="" disabled selected>Lade Turniere...</option>';
         try {
@@ -334,6 +359,71 @@
             tournamentSelect.dispatchEvent(new Event('change'));
         }
     }
+    
+    // ==================================================
+    // NEUE JS-FUNKTIONEN (PHASE 8)
+    // ==================================================
+    const videoModal = document.getElementById('video-url-modal');
+    const videoUrlInputModal = document.getElementById('video-url-input-modal');
+    const videoModalGameId = document.getElementById('video-modal-game-id');
+    const videoModalMessage = document.getElementById('video-modal-message');
+
+    function openVideoModal(gameId, currentUrl) {
+        videoModalGameId.value = gameId;
+        videoUrlInputModal.value = currentUrl || ''; // Setzt die aktuelle URL
+        videoModalMessage.textContent = '';
+        videoModalMessage.className = 'message';
+        document.getElementById('video-modal-title').textContent = `Video-URL für Spiel #${gameId}`;
+        videoModal.style.display = 'block';
+    }
+
+    function closeVideoModal() {
+        videoModal.style.display = 'none';
+    }
+
+    async function saveVideoUrl() {
+        const gameId = videoModalGameId.value;
+        const newUrl = videoUrlInputModal.value.trim();
+        videoModalMessage.textContent = 'Speichere...';
+        videoModalMessage.className = 'message';
+
+        try {
+            const response = await fetch(`/games/update-video/${gameId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ video_url: newUrl || null }) // Sendet null, wenn Feld leer ist
+            });
+            
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) {
+                throw new Error('Fehler beim Speichern der URL.');
+            }
+            
+            videoModalMessage.textContent = '✅ Erfolgreich gespeichert.';
+            videoModalMessage.className = 'message success';
+            
+            // Lade die Spiele neu, damit die 'game.video_url' in der JS-Variable aktuell ist
+            loadGames(selectedTeamId); // WICHTIG: Spielplan neu laden
+
+            setTimeout(closeVideoModal, 1000); // Modal nach Erfolg schließen
+
+        } catch (error) {
+            videoModalMessage.textContent = `❌ ${error.message}`;
+            videoModalMessage.className = 'message error';
+            console.error("Fehler Video-URL:", error);
+        }
+    }
+
+    // Schließen, wenn außerhalb geklickt wird
+    window.addEventListener('click', function(event) {
+        if (event.target == videoModal) {
+            closeVideoModal();
+        }
+    });
+    // ==================================================
+    // ENDE NEUE JS-FUNKTIONEN
+    // ==================================================
+
 
     // --- Initialisierung ---
     function initGamePlanning() {
@@ -360,6 +450,5 @@
         }
     }
     
-    // KORREKTUR: Selbstaufruf wieder hinzugefügt
     initGamePlanning();
 </script>

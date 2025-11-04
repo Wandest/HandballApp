@@ -1,5 +1,5 @@
 # DATEI: backend/game.py
-# (KORRIGIERT: Speichert jetzt die video_url)
+# (KORRIGIERT: Enthält jetzt den Endpunkt /update-video/ zum Bearbeiten)
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from backend.player import PlayerResponse
-from backend.database import SessionLocal, Trainer, Team, Game, Player
+from backend.database import SessionLocal, Trainer, Team, Game, Player, Team # Team importiert
 from backend.auth import get_current_trainer 
 
 router = APIRouter()
@@ -22,7 +22,7 @@ class GameCreate(BaseModel):
     team_id: int
     game_category: str 
     tournament_name: Optional[str] = None 
-    video_url: Optional[str] = None # NEU (PHASE 8)
+    video_url: Optional[str] = None # (PHASE 8)
 
 class GameResponse(BaseModel):
     id: int
@@ -31,10 +31,17 @@ class GameResponse(BaseModel):
     team_id: int
     game_category: str
     tournament_name: Optional[str] = None
-    video_url: Optional[str] = None # NEU (PHASE 8)
+    video_url: Optional[str] = None # (PHASE 8)
 
     class Config:
         from_attributes = True
+
+# ==================================================
+# NEU (PHASE 8): Pydantic-Modell für Video-Update
+# ==================================================
+class GameVideoUpdate(BaseModel):
+    video_url: Optional[str] = None
+
 
 class ArchiveSeasonRequest(BaseModel):
     archive_name: str 
@@ -77,14 +84,13 @@ def create_game(
     
     tournament_name_to_save = game_data.tournament_name if game_data.game_category == "Turnier" else None
     
-    # KORRIGIERT (PHASE 8): video_url wird dem neuen Spiel hinzugefügt
     new_game = Game(
         opponent=game_data.opponent,
         date=game_data.date,
         team_id=game_data.team_id,
         game_category=game_data.game_category,
         tournament_name=tournament_name_to_save,
-        video_url=game_data.video_url # HIER IST DIE ÄNDERUNG
+        video_url=game_data.video_url 
     )
     db.add(new_game)
     db.commit()
@@ -126,11 +132,46 @@ def list_games(
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden oder gehört nicht zu diesem Trainer.")
     
-    # Die GameResponse (inkl. video_url) wird hier automatisch durch SQLAlchemy befüllt
     games = db.query(Game).filter(
         Game.team_id == team_id
     ).order_by(Game.date.desc()).all()
     return games
+
+# ==================================================
+# NEU (PHASE 8): Endpunkt zum Speichern der Video-URL
+# ==================================================
+@router.put("/update-video/{game_id}", response_model=GameResponse)
+def update_game_video_url(
+    game_id: int,
+    video_data: GameVideoUpdate,
+    db: Session = Depends(get_db),
+    current_trainer: Trainer = Depends(get_current_trainer)
+):
+    """
+    Aktualisiert die Video-URL für ein bestimmtes Spiel.
+    """
+    # Schritt 1: Spiel finden
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
+    
+    # Schritt 2: Berechtigung prüfen
+    team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+    if not team:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
+        
+    # Schritt 3: URL aktualisieren
+    try:
+        game.video_url = video_data.video_url
+        
+        db.commit()
+        db.refresh(game)
+        
+        return game
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Fehler beim Speichern: {e}")
 
 # LISTE ALLER TURNIERNAMEN FÜR EIN TEAM
 @router.get("/tournaments/{team_id}", response_model=List[str])
