@@ -1,9 +1,10 @@
 # DATEI: backend/database.py
-# (KORRIGIERT: AmbiguousForeignKeysError behoben)
+# (KORRIGIERT: Enthält das neue ScoutingReport-Modell)
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float 
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 
 # SQLite Datenbank (wird im Hauptverzeichnis der App erstellt)
 SQLALCHEMY_DATABASE_URL = "sqlite:///./handball.db"
@@ -27,6 +28,9 @@ class Trainer(Base):
     is_verified = Column(Boolean, default=False) 
     verification_token = Column(String, nullable=True)
     teams = relationship("Team", back_populates="trainer", cascade="all, delete-orphan")
+    
+    # NEU (PHASE 9): Beziehung zu Scouting-Berichten
+    scouting_reports = relationship("ScoutingReport", back_populates="trainer", cascade="all, delete-orphan")
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
@@ -42,6 +46,9 @@ class Team(Base):
     players = relationship("Player", back_populates="team", cascade="all, delete-orphan") 
     games = relationship("Game", back_populates="team", cascade="all, delete-orphan") 
     custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
+    
+    # NEU (PHASE 9): Beziehung zu Scouting-Berichten
+    scouting_reports = relationship("ScoutingReport", back_populates="team", cascade="all, delete-orphan")
 
 
 # --- Verknüpfungstabelle ---
@@ -66,10 +73,6 @@ class Player(Base):
     team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", back_populates="players")
     
-    # ==================================================
-    # KORRIGIERTE RELATIONSHIPS (BUGFIX)
-    # ==================================================
-    # Aktionen, die dieser Spieler SELBST ausgeführt hat
     actions = relationship(
         "Action", 
         foreign_keys="[Action.player_id]", 
@@ -77,18 +80,16 @@ class Player(Base):
         cascade="all, delete-orphan"
     )
     
-    # Aktionen (Gegentore), die passiert sind, als dieser Spieler (Torwart) AKTIV war
     actions_as_goalie = relationship(
         "Action", 
         foreign_keys="[Action.active_goalie_id]", 
         back_populates="active_goalie"
     )
-    # ==================================================
     
     games_participated = relationship(
         "Game",
         secondary=game_participations_table,
-        back_populates="participating_players" # <--- KORREKTUR
+        back_populates="participating_players"
     )
 
 # ---------------------------------
@@ -103,10 +104,7 @@ class Game(Base):
     game_category = Column(String, default="Testspiel", nullable=False)
     tournament_name = Column(String, nullable=True) 
     
-    # ==================================================
-    # NEU (PHASE 8): Video-URL für das Spiel
-    # ==================================================
-    video_url = Column(String, nullable=True) # z.B. YouTube-Link
+    video_url = Column(String, nullable=True) # (PHASE 8)
 
     team = relationship("Team", back_populates="games")
     actions = relationship("Action", back_populates="game", cascade="all, delete-orphan") 
@@ -116,6 +114,9 @@ class Game(Base):
         secondary=game_participations_table,
         back_populates="games_participated"
     )
+    
+    # NEU (PHASE 9): Beziehung zu Scouting-Berichten
+    scouting_reports = relationship("ScoutingReport", back_populates="game")
     
 # ---------------------------------
 # 5. Action (Aktion/Event) Modell
@@ -130,31 +131,22 @@ class Action(Base):
     x_coordinate = Column(Float, nullable=True)
     y_coordinate = Column(Float, nullable=True)
     
-    # ==================================================
-    # NEU (PHASE 8): Video-Zeitstempel
-    # ==================================================
-    video_timestamp = Column(String, nullable=True) # z.B. "120.53" (Sekunden)
+    video_timestamp = Column(String, nullable=True) # (PHASE 8)
 
-    # ==================================================
-    # KORRIGIERTE FOREIGN KEYS (BUGFIX)
-    # ==================================================
     player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
     active_goalie_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     
-    # Beziehung zum Spieler, der die Aktion ausgeführt hat
     player = relationship(
         "Player", 
         foreign_keys=[player_id], 
         back_populates="actions"
     )
     
-    # Beziehung zum Torwart, der während der Aktion aktiv war
     active_goalie = relationship(
         "Player", 
         foreign_keys=[active_goalie_id], 
         back_populates="actions_as_goalie"
     )
-    # ==================================================
     
     game = relationship("Game", back_populates="actions")
 
@@ -171,7 +163,39 @@ class CustomAction(Base):
     team = relationship("Team", back_populates="custom_actions")
 
 
+# ==================================================
+# NEU (PHASE 9): Scouting-Bericht Modell
+# ==================================================
+class ScoutingReport(Base):
+    __tablename__ = "scouting_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    
+    title = Column(String, index=True)
+    # Text-Feld für lange Markdown-Notizen
+    content = Column(Text, nullable=True) 
+    
+    # Welchen Gegner betrifft das? (als einfacher String)
+    opponent_name = Column(String, index=True)
+    
+    # Welchem Spiel ist dieser Bericht zugeordnet? (Optional)
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=True)
+    
+    # Welchem Team gehört dieser Bericht? (Sicherheit)
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    
+    # Welcher Trainer hat diesen Bericht geschrieben? (Sicherheit)
+    trainer_id = Column(Integer, ForeignKey("trainers.id"))
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Beziehungen
+    game = relationship("Game", back_populates="scouting_reports")
+    team = relationship("Team", back_populates="scouting_reports")
+    trainer = relationship("Trainer", back_populates="scouting_reports")
+# ==================================================
+
+
 # Initialisierungsfunktion
 def init_db():
     Base.metadata.create_all(bind=engine)
-

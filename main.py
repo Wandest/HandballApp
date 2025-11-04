@@ -18,6 +18,9 @@ from backend.custom_action import router as custom_action_router
 from backend.public import router as public_router
 from backend.database import init_db, Trainer, SessionLocal, Game, Team
 
+# NEU (PHASE 9): Scouting-Router importieren
+from backend.scouting import router as scouting_router
+
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
 
@@ -34,6 +37,9 @@ app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 app.include_router(public_router, prefix="/public", tags=["Public Data"])
+
+# NEU (PHASE 9): Scouting-Router einbinden
+app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -174,8 +180,6 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
         if not team:
             raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
             
-        # KORREKTUR: Lädt protocol.html jetzt wieder DIREKT,
-        # genau wie in deiner hochgeladenen Original-Datei.
         return templates.TemplateResponse(
             "protocol.html", 
             {
@@ -197,8 +201,6 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
 # ------------------------------------
 
 def start_server():
-    # Wir starten uvicorn.run mit dem app-Objekt
-    # WICHTIG: reload=False, da dies in einem Thread zu Abstürzen führt
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
 
 if __name__ == "__main__":
@@ -214,6 +216,4 @@ if __name__ == "__main__":
         width=1400, 
         height=800
     )
-    # WICHTIG: debug=True beibehalten, um Rechtsklick -> Inspect zu erlauben
     webview.start(debug=True)
-
