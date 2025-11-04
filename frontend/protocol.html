@@ -2,168 +2,202 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }} - {{ team_name }} vs. {{ opponent }}</title>
+    <!-- Titel wird von main.py übergeben -->
+    <title>{{ title }}</title>
     <style>
+        /* ================================================== */
+        /* BASIS-STYLES (Kopiert aus app_layout.html) */
+        /* ================================================== */
         body {
             font-family: system-ui, sans-serif;
             background: linear-gradient(120deg, #1e3c72, #2a5298);
             color: white;
-            padding: 20px;
+            margin: 0;
+            padding: 20px; /* Padding für die ganze Seite */
+            min-height: 100vh;
+            box-sizing: border-box; /* Wichtig, damit padding funktioniert */
         }
         
-        .verification-banner {
-            background-color: #ffcc00;
-            color: #1e3c72;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            font-size: 1em;
-        }
-        .verification-banner .btn-refresh {
-            background-color: #1e3c72;
-            color: #ffcc00;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-left: 20px;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-        .verification-banner .btn-refresh:hover {
-            background-color: #2a5298;
-            transform: translateY(-1px);
-        }
-        
-        .header {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .match-info h2 { margin: 0 0 5px 0; color: #ffcc00; }
-        .match-info p { margin: 0; font-size: 0.9em; }
+        /* Allgemeine UI-Elemente */
+        h2 { color: #fff; margin-top: 0; margin-bottom: 15px; }
+        h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
+        .message { margin-top: 10px; font-weight: bold; }
+        .success { color: #38E838; }
+        .error { color: #FF6666; }
         
         .btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.9em;
+            padding: 12px 15px; border: none; border-radius: 5px;
+            font-weight: bold; cursor: pointer; font-size: 1em;
             color: white;
             transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
-            margin: 4px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
+            margin-top: 10px;
+            display: inline-flex; align-items: center; justify-content: center;
+            text-decoration: none; box-sizing: border-box;
         }
-        .btn.btn-full-width {
-            width: 100%;
-        }
+        .btn.btn-full-width { width: 100%; }
         .btn:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
-        .btn:active:not(:disabled) {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
-        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .btn-primary { background: #38E838; color: #1e3c72; }
         .btn-primary:hover:not(:disabled) { background: #50f050; }
         .btn-danger { background-color: #f44336; color: white; }
         .btn-danger:hover:not(:disabled) { background-color: #d32f2f; }
         .btn-info { background-color: #00bcd4; color: white; }
         .btn-info:hover:not(:disabled) { background-color: #0097a7; }
-        .btn-secondary { background-color: #607d8b; color: white; }
-        .btn-secondary:hover:not(:disabled) { background-color: #78909c; }
         .btn-inline-delete {
-            width: auto;
-            padding: 6px 10px;
-            font-size: 0.85em;
-            margin-left: 10px;
-            flex-shrink: 0;
-            margin-top: 0; 
+            width: auto; padding: 4px 8px; font-size: 0.9em;
+            margin: 0; margin-left: 10px; flex-shrink: 0;
         }
 
-        .header-button {
-            padding: 10px 15px;
-            margin: 0; /* Überschreibt .btn margin */
+        /* Banner (wird von JS hinzugefügt, falls nötig) */
+        .verification-banner {
+            background-color: #ffcc00; color: #1e3c72;
+            padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-weight: bold; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .verification-banner .btn-refresh {
+            background-color: #1e3c72; color: #ffcc00; border: none;
+            padding: 8px 15px; border-radius: 5px; cursor: pointer;
+            font-weight: bold; margin-left: 20px;
         }
         
-        /* KORRIGIERT: Layout für Score-Block (für Halbzeit-Buttons) */
-        .score-info {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px; /* Abstand zwischen Score und Buttons */
+        /* Modal Styles (Global für Wurf-Modal) */
+        .modal {
+            display: none; position: fixed; z-index: 1000; 
+            left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.7); 
         }
-        .score-board-display { 
-            font-size: 2em; 
+        .modal-content {
+            background-color: #1e3c72;
+            margin: 5% auto; padding: 30px; border-radius: 10px;
+            width: 80%; max-width: 700px; /* Schmaler für Wurfmodal */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            max-height: 80vh; overflow-y: auto;
+        }
+        .close-btn {
+            color: #aaa; float: right; font-size: 28px; font-weight: bold;
+        }
+        .close-btn:hover, .close-btn:focus {
+            color: white; text-decoration: none; cursor: pointer;
+        }
+
+        /* Toast-Nachrichten */
+        .toast {
+            visibility: hidden; min-width: 250px;
+            background-color: #333; color: #fff; text-align: center;
+            border-radius: 5px; padding: 16px; position: fixed;
+            z-index: 1001; left: 50%; transform: translateX(-50%);
+            bottom: 30px; font-size: 1em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        .toast.error { background-color: #f44336; }
+        .toast.success { background-color: #38E838; color: #1e3c72; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        
+        /* ================================================== */
+        /* STYLES FÜR SHOT CHARTS (im Modal) */
+        /* ================================================== */
+        .shot-chart-container-full {
+            position: relative; width: 100%;
+            background-color: #ffffff; border: 2px solid #000;
+            box-sizing: border-box; border-radius: 5px;
+            overflow: hidden; margin-top: 15px;
+            max-width: 700px; margin-left: auto; margin-right: auto;
+        }
+        .svg-handball-pitch {
+            width: 100%; height: auto; 
+            display: block; z-index: 1; 
+        }
+        .shot-overlay {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2; 
+        }
+        .shot-overlay p { color: #000; opacity: 0.7; }
+        
+        /* ================================================== */
+        /* CSS FÜR PROTOKOLL-SEITE (Eigenständig) */
+        /* ================================================== */
+        
+        .protocol-grid {
+            display: grid; 
+            grid-template-columns: 2fr 1fr 3fr;
+            gap: 20px; 
+            margin: 0 auto;
+        }
+        /* Alle 3 Spalten bekommen den .card Look */
+        .player-list, .action-controls, .right-column-area {
+             background: rgba(0, 0, 0, 0.2); /* Dunklerer Hintergrund für Kontrast */
+             padding: 15px;
+             border-radius: 8px;
+             min-height: 75vh;
+        }
+        
+        /* Header-Leiste (wie im Referenzbild) */
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header .match-info {
+            text-align: center;
+        }
+        .header .match-info h2 { 
+            margin: 0 0 5px 0; 
+            color: #ffcc00; 
+            font-size: 1.5em; /* Etwas kleiner */
+        }
+        .header .match-info p { margin: 0; font-size: 0.9em; opacity: 0.8; }
+        
+        .header .header-button {
+            padding: 10px 15px;
+            margin: 0; 
+            font-size: 0.9em;
+        }
+        .header .score-info {
+            text-align: center;
+        }
+        .header .score-board-display { 
+            font-size: 2.5em; /* Größer */
             font-weight: bold; 
             color: #38E838; 
             margin: 0;
+            line-height: 1;
         }
-        
-        /* NEU: Buttons für Halbzeit-Auswahl (im Header) */
-        .header-half-toggle-container {
+        .header .header-half-toggle-container {
             display: flex;
             gap: 10px;
-            margin-top: 5px;
+            margin-top: 10px; /* Mehr Abstand */
         }
-        .header-half-button {
-            padding: 5px 12px;
-            border: 2px solid #ffcc00;
-            background: none;
-            color: #ffcc00;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.9em;
-            opacity: 0.6;
-            transition: background-color 0.2s, opacity 0.2s;
+        .header .header-half-button {
+            padding: 5px 12px; border: 2px solid #ffcc00;
+            background: none; color: #ffcc00;
+            border-radius: 5px; font-weight: bold;
+            cursor: pointer; font-size: 0.9em;
+            opacity: 0.6; transition: background-color 0.2s, opacity 0.2s;
         }
-        .header-half-button:hover:not(.active) {
-            opacity: 1;
-            background-color: rgba(255, 204, 0, 0.1);
+        .header .header-half-button:hover:not(.active) {
+            opacity: 1; background-color: rgba(255, 204, 0, 0.1);
         }
-        .header-half-button.active {
-            background: #ffcc00;
-            color: #1e3c72;
-            opacity: 1;
+        .header .header-half-button.active {
+            background: #ffcc00; color: #1e3c72; opacity: 1;
         }
-        #current-half-display {
-            font-size: 0.9em;
-            color: #ffcc00;
-            font-weight: bold;
-            margin: 0;
-            text-align: center;
-            display: none; /* Wird nicht mehr gebraucht, da Buttons im Header */
+        #current-half-display { /* Versteckt, da Buttons ausreichen */
+            display: none;
         }
         
-        .protocol-grid {
-            display: grid; grid-template-columns: 2fr 1fr 3fr;
-            gap: 20px; max-width: 1400px; margin: 0 auto;
-        }
-        .player-list, .action-controls, .right-column-area {
-            background: rgba(255, 255, 255, 0.1); padding: 15px;
-            border-radius: 8px; min-height: 70vh;
-        }
+        /* Spieler-Buttons */
+        .player-list h3 { text-align: center; }
         .player-list button {
             width: 100%; padding: 12px; margin-bottom: 10px;
             background: #00bcd4; color: white; border: none;
@@ -173,26 +207,24 @@
         .player-list button:hover { background: #0097a7; }
         .player-list button.goalkeeper { background: #ffcc00; color: #333; }
         .player-list button.selected { background: #ff6666; }
-        
         .player-list button.opponent {
-            background: #9e9e9e;
-            color: white;
-            border: 2px dashed white;
+            background: #9e9e9e; color: white; border: 2px dashed white;
         }
         .player-list button.opponent.selected {
-            background: #ff6666;
-            border-color: #ff6666;
+            background: #ff6666; border-color: #ff6666;
         }
-
+        .player-list button.active-goalie {
+            border: 3px solid #38E838;
+            box-shadow: 0 0 10px rgba(56, 232, 56, 0.7);
+        }
+        
+        /* Aktions-Buttons */
         .action-controls h3 { color: #ffcc00; margin-top: 0; text-align: center; }
         .action-controls button {
-            width: 100%; padding: 10px;
-            border: none; border-radius: 5px; font-weight: bold;
-            cursor: pointer; font-size: 1.1em;
-            margin: 4px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100%; padding: 10px; border: none; border-radius: 5px; 
+            font-weight: bold; cursor: pointer; font-size: 1.1em;
+            margin: 4px 0; display: flex;
+            align-items: center; justify-content: center;
         }
         .btn-goal { background: #38E838; color: #333; }
         .btn-miss { background: #ff6666; color: white; }
@@ -201,39 +233,40 @@
         .btn-opp-goal { background: #9e9e9e; color: white; }
         .btn-opp-miss { background: #795548; color: white; }
         .btn-opp-error { background: #616161; color: white; }
-        
         .btn-custom { background: #673ab7; color: white; }
         .btn-custom-Offensiv { background: #ff9800; color: white; }
         .btn-custom-Defensiv { background: #00bcd4; color: white; }
         .btn-custom-Torwart { background: #ffcc00; color: #333; }
         .btn-custom-Sonstiges { background: #607d8b; color: white; }
-        hr.divider { border-color: rgba(255,255,255,0.2); margin: 20px 0; }
+        hr.divider { border-color: rgba(255,255,255,0.2); margin: 15px 0; }
         
+        /* Protokoll Tab-Navigation */
         .tab-nav {
             display: flex; border-bottom: 2px solid #ffcc00;
             margin-bottom: 15px;
         }
-        .tab-button {
-            padding: 10px 15px; cursor: pointer; background: none;
+        .tab-nav .tab-button {
+            flex-grow: 1; padding: 10px 15px; cursor: pointer; background: none;
             border: none; color: white; font-weight: bold;
             opacity: 0.7; font-size: 1.0em;
             border-top-left-radius: 5px; border-top-right-radius: 5px;
             transition: background-color 0.2s, opacity 0.2s;
+            border-bottom: none; 
         }
-        .tab-button:hover:not(:disabled) {
+        .tab-nav .tab-button:hover:not(:disabled) {
             opacity: 1;
             background: rgba(255, 255, 255, 0.1);
         }
-        .tab-button.active {
+        .tab-nav .tab-button.active {
             background: #ffcc00; 
             color: #1e3c72; 
             opacity: 1;
         }
-
+        
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        /* NEU: Filter-Container für Statistik-Tabs */
+        /* Protokoll-Filter-Buttons */
         .stats-filter-container {
             display: flex;
             gap: 10px;
@@ -241,14 +274,10 @@
             justify-content: flex-start;
         }
         .filter-button {
-            padding: 6px 12px;
-            border: 2px solid #607d8b;
-            background: none;
-            color: #607d8b;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.9em;
+            padding: 6px 12px; border: 2px solid #607d8b;
+            background: none; color: #607d8b;
+            border-radius: 5px; font-weight: bold;
+            cursor: pointer; font-size: 0.9em;
             transition: background-color 0.2s, color 0.2s, border-color 0.2s;
         }
         .filter-button:hover:not(.active) {
@@ -256,26 +285,32 @@
             color: #78909c;
         }
         .filter-button.active {
-            background: #607d8b;
-            color: white;
-            border-color: #607d8b;
+            background: #607d8b; color: white; border-color: #607d8b;
         }
-
         
-        .stats-table {
-            width: 100%; border-collapse: collapse; margin-top: 15px;
+        /* Tabellen-Styles (Statistik & Log) */
+        .stats-table-container { width: 100%; overflow-x: auto; }
+        .stats-table, .log-table {
+            width: 100%;
+            min-width: 500px; 
+            border-collapse: collapse;
+            margin-top: 15px;
         }
-        .stats-table th, .stats-table td {
-            padding: 10px; text-align: center;
+        .stats-table th, .stats-table td, .log-table th, .log-table td {
+            padding: 10px;
+            text-align: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
         }
-        .stats-table th {
-            color: #ffcc00; border-bottom: 2px solid #ffcc00;
-            font-size: 0.9em; text-transform: uppercase;
+        .stats-table th, .log-table th {
+            color: #ffcc00;
+            border-bottom: 2px solid #ffcc00;
+            text-transform: uppercase;
         }
-        .stats-table td:first-child, .stats-table th:first-child { text-align: left; }
-        
-        /* Total-Zeile Style */
+        .stats-table td:first-child, .stats-table th:first-child,
+        .log-table td:nth-child(3), .log-table th:nth-child(3) { 
+            text-align: left; 
+        }
         .stats-table tfoot tr {
             background-color: rgba(0,0,0,0.3); 
             font-weight: bold; 
@@ -291,34 +326,12 @@
              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
              font-size: 1.1em;
         }
-        .opponent-stats-table td:first-child {
-            font-weight: bold;
-            width: 80%;
-        }
+        .opponent-stats-table td:first-child { font-weight: bold; width: 80%; }
         .opponent-stats-table td:last-child {
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.2em;
+            text-align: center; font-weight: bold; font-size: 1.2em;
         }
         
-        .log-table {
-            width: 100%; border-collapse: collapse; margin-top: 10px;
-        }
-        .log-table th {
-            text-align: left; padding: 8px 10px;
-            border-bottom: 2px solid #ffcc00; font-size: 0.9em;
-        }
-        .log-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9em;
-        }
-        .btn-delete-log {
-            padding: 4px 8px;
-            font-size: 0.9em; 
-            margin: 0;
-        }
-        
+        /* Protokoll-Roster-Tab */
         #roster-checklist-container {
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 10px; margin-bottom: 20px;
@@ -327,177 +340,67 @@
             background: rgba(255, 255, 255, 0.1); padding: 10px;
             border-radius: 4px; display: flex; align-items: center;
         }
-        .roster-player-item.opponent {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px dashed #9e9e9e;
-        }
         .roster-player-item input[type="checkbox"] {
             width: 18px; height: 18px; margin-right: 10px; cursor: pointer;
         }
         .roster-player-item label { cursor: pointer; font-size: 1.1em; }
         
-        #save-roster-btn { 
-            width: 100%;
-            font-size: 1em;
-            margin-top: 10px; 
+        /* Video-Analyse-Tab (PHASE 8) */
+        .video-analysis-container {
+            width: 100%; max-width: 650px; 
+            margin: 10px auto; padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
         }
-        
-        .message { margin-top: 10px; font-weight: bold; }
-        .success { color: #38E838; }
-        .error { color: #FF6666; }
-        
-        .toast {
-            visibility: hidden;
-            min-width: 250px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 5px;
-            padding: 16px;
-            position: fixed;
-            z-index: 1001;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 30px;
-            font-size: 1em;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        .video-input-group {
+            display: flex; gap: 10px; margin-bottom: 15px;
         }
-        .toast.show {
-            visibility: visible;
-            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        .video-input-group input[type="text"] {
+            flex-grow: 1; margin-bottom: 0;
+            /* Styles aus app_layout kopiert */
+            padding: 10px; border-radius: 5px; border: 1px solid #ccc;
+            box-sizing: border-box; background: #f0f0f0;
+            color: #333; font-size: 1em;
         }
-        .toast.error { background-color: #f44336; }
-        .toast.success { background-color: #38E838; color: #1e3c72; }
-
-        @keyframes fadein {
-            from {bottom: 0; opacity: 0;}
-            to {bottom: 30px; opacity: 1;}
+        .video-input-group button {
+            margin-top: 0; flex-shrink: 0;
         }
-        @keyframes fadeout {
-            from {bottom: 30px; opacity: 1;}
-            to {bottom: 0; opacity: 0;}
+        #player-container {
+            position: relative; padding-bottom: 56.25%; /* 16:9 */
+            height: 0; overflow: hidden;
+            background: #000; border-radius: 5px;
         }
-
-        /* --- Shot Modal Styles --- */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.7); 
-            padding-top: 50px;
-        }
-        .modal-content {
-            background-color: #1e3c72;
-            margin: 5% auto; 
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%; 
-            max-width: 800px; /* Breiter für Ganzfeld */
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-        .close-btn {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .close-btn:hover, .close-btn:focus {
-            color: white;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        
-        /* ================================================== */
-        /* KORREKTUREN FÜR WEISS/SCHWARZ & GANZFELD         */
-        /* ================================================== */
-        .pitch-container {
-            position: relative;
-            width: 100%;
-            /* KORREKTUR: 2:1 Seitenverhältnis für Ganzfeld */
-            padding-bottom: 50%; 
-            background-color: #ffffff; /* NEU: Weiss */
-            border: 2px solid #000;    /* NEU: Schwarz */
-            box-sizing: border-box;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 15px;
-            cursor: crosshair;
-        }
-        .pitch-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2; 
-        }
-        .pitch-instructions {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-            color: #ffcc00;
-        }
-        
-        .svg-handball-pitch {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        .svg-handball-pitch path,
-        .svg-handball-pitch line,
-        .svg-handball-pitch rect {
-            stroke: black;         /* NEU: Schwarz */
-            stroke-width: 1px;     /* Dünnere Linien für 400er Viewbox */
-            fill: none;
-        }
-        .svg-handball-pitch .dashed-line {
-            stroke-dasharray: 4, 4; /* Gekürzte Strichelung */
-        }
-        
-        /* CSS für aktiven Torwart */
-        .player-list button.active-goalie {
-            border: 3px solid #38E838;
-            box-shadow: 0 0 10px rgba(56, 232, 56, 0.7);
+        #youtube-player {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
         }
         
     </style>
 </head>
 <body>
     
+    <!-- Toast-Container (für showToast) -->
+    <div id="toast-message" class="toast"></div>
+
     <div class="header">
         <button class="btn btn-info header-button" onclick="leaveProtocol()">⬅️ Dashboard</button>
         <div class="match-info">
             <h2>{{ team_name }} vs. {{ opponent }}</h2>
             <p>Spiel-ID: {{ game_id }} | Team-ID: {{ team_id }}</p>
-
         </div>
         <div class="score-info">
             <p id="score-board" class="score-board-display">0 - 0</p>
-            
-            <!-- NEU: Halbzeit-Auswahl in Header verschoben -->
-            <p id="current-half-display" style="font-size: 0.9em; color: #ffcc00; font-weight: bold; margin: 0;">
-                Aktuell: <strong>Hälfte 1</strong>
-            </p>
             <div class="header-half-toggle-container">
                 <button id="half-btn-H1" class="header-half-button active" onclick="setHalf('H1')">Hälfte 1</button>
                 <button id="half-btn-H2" class="header-half-button" onclick="setHalf('H2')">Hälfte 2</button>
             </div>
-            
         </div>
         <button class="btn btn-info header-button" onclick="updateAllStats()">🔄 Aktualisieren</button>
     </div>
 
     <div class="protocol-grid">
         
-        <div class="player-list">
+        <div class="player-list card protocol-card">
             <h3>Teilnehmende Spieler</h3>
             <p style="font-weight: bold;">Ausgewählt: <span id="selected-player-info" style="color: #ffcc00;">Keiner</span></p>
             <div id="player-buttons-container">
@@ -505,8 +408,7 @@
             </div>
         </div>
 
-        <div class="action-controls">
-            <!-- NEU: Titel "Aktionen" (ohne Halbzeit) -->
+        <div class="action-controls card protocol-card">
             <h3>Meine Aktionen</h3>
             
             <button class="btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
@@ -531,22 +433,23 @@
             
             <hr class="divider">
             <h3>Gegner-Aktionen</h3>
-            <!-- KORRIGIERT: Rufen jetzt showShotModal statt handleOpponentAction auf -->
             <button class="btn-opp-goal" onclick="showShotModal('OppGoal', false)">🟡 Gegner Tor</button>
             <button class="btn-opp-miss" onclick="showShotModal('OppMiss', false)">💨 Gegner Fehlwurf</button>
-            <!-- Dieser Button bleibt, da wir hier (noch) keine Coords brauchen -->
             <button class="btn-opp-error" onclick="handleOpponentAction('OppTechError')">🚫 Gegner Tech. Fehler</button>
         </div>
-        <div class="right-column-area">
+        
+        <div class="right-column-area card protocol-card">
+            
+            <!-- KORREKTUR: Video Analyse Tab hinzugefügt -->
             <div class="tab-nav">
                 <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
                 <button class="tab-button" onclick="showTab('log')">Protokoll</button>
                 <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
+                <button class="tab-button" onclick="showTab('video')">🎬 Video Analyse</button>
             </div>
 
             <div id="stats-tab" class="tab-content active">
                 
-                <!-- NEU: Filter-Buttons für Statistik -->
                 <div class="stats-filter-container">
                     <button id="filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL')">Gesamt</button>
                     <button id="filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1')">Hälfte 1</button>
@@ -559,7 +462,7 @@
                 </div>
 
                 <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
-                <div id="stats-table-container-field">
+                <div class="stats-table-container" id="stats-table-container-field">
                     <p style="opacity: 0.6; text-align: center;">Lade Statistiken...</p>
                 </div>
                 
@@ -576,51 +479,58 @@
 
             <div id="log-tab" class="tab-content">
                 <h3>Protokoll Tabelle (Letzte Aktionen zuerst)</h3>
-                <!-- NEU: Filter-Buttons auch für Log -->
                 <div class="stats-filter-container">
                     <button id="log-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', true)">Gesamt</button>
                     <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', true)">Hälfte 1</button>
                     <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', true)">Hälfte 2</button>
                 </div>
-                <div id="action-log-container"></div>
+                <div id="action-log-container" class="stats-table-container"></div>
             </div>
             
             <div id="roster-tab" class="tab-content">
                 <h3>Spielberichtsbogen</h3>
-                <p style="font-size: 0.9em; opacity: 0.8;">Wähle alle Spieler aus, die an diesem Spiel teilnehmen. Nur ausgewählte Spieler erscheinen links zur Aktions-Zuweisung.</p>
+                <p style="font-size: 0.9em; opacity: 0.8;">Wähle alle Spieler aus, die an diesem Spiel teilnehmen.</p>
                 <div id="roster-checklist-container">
                     <p style="opacity: 0.6; text-align: center; grid-column: span 2;">Lade Team-Kader...</p>
                 </div>
                 <button id="save-roster-btn" class="btn btn-primary btn-full-width">Kader speichern</button>
                 <div id="roster-message" class="message"></div>
             </div>
+            
+            <!-- NEUER TAB-INHALT FÜR VIDEO -->
+            <div id="video-tab" class="tab-content">
+                
+                <div class="video-analysis-container">
+                    <h3 style="margin-top: 0;">Video Analyse</h3>
+                    <p style="font-size: 0.9em; opacity: 0.8;">
+                        Füge eine YouTube-URL (oder Video-ID) ein, um das Video hier zu laden.
+                        Die Zeitstempel werden dann automatisch beim Loggen von Aktionen erfasst.
+                    </p>
+                    <div class="video-input-group">
+                        <input type="text" id="video-url-input" placeholder="YouTube Video URL oder ID einfügen...">
+                        <button class="btn btn-primary" onclick="loadVideo()">Video laden</button>
+                    </div>
+                    <div id="player-container">
+                        <div id="youtube-player" style="display: flex; align-items: center; justify-content: center; color: #aaa;">
+                            Video-Player.
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
         </div>
     </div>
     
+    <!-- Shot Modal -->
     <div id="shot-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeShotModal()">&times;</span>
             <h3 id="shot-modal-title" class="pitch-instructions">Aktion eintragen:</h3>
             
-            <div class="pitch-container" onclick="logShotWithCoordinates(event)">
-                
-                <svg viewBox="0 0 400 200" class="svg-handball-pitch" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0" y="0" width="400" height="200" />
-                    <line x1="200" y1="0" x2="200" y2="200" />
-                    
-                    <rect x="-2" y="92.5" width="2" height="15" fill="black" stroke="black" />
-                    <path d="M 0 32.5 A 60 60 0 0 1 60 92.5 L 60 107.5 A 60 60 0 0 1 0 167.5" />
-                    <path d="M 0 2.5 A 90 90 0 0 1 90 92.5 L 90 107.5 A 90 90 0 0 1 0 197.5" class="dashed-line" />
-                    <line x1="70" y1="95" x2="70" y2="105" />
-                    <line x1="40" y1="95" x2="40" y2="105" />
-                
-                    <rect x="400" y="92.5" width="2" height="15" fill="black" stroke="black" />
-                    <path d="M 400 32.5 A 60 60 0 0 0 340 92.5 L 340 107.5 A 60 60 0 0 0 400 167.5" />
-                    <path d="M 400 2.5 A 90 90 0 0 0 310 92.5 L 310 107.5 A 90 90 0 0 0 400 197.5" class="dashed-line" />
-                    <line x1="330" y1="95" x2="330" y2="105" />
-                    <line x1="360" y1="95" x2="360" y2="105" />
-                </svg>
-                
+            <div class="shot-chart-container-full" onclick="logShotWithCoordinates(event)">
+                <img src="/static/ganzfeld.svg" class="svg-handball-pitch" alt="Handball-Ganzfeld">
+                <div class="shot-overlay"></div>
             </div>
             
             <p style="text-align: center; font-size: 0.9em; margin-top: 10px;">
@@ -628,10 +538,15 @@
             </p>
         </div>
     </div>
+
+    <!-- YouTube IFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
     <script>
         // --- Globale Konstanten ---
         const GAME_ID = {{ game_id }};
         const TEAM_ID = {{ team_id }}; 
+        const PRELOADED_VIDEO_URL = {{ video_url | tojson }};
         
         // DOM Elemente
         const ACTION_LOG_CONTAINER = document.getElementById('action-log-container');
@@ -646,7 +561,7 @@
         const ROSTER_CHECKLIST_CONTAINER = document.getElementById('roster-checklist-container');
         const ROSTER_MESSAGE = document.getElementById('roster-message');
         const SAVE_ROSTER_BTN = document.getElementById('save-roster-btn');
-        const CURRENT_HALF_DISPLAY = document.getElementById('current-half-display');
+        // const CURRENT_HALF_DISPLAY = document.getElementById('current-half-display'); // Wird nicht mehr gebraucht
 
         // Shot Modal DOM
         const SHOT_MODAL = document.getElementById('shot-modal');
@@ -657,39 +572,34 @@
         let customActions = [];
         let selectedPlayerId = null; 
         let activeGoalieId = null; 
-
-        // Temporäre Variablen für die Modal-Aktion
         let pendingActionType = null;
         let pendingIsSevenMeter = false;
+        let protocolCurrentHalf = 'H1'; 
+        let currentFilterHalf = 'ALL'; 
         
-        // NEU: Globale Variablen für Halbzeit-Filter
-        let protocolCurrentHalf = 'H1'; // Welche Halbzeit wird *geloggt*?
-        let currentFilterHalf = 'ALL'; // Welche Halbzeit wird *angezeigt*?
+        // Globale Player-Variable
+        let youtubePlayer = null;
         
         // --- Verifizierungs-Logik ---
-        const IS_VERIFIED = (localStorage.getItem('is_verified') === 'true');
-        
-        if (typeof showToast === 'undefined') {
-            const globalShowToast = function(message, type = 'info') {
-                let toast = document.getElementById('toast-message');
-                if (!toast) {
-                    toast = document.createElement('div');
-                    toast.id = 'toast-message';
-                    toast.className = 'toast';
-                    document.body.appendChild(toast);
-                }
-                toast.textContent = message;
-                toast.className = `toast show ${type}`;
-                setTimeout(() => {
-                    toast.className = toast.className.replace('show', '');
-                }, 3000);
+        function showVerificationBanner() {
+            // Diese Funktion prüft localStorage (gesetzt von app_layout)
+            if (localStorage.getItem('is_verified') !== 'true') {
+                const banner = document.createElement('div');
+                banner.className = 'verification-banner visible';
+                banner.innerHTML = `
+                    <span>
+                        ⚠️ Dein Konto ist nicht verifiziert. Bitte überprüfe dein E-Mail-Postfach (ggf. Spam).
+                    </span>
+                    <button class="btn-refresh" onclick="location.reload()">
+                        Refresh
+                    </button>
+                `;
+                // Füge das Banner am Anfang des Grids ein, nicht ganz oben
+                document.querySelector('.protocol-grid').prepend(banner);
             }
-            var showToast = globalShowToast;
         }
-
-
         function checkVerification() {
-            if (IS_VERIFIED) {
+             if (localStorage.getItem('is_verified') === 'true') {
                 return true;
             } else {
                 showToast("Bitte verifiziere dein Konto, um diese Aktion auszuführen.", "error");
@@ -697,28 +607,10 @@
             }
         }
         
-        function showVerificationBanner() {
-            if (!IS_VERIFIED) {
-                const banner = document.createElement('div');
-                banner.className = 'verification-banner';
-                banner.innerHTML = `
-                    <span>
-                        ⚠️ Dein Konto ist nicht verifiziert. Du kannst keine Aktionen loggen.
-                    </span>
-                    <button class="btn-refresh" onclick="location.reload()">
-                        Refresh
-                    </button>
-                `;
-                document.body.prepend(banner);
-            }
-        }
-        // --- ENDE Verifizierung ---
-
         // --- Hilfsfunktionen ---
         function leaveProtocol() { window.location.href = "/dashboard"; } 
         
         function updateAllStats() {
-            // Lädt jetzt Stats basierend auf dem 'currentFilterHalf'
             updateScoreDisplay(); 
             if (document.getElementById('stats-tab').classList.contains('active')) {
                 loadStats();
@@ -733,72 +625,61 @@
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelectorAll('.tab-button').forEach(button => {
+            document.querySelectorAll('.tab-nav .tab-button').forEach(button => {
                 button.classList.remove('active');
             });
             document.getElementById(`${tabName}-tab`).classList.add('active');
-            document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.querySelector(`.tab-nav .tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
             
-            // Setzt die Filter-Buttons auf den aktuellen Filter-Status
             setFilterHalf(currentFilterHalf, tabName === 'log');
             
             if (tabName === 'stats') { 
                 loadStats();
                 loadOpponentStats();
             } 
-            else if (tabName === 'log') { loadActionLog(); }
+            else if (tabName === 'log') { 
+                loadActionLog(); 
+            }
+            else if (tabName === 'video') {
+                if (!youtubePlayer && (document.getElementById('video-url-input').value || PRELOADED_VIDEO_URL)) {
+                    loadVideo();
+                }
+            }
         }
         
         function selectPlayer(playerId, playerName, isGoalie) {
             selectedPlayerId = playerId;
             SELECTED_PLAYER_INFO.textContent = playerName;
-        
-            // Alle Buttons de-selektieren
             document.querySelectorAll('.player-list button').forEach(btn => {
                 btn.classList.remove('selected');
             });
-            // Geklickten Button selektieren
             document.getElementById(`player-btn-${playerId}`).classList.add('selected');
-            
-            // Logik für aktiven Torwart
             if (isGoalie) {
-                // Alte "active" Markierung entfernen
                 document.querySelectorAll('.player-list button.active-goalie').forEach(btn => {
                     btn.classList.remove('active-goalie');
                 });
-                // Neuen Torwart als "active" markieren
                 document.getElementById(`player-btn-${playerId}`).classList.add('active-goalie');
                 activeGoalieId = playerId;
             }
         }
         
-        // --- NEUE FUNKTIONEN: Halbzeit-Filter ---
-        
-        /** Setzt die *EINGABE*-Halbzeit (welche HZ wird geloggt?) */
         function setHalf(half) {
             protocolCurrentHalf = half;
-            CURRENT_HALF_DISPLAY.innerHTML = `Aktuell: <strong>${half === 'H1' ? 'Hälfte 1' : 'Hälfte 2'}</strong>`;
-            
-            // Visuelles Feedback für Header-Buttons
+            // CURRENT_HALF_DISPLAY.innerHTML = `Aktuell: <strong>${half === 'H1' ? 'Hälfte 1' : 'Hälfte 2'}</strong>`;
             document.getElementById('half-btn-H1').classList.toggle('active', half === 'H1');
             document.getElementById('half-btn-H2').classList.toggle('active', half === 'H2');
         }
         
-        /** Setzt die *ANZEIGE*-Halbzeit (welche HZ wird in Stats/Log gezeigt?) */
         function setFilterHalf(half, isLogTab = false) {
             currentFilterHalf = half;
+            // Aktualisiere beide Filter-Gruppen (Stats & Log)
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll(`#filter-btn-${half}, #log-filter-btn-${half}`).forEach(btn => {
+                if(btn) btn.classList.add('active');
+            });
             
-            // 1. Buttons im Stats-Tab aktualisieren
-            document.getElementById('filter-btn-ALL').classList.toggle('active', half === 'ALL');
-            document.getElementById('filter-btn-H1').classList.toggle('active', half === 'H1');
-            document.getElementById('filter-btn-H2').classList.toggle('active', half === 'H2');
-            
-            // 2. Buttons im Log-Tab aktualisieren
-            document.getElementById('log-filter-btn-ALL').classList.toggle('active', half === 'ALL');
-            document.getElementById('log-filter-btn-H1').classList.toggle('active', half === 'H1');
-            document.getElementById('log-filter-btn-H2').classList.toggle('active', half === 'H2');
-
-            // 3. Daten neu laden (basierend auf dem aktiven Tab)
             if (isLogTab) {
                 loadActionLog();
             } else {
@@ -807,189 +688,190 @@
             }
         }
 
-
         // --- Wurf Modal Logik ---
-        
-        // KORRIGIERT: Beinhaltet jetzt "Fehlpass" und Gegner-Aktionen
         function getActionLabel(actionType, isSevenMeter) {
-            if (isSevenMeter) {
-                return actionType === 'Goal' ? '7m Tor' : '7m verworfen';
-            }
+            if (isSevenMeter) { return actionType === 'Goal' ? '7m Tor' : '7m verworfen'; }
             if (actionType === 'Goal') return 'Tor erzielt (Feld)';
             if (actionType === 'Miss') return 'Wurf verworfen';
             if (actionType === 'TechError') return 'Technischer Fehler';
             if (actionType === 'Fehlpass') return 'Fehlpass';
-            // NEU: Gegner-Labels
             if (actionType === 'OppGoal') return 'Gegner Tor';
             if (actionType === 'OppMiss') return 'Gegner Fehlwurf';
-            return actionType; // Fallback für Custom Actions
+            return actionType; 
         }
-
-        // KORRIGIERT: Behandelt jetzt auch Gegner-Aktionen
         function showShotModal(actionType, isSevenMeter) {
             if (!checkVerification()) return;
-            
             const isOpponentAction = (actionType === 'OppGoal' || actionType === 'OppMiss');
-
             if (!isOpponentAction && selectedPlayerId === null) {
-                 // Nur bei EIGENEN Aktionen einen Spieler fordern
-                 alert("Bitte wähle zuerst einen Spieler aus der Liste (links).");
-                 return;
+                 showToast("Bitte wähle zuerst einen Spieler aus der Liste (links).", "error"); return;
             }
+            // Gegner (ID 0) kann keine eigenen Aktionen ausführen
             if (!isOpponentAction && selectedPlayerId === 0) {
-                 alert("Diese Aktion kann nur eigenen Spielern zugewiesen werden.");
-                 return;
+                 showToast("Diese Aktion kann nur eigenen Spielern zugewiesen werden.", "error"); return;
             }
-
             pendingActionType = actionType;
             pendingIsSevenMeter = isSevenMeter;
-            
             const actionLabel = getActionLabel(actionType, isSevenMeter);
             let titleText = "";
-
             if (isOpponentAction) {
-                // NEU: Titel für Gegner-Aktion
                 titleText = `Position für: GEGNER - ${actionLabel}`;
             } else {
-                // Bisherige Logik
                 const player = participatingPlayers.find(p => p.id === selectedPlayerId);
                 titleText = `Position für: ${player.name} - ${actionLabel}`;
             }
-            
             SHOT_MODAL_TITLE.textContent = titleText;
             SHOT_MODAL.style.display = 'block';
         }
-        
         function closeShotModal() {
             SHOT_MODAL.style.display = 'none';
             pendingActionType = null;
             pendingIsSevenMeter = false;
         }
-        
         SHOT_MODAL.addEventListener('click', function(event) {
             if (event.target === SHOT_MODAL) {
                 closeShotModal();
             }
         });
-        
-        // KORRIGIERT: Unterscheidet jetzt, ob die Aktion vom Gegner oder Spieler kam
-        // BUGFIX: `currentHalf` zu `protocolCurrentHalf` korrigiert
         function logShotWithCoordinates(event) {
             event.stopPropagation(); 
-            
             const container = event.currentTarget; 
             const rect = container.getBoundingClientRect();
-            
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
-
             const xCoord = (x / rect.width) * 100;
             const yCoord = (y / rect.height) * 100;
-
-            console.log(`Koordinaten: X=${xCoord.toFixed(1)}%, Y=${yCoord.toFixed(1)}%`);
-            
             const isOpponentAction = (pendingActionType === 'OppGoal' || pendingActionType === 'OppMiss');
-
             if (isOpponentAction) {
-                // NEU: Aktion für Gegner loggen
-                // Loggt mit 'null' für player_id, aber mit 'activeGoalieId'
-                logAction(pendingActionType, null, false, protocolCurrentHalf, xCoord, yCoord, activeGoalieId); // BUGFIX
+                logAction(pendingActionType, null, false, protocolCurrentHalf, xCoord, yCoord, activeGoalieId);
             } else {
-                // Bisherige Logik: Aktion für eigenen Spieler loggen
-                logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, protocolCurrentHalf, xCoord, yCoord, null); // BUGFIX
+                logAction(pendingActionType, selectedPlayerId, pendingIsSevenMeter, protocolCurrentHalf, xCoord, yCoord, null);
             }
-            
             closeShotModal();
         }
         
+        // --- Video Player Logik (PHASE 8) ---
+        function onYouTubeIframeAPIReady() {
+            console.log("YouTube API ist bereit.");
+            if (PRELOADED_VIDEO_URL) {
+                document.getElementById('video-url-input').value = PRELOADED_VIDEO_URL;
+                loadVideo();
+            }
+        }
+        function extractVideoID(url) {
+            if (!url) return null;
+            let videoID = url; 
+            try {
+                const urlObj = new URL(url, 'https://www.youtube.com');
+                if (urlObj.hostname === 'youtu.be') {
+                    videoID = urlObj.pathname.substring(1);
+                } else {
+                    const urlParams = urlObj.searchParams;
+                    if (urlParams.has('v')) {
+                        videoID = urlParams.get('v');
+                    }
+                }
+            } catch(e) {
+                // Fällt zurück auf die Annahme, dass es eine ID ist
+            }
+            if (/^[a-zA-Z0-9_-]{11}$/.test(videoID)) {
+                return videoID;
+            }
+            return null; 
+        }
+        function loadVideo() {
+            const urlInput = document.getElementById('video-url-input').value;
+            const videoID = extractVideoID(urlInput);
+            if (!videoID) {
+                showToast("Ungültige YouTube Video URL oder ID.", "error");
+                return;
+            }
+            if (youtubePlayer) {
+                youtubePlayer.loadVideoById(videoID);
+                return;
+            }
+            youtubePlayer = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoID,
+                playerVars: { 'playsinline': 1, 'modestbranding': 1, 'rel': 0 }
+            });
+        }
+        function getCurrentVideoTime() {
+            if (youtubePlayer && typeof youtubePlayer.getCurrentTime === 'function') {
+                const time = youtubePlayer.getCurrentTime();
+                return time > 0 ? time.toFixed(2) : null; 
+            }
+            return null;
+        }
+        function formatVideoTime(seconds) {
+            if (!seconds || seconds <= 0) return '—';
+            try {
+                const totalSec = Math.floor(parseFloat(seconds));
+                const min = Math.floor(totalSec / 60);
+                const sec = totalSec % 60;
+                return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+            } catch (e) {
+                return 'N/A';
+            }
+        }
+
         // --- Aktion verarbeiten (mit Koordinaten) ---
-        
         function handleAction(actionType) {
             if (!checkVerification()) return;
             if (selectedPlayerId === null || selectedPlayerId === 0) {
-                 alert("Bitte wähle einen eigenen Spieler.");
-                 return;
+                 showToast("Bitte wähle einen eigenen Spieler.", "error"); return;
             }
             if (actionType === 'SEVEN_METER_CAUSED') {
-                logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
+                logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null);
             } else {
-                 alert("Diese Aktion sollte das Shot-Modal öffnen, ist aber nicht als Wurf konfiguriert.");
+                 showToast("Diese Aktion sollte das Shot-Modal öffnen.", "error");
             }
         }
-        
         function handleCustomAction(actionName) {
              if (!checkVerification()) return;
              if (selectedPlayerId === null || selectedPlayerId === 0) {
-                 alert("Bitte wähle einen eigenen Spieler.");
-                 return;
+                 showToast("Bitte wähle einen eigenen Spieler.", "error"); return;
             }
-            
-            // ANNAHME: Nur "Eigene Aktionen" (Custom Actions) die "Fehlpass" heißen,
-            // sollen das Modal öffnen (falls der fixe Button nicht existiert)
             const actionsWithCoords = ['Fehlpass']; 
-            
             if (actionsWithCoords.includes(actionName)) {
                  showShotModal(actionName, false);
             } else {
-                 logAction(actionName, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
+                 logAction(actionName, selectedPlayerId, false, protocolCurrentHalf, null, null);
             }
         }
-        
         function handleGoalieAction(actionType) {
             if (!checkVerification()) return;
             if (selectedPlayerId === null || selectedPlayerId === 0) {
-                 alert("Bitte wähle einen eigenen Torwart.");
-                 return;
+                 showToast("Bitte wähle einen eigenen Torwart.", "error"); return;
             }
             const selectedPlayer = participatingPlayers.find(p => p.id === selectedPlayerId);
             if (!selectedPlayer || selectedPlayer.position !== 'Torwart') {
-                alert("Bitte wähle zuerst einen Torwart für diese Aktion aus.");
-                return;
+                showToast("Bitte wähle zuerst einen Torwart für diese Aktion aus.", "error"); return;
             }
-            
-            logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null); // BUGFIX
+            logAction(actionType, selectedPlayerId, false, protocolCurrentHalf, null, null);
         }
-
-        // KORRIGIERT: Nimmt jetzt "activeGoalieId" entgegen
-        // BUGFIX: `currentHalf` zu `protocolCurrentHalf` korrigiert
         function handleOpponentAction(actionType) {
             if (!checkVerification()) return;
-            // Gegner-Aktionen werden jetzt mit der ID des aktiven Torwarts geloggt
-            // Diese Funktion wird jetzt nur noch für "OppTechError" genutzt
-            logAction(actionType, null, false, protocolCurrentHalf, null, null, activeGoalieId); // BUGFIX
+            logAction(actionType, null, false, protocolCurrentHalf, null, null, activeGoalieId);
         }
-
-        // KORRIGIERT: Nimmt active_goalie_id an und fixt 7m-Typ
-        // NEU: Nimmt 'half' (Halbzeit) entgegen
+        
         async function logAction(
-            actionType, 
-            playerId = null, 
-            isSevenMeter = false, 
-            half = 'H1', // NEU
-            xCoord = null, 
-            yCoord = null, 
-            activeGoalieIdForOpponentAction = null
+            actionType, playerId = null, isSevenMeter = false, half = 'H1',
+            xCoord = null, yCoord = null, activeGoalieIdForOpponentAction = null
         ) {
-            
-            // --- NEUER 7M BUGFIX ---
+            const videoTimestamp = getCurrentVideoTime();
             let finalActionType = actionType;
             if (isSevenMeter) {
                 if (actionType === 'Goal') { finalActionType = 'Goal_7m'; }
                 if (actionType === 'Miss') { finalActionType = 'Miss_7m'; }
             }
-            // --- ENDE 7M BUGFIX ---
-
             const payload = {
-                action_type: finalActionType, 
-                time_in_game: half, // NEU: Speichert H1 oder H2
-                game_id: GAME_ID, 
-                player_id: playerId,
-                is_seven_meter: isSevenMeter, // (wird eigentlich nicht mehr gebraucht, aber ok)
-                x_coordinate: xCoord, 
-                y_coordinate: yCoord,
-                active_goalie_id: activeGoalieIdForOpponentAction 
+                action_type: finalActionType, time_in_game: half, game_id: GAME_ID, 
+                player_id: playerId, is_seven_meter: isSevenMeter,
+                x_coordinate: xCoord, y_coordinate: yCoord,
+                active_goalie_id: activeGoalieIdForOpponentAction,
+                video_timestamp: videoTimestamp
             };
-
             try {
                 const response = await fetch('/actions/add', {
                     method: 'POST',
@@ -1009,7 +891,7 @@
                 } 
                 else { 
                     const data = await response.json();
-                    alert(`Fehler beim Protokollieren: ${data.detail || 'Unbekannt'}`); 
+                    showToast(`Fehler beim Protokollieren: ${data.detail || 'Unbekannt'}`, "error"); 
                 }
             } catch (error) { console.error('Protokollfehler:', error); }
         }
@@ -1017,124 +899,88 @@
         async function deleteAction(actionId) {
             if (!checkVerification()) return;
             if (!confirm("Sind Sie sicher, dass Sie diese Aktion löschen möchten?")) return;
-
             try {
-                // NEU: API-Aufruf nutzt Filter
                 const response = await fetch(`/actions/delete/${actionId}?half=${currentFilterHalf}`, {
                     method: 'DELETE' 
                 });
                 if (response.ok) { updateAllStats(); } 
-                else { alert('Aktion konnte nicht gelöscht werden.'); }
+                else { showToast('Aktion konnte nicht gelöscht werden.', "error"); }
             } catch (error) { console.error('Löschfehler:', error); }
         }
         
-        // NEU: Lädt Score basierend auf Filter
         async function updateScoreDisplay() {
             try {
-                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`, {
-                    method: 'GET' 
-                });
-                if (response.status === 401 || response.status === 403) return logout();
-                if (!response.ok) { 
+                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`);
+                if (response.status === 401 || response.status === 403) {
                     SCORE_BOARD.textContent = "N/A";
-                    return;
+                    return logout();
                 }
+                if (!response.ok) { SCORE_BOARD.textContent = "N/A"; return; }
                 const actions = await response.json();
-                
                 const own_goals_count = actions.filter(a => a.action_type === 'Goal' || a.action_type === 'Goal_7m').length;
                 const opp_goals_count = actions.filter(a => a.action_type === 'OppGoal').length;
-
                 SCORE_BOARD.textContent = `${own_goals_count} - ${opp_goals_count}`;
-                
             } catch (error) {
                 console.error("Score Update Fehler:", error);
                 SCORE_BOARD.textContent = "N/A";
             }
         }
 
-        // NEU: Lädt Gegner-Stats basierend auf Filter
         async function loadOpponentStats() {
             STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             try {
-                const response = await fetch(`/actions/stats/opponent/${GAME_ID}?half=${currentFilterHalf}`, {
-                    method: 'GET' 
-                });
+                const response = await fetch(`/actions/stats/opponent/${GAME_ID}?half=${currentFilterHalf}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Gegner-Stats-Daten nicht gefunden');
-                
                 const stats = await response.json();
-                
                 let tableHtml = `<table class="opponent-stats-table"><tbody>
-                    <tr>
-                        <td>🟡 Gegner Tore</td>
-                        <td>${stats.opponent_goals}</td>
-                    </tr>
-                    <tr>
-                        <td>💨 Gegner Fehlwürfe</td>
-                        <td>${stats.opponent_misses}</td>
-                    </tr>
-                    <tr>
-                        <td>🚫 Gegner Tech. Fehler</td>
-                        <td>${stats.opponent_tech_errors}</td>
-                    </tr>
+                    <tr><td>🟡 Gegner Tore</td><td>${stats.opponent_goals}</td></tr>
+                    <tr><td>💨 Gegner Fehlwürfe</td><td>${stats.opponent_misses}</td></tr>
+                    <tr><td>🚫 Gegner Tech. Fehler</td><td>${stats.opponent_tech_errors}</td></tr>
                 </tbody></table>`;
-                
                 STATS_TABLE_CONTAINER_OPPONENT.innerHTML = tableHtml;
-
             } catch (error) {
                 console.error('Fehler beim Laden der Gegner-Stats:', error);
                 STATS_TABLE_CONTAINER_OPPONENT.innerHTML = '<p class="error">Fehler beim Laden der Gegner-Statistik.</p>';
             }
         }
 
-        // NEU: Lädt Log basierend auf Filter
         async function loadActionLog() {
             try {
-                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`, {
-                    method: 'GET' 
-                });
+                const response = await fetch(`/actions/list/${GAME_ID}?half=${currentFilterHalf}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Log-Daten nicht gefunden');
-                
                 const actions = await response.json();
-                
                 if (actions.length === 0) {
                     ACTION_LOG_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Noch keine Aktionen protokolliert.</p>';
                     return;
                 }
-                
                 const actionTextMap = {
                     'Goal': '⚽ TOR (Feld)', 'Miss': '💨 Fehlwurf (Feld)',
                     'Goal_7m': '🎯 TOR (7m)', 'Miss_7m': '🧱 Fehlwurf (7m)', 
-                    'TechError': '🚫 Technischer Fehler', 
-                    'Fehlpass': '🚫 Fehlpass', 
-                    'Save': '🛑 Parade',
-                    'SEVEN_METER_CAUSED': '🚨 7m verursacht',
-                    'SEVEN_METER_SAVE': '🧱 7m Gehalten',
-                    'SEVEN_METER_RECEIVED': '🟡 7m Bekommen', 
-                    'OppGoal': '🟡 Gegner Tor',
-                    'OppMiss': '💨 Gegner Fehlwurf',
+                    'TechError': '🚫 Technischer Fehler', 'Fehlpass': '🚫 Fehlpass', 
+                    'Save': '🛑 Parade', 'SEVEN_METER_CAUSED': '🚨 7m verursacht',
+                    'SEVEN_METER_SAVE': '🧱 7m Gehalten', 'SEVEN_METER_RECEIVED': '🟡 7m Bekommen', 
+                    'OppGoal': '🟡 Gegner Tor', 'OppMiss': '💨 Gegner Fehlwurf',
                     'OppTechError': '🚫 Gegner Tech. Fehler'
                 };
-                
                 let tableHtml = `<table class="log-table"><thead><tr>
-                                    <th>Hälfte</th><th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
+                                    <th>Hälfte</th><th>Zeit</th><th>Aktion</th><th>Spieler</th><th>#</th><th>Löschen</th>
                                  </tr></thead><tbody>`;
-                
                 actions.forEach(action => { 
                     let actionText = actionTextMap[action.action_type] || `⭐ ${action.action_type}`;
-                    
                     if (action.action_type === 'SEVEN_METER_RECEIVED' && action.player_name) {
                         actionText = '🥅 7m Tor (kassiert)';
                     }
-
                     let playerInfo = action.player_name || 'TEAM';
                     if (action.action_type.startsWith('Opp') && !action.player_name) {
                         playerInfo = 'GEGNER';
                     }
                     const playerNumber = action.player_number !== null ? action.player_number : '';
+                    const videoTimeFormatted = formatVideoTime(action.video_timestamp);
                     tableHtml += `<tr>
                             <td>${action.time_in_game || 'N/A'}</td>
+                            <td>${videoTimeFormatted}</td>
                             <td>${actionText}</td><td>${playerInfo}</td><td>${playerNumber}</td>
                             <td><button class="btn btn-danger btn-inline-delete btn-delete-log" onclick="deleteAction(${action.id})">Löschen</button></td>
                          </tr>`;
@@ -1149,23 +995,16 @@
         
         async function loadCustomActions() {
             CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Aktionen...</p>';
-            
             try {
-                const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`, {
-                    method: 'GET' 
-                });
-
+                const response = await fetch(`/custom-actions/list?team_id=${TEAM_ID}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden der Custom Actions.');
-
                 customActions = await response.json(); 
                 CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '';
-
                 if (customActions.length === 0) {
                     CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen erstellt.</p>';
                     return;
                 }
-
                 customActions.forEach(action => {
                     const button = document.createElement('button');
                     let categoryClass = 'btn-custom'; 
@@ -1173,44 +1012,32 @@
                         const safeCategory = action.category.replace(/\s+/g, '-');
                         categoryClass = `btn-custom-${safeCategory}`;
                     }
-                    
                     button.className = categoryClass; 
                     button.textContent = `⭐ ${action.name}`;
                     button.onclick = () => handleCustomAction(action.name);
                     CUSTOM_ACTION_BUTTONS_CONTAINER.appendChild(button);
                 });
-
             } catch (error) {
                 CUSTOM_ACTION_BUTTONS_CONTAINER.innerHTML = '<p class="error">Fehler beim Laden der Aktionen.</p>';
                 console.error(error);
             }
         }
 
-        // KORREKTUR: 'Fehlpass' zur Statistik-Tabelle hinzugefügt
-        // NEU: Lädt Stats basierend auf Filter
         async function loadStats() {
             STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
             STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
-
             try {
-                const response = await fetch(`/actions/stats/${GAME_ID}?half=${currentFilterHalf}`, {
-                    method: 'GET' 
-                });
-
+                const response = await fetch(`/actions/stats/${GAME_ID}?half=${currentFilterHalf}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Statistik-Ladefehler.');
-
                 const stats = await response.json();
-
                 if (stats.length === 0) {
                     STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
                     STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
                     STATS_TABLE_CONTAINER_CUSTOM.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Spielerdaten.</p>';
                     return;
                 }
-
-                // KORREKTUR 1: Header geändert
                 let fieldTableHtml = `<table class="stats-table"><thead><tr>
                                         <th>Spieler</th><th>#</th>
                                         <th>Tore (Quote)</th>
@@ -1219,13 +1046,11 @@
                                         <th>7m (T/M)</th>
                                         <th>7m Verurs.</th>
                                       </tr></thead><tbody>`;
-                
                 let goalieTableHtml = `<table class="stats-table"><thead><tr>
                                         <th>Spieler</th><th>#</th>
                                         <th>Paraden (Quote)</th>
                                         <th>7m (Geh/Bek)</th>
                                       </tr></thead><tbody>`;
-
                 let customTableHtml = `<table class="stats-table"><thead><tr>
                                         <th>Spieler</th><th>#</th>`;
                 const customActionNames = customActions.map(ca => ca.name);
@@ -1233,34 +1058,20 @@
                     customTableHtml += `<th>${name}</th>`;
                 });
                 customTableHtml += `</tr></thead><tbody>`;
-
                 let goaliesFound = false;
                 let fieldPlayersFound = false;
-                
-                // KORREKTUR 2: Neue 'total'-Variablen
-                let totalGoals = 0;
-                let totalShots = 0;
-                let totalTechErrors = 0;
-                let totalFehlpaesse = 0; // <-- NEU
-                let totalSevenMeterCaused = 0;
-                let totalSevenMeterAttempts = 0;
-                let totalSevenMeterGoals = 0;
+                let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0,
+                    totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0;
 
                 stats.forEach(player => {
                     if (player.position === 'Torwart') {
                         goaliesFound = true;
                         const totalSaves = player.saves + player.seven_meter_saves;
-                        
-                        // KORREKTUR (BUGFIX): 7m-Received (Kassiert) zu den normalen Gegentoren addieren
                         const totalGoalsReceived = player.opponent_goals_received + player.seven_meter_received;
-                        
                         const totalShotsOnGoal = totalSaves + totalGoalsReceived;
                         const saveQuote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—';
-                        
-                        // 7m Gehalten / (7m Gehalten + 7m Kassiert)
                         const totalSevenMeterOnGoal = player.seven_meter_saves + player.seven_meter_received;
                         const sevenMeterQuote = totalSevenMeterOnGoal > 0 ? ((player.seven_meter_saves / totalSevenMeterOnGoal) * 100).toFixed(0) + '%' : '—';
-
                         goalieTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>
@@ -1272,8 +1083,6 @@
                         const currentTotalGoals = player.goals + player.seven_meter_goals;
                         const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
                         const shotQuote = currentTotalShots > 0 ? ((currentTotalGoals / currentTotalShots) * 100).toFixed(0) + '%' : '—';
-
-                        // KORREKTUR 3: Zelle geändert
                         fieldTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>
@@ -1283,7 +1092,6 @@
                             <td>${player.seven_meter_goals} / ${player.seven_meter_goals + player.seven_meter_misses}</td>
                             <td>${player.seven_meter_caused}</td>
                         </tr>`;
-                        
                         customTableHtml += `<tr>
                             <td>${player.player_name}</td>
                             <td>${player.player_number || ''}</td>`;
@@ -1291,19 +1099,15 @@
                             customTableHtml += `<td>${player.custom_counts[name] || 0}</td>`;
                         });
                         customTableHtml += `</tr>`;
-                        
-                        // Summen addieren
                         totalGoals += currentTotalGoals;
                         totalShots += currentTotalShots;
                         totalTechErrors += player.tech_errors;
-                        totalFehlpaesse += player.fehlpaesse; // <-- NEU
+                        totalFehlpaesse += player.fehlpaesse;
                         totalSevenMeterCaused += player.seven_meter_caused;
                         totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses;
                         totalSevenMeterGoals += player.seven_meter_goals;
                     }
                 });
-
-                // KORREKTUR 4: Total-Zeile (tfoot) geändert
                 const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—';
                 fieldTableHtml += `</tbody>
                                   <tfoot>
@@ -1318,14 +1122,11 @@
                                     </tr>
                                   </tfoot>
                                   </table>`; 
-
                 goalieTableHtml += `</tbody></table>`;
                 customTableHtml += `</tbody></table>`;
-
                 STATS_TABLE_CONTAINER_FIELD.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
                 STATS_TABLE_CONTAINER_GOALIE.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
                 STATS_TABLE_CONTAINER_CUSTOM.innerHTML = (customActionNames.length > 0 && fieldPlayersFound) ? customTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen oder Spieler vorhanden.</p>';
-
             } catch (error) {
                 STATS_TABLE_CONTAINER_FIELD.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
                 STATS_TABLE_CONTAINER_GOALIE.innerHTML = '<p class="error">Fehler beim Laden der Statistik.</p>';
@@ -1336,9 +1137,7 @@
         
         async function loadFullTeamRoster() {
             try {
-                const response = await fetch(`/players/list/${TEAM_ID}`, {
-                    method: 'GET' 
-                });
+                const response = await fetch(`/players/list/${TEAM_ID}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Team-Kaders.');
                 fullTeamRoster = await response.json();
@@ -1351,7 +1150,6 @@
         
         function buildRosterChecklist() {
             ROSTER_CHECKLIST_CONTAINER.innerHTML = '';
-            
             fullTeamRoster.forEach(player => {
                 const item = document.createElement('div');
                 item.className = 'roster-player-item';
@@ -1367,28 +1165,20 @@
         
         async function loadGameRoster() {
             try {
-                const response = await fetch(`/games/roster/${GAME_ID}`, {
-                    method: 'GET' 
-                });
+                const response = await fetch(`/games/roster/${GAME_ID}`);
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Laden des Spiel-Kaders.');
                 participatingPlayers = await response.json();
-                
-                // NEU: Setze den ersten TW als aktiv, falls vorhanden
                 const firstGoalie = participatingPlayers.find(p => p.position === 'Torwart');
                 if (firstGoalie) {
                     activeGoalieId = firstGoalie.id;
                 }
-                
                 updateRosterChecklist();
                 buildActionPlayerButtons();
-                
-                // NEU: Markiere den aktiven TW
                 if (activeGoalieId) {
                     const goalieBtn = document.getElementById(`player-btn-${activeGoalieId}`);
                     if(goalieBtn) goalieBtn.classList.add('active-goalie');
                 }
-                
             } catch (error) {
                 console.error('Fehler beim Laden des Spiel-Kaders:', error);
                 buildActionPlayerButtons(); 
@@ -1408,29 +1198,15 @@
             });
         }
         
-        // ==================================================
-        // KORRIGIERT: Sortiert die Spielerliste
-        // ==================================================
         function buildActionPlayerButtons() {
             PLAYER_BUTTONS_CONTAINER.innerHTML = '';
-            
-            // NEU: Sortierlogik
             participatingPlayers.sort((a, b) => {
-                // 1. Nach Position (Torwart zuerst)
-                if (a.position === 'Torwart' && b.position !== 'Torwart') {
-                    return -1; // a (Torwart) kommt vor b
-                }
-                if (a.position !== 'Torwart' && b.position === 'Torwart') {
-                    return 1; // b (Torwart) kommt vor a
-                }
-                
-                // 2. Nach Nummer (innerhalb der Positionsgruppe)
+                if (a.position === 'Torwart' && b.position !== 'Torwart') { return -1; }
+                if (a.position !== 'Torwart' && b.position === 'Torwart') { return 1; }
                 const numA = a.number !== null ? a.number : 999;
                 const numB = b.number !== null ? b.number : 999;
                 return numA - numB;
             });
-            // ENDE Sortierlogik
-
             let hasPlayers = false;
             participatingPlayers.forEach(player => {
                 hasPlayers = true;
@@ -1442,7 +1218,6 @@
                 button.onclick = () => selectPlayer(player.id, player.name, isGoalie); 
                 PLAYER_BUTTONS_CONTAINER.appendChild(button);
             });
-            
             if (!hasPlayers) {
                  PLAYER_BUTTONS_CONTAINER.innerHTML = '<p style="text-align: center; opacity: 0.7;">Keine Spieler für dieses Spiel ausgewählt. Bitte im Tab "Kader / Roster" festlegen.</p>';
             }
@@ -1452,26 +1227,18 @@
             if (!checkVerification()) return;
             ROSTER_MESSAGE.textContent = 'Speichere Kader...';
             ROSTER_MESSAGE.className = 'message';
-            
             const checkedBoxes = ROSTER_CHECKLIST_CONTAINER.querySelectorAll('input[type="checkbox"]:checked');
             const player_ids = Array.from(checkedBoxes)
                 .map(box => parseInt(box.dataset.playerId));
-
             try {
                 const response = await fetch(`/games/roster/${GAME_ID}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ 
-                        player_ids: player_ids
-                    }),
+                    body: JSON.stringify({ player_ids: player_ids }),
                 });
-                
                 if (response.status === 401 || response.status === 403) return logout();
                 if (!response.ok) throw new Error('Fehler beim Speichern.');
-                
-                // Lade Kader neu (wichtig für "aktiven TW" und Sortierung)
                 await loadGameRoster(); 
-                
                 selectedPlayerId = null;
                 SELECTED_PLAYER_INFO.textContent = "Keiner";
                 ROSTER_MESSAGE.textContent = '✅ Kader erfolgreich gespeichert.';
@@ -1487,34 +1254,48 @@
         // --- Seite initialisieren ---
         function initProtocol() {
             try {
-                showVerificationBanner();
+                // Die globale Funktion checkVerification() ist in app_layout.html definiert
+                // und prüft localStorage.
+                // KORREKTUR: showVerificationBanner() wird von der (nicht existenten) app_layout.html aufgerufen
+                // Wir müssen es hier selbst tun.
+                if (localStorage.getItem('is_verified') !== 'true') {
+                    const banner = document.createElement('div');
+                    banner.className = 'verification-banner visible';
+                    banner.innerHTML = `
+                        <span>
+                            ⚠️ Dein Konto ist nicht verifiziert. Bitte überprüfe dein E-Mail-Postfach (ggf. Spam).
+                        </span>
+                        <button class="btn-refresh" onclick="location.reload()">
+                            Refresh
+                        </button>
+                    `;
+                    // Füge das Banner GANZ OBEN ein, über dem Header
+                    document.body.prepend(banner);
+                }
                 
-                // Setzt die Halbzeit-Buttons auf H1 beim Start
                 setHalf('H1');
-                
                 Promise.all([
                     loadFullTeamRoster(),
                     loadCustomActions()
                 ]).then(() => {
                     loadGameRoster().then(() => {
-                        // Lädt initial mit Filter 'ALL'
                         updateAllStats();
                     });
                 });
-                
+                if (PRELOADED_VIDEO_URL) {
+                    document.getElementById('video-url-input').value = PRELOADED_VIDEO_URL;
+                }
             } catch (error) {
                 console.error("Fehler bei der Initialisierung des Protokolls:", error);
                 alert("Ein kritischer Fehler ist beim Laden der Protokolldaten aufgetreten. Bitte zurück zum Dashboard.");
             }
         }
         
+        // Globale Toast-Funktion (Fallback, falls app_layout nicht geladen wird)
         if (typeof showToast === 'undefined') {
-            const toast = document.createElement('div');
-            toast.id = 'toast-message';
-            toast.className = 'toast';
-            document.body.appendChild(toast);
-            
             var showToast = function(message, type = 'info') {
+                const toast = document.getElementById('toast-message');
+                if (!toast) return;
                 toast.textContent = message;
                 toast.className = `toast show ${type}`;
                 setTimeout(() => {
@@ -1523,6 +1304,7 @@
             }
         }
         
+        // Ruft die init-Funktion dieser Seite auf
         document.addEventListener('DOMContentLoaded', initProtocol);
         
     </script>

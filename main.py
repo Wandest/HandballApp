@@ -23,10 +23,8 @@ ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
 
 app = FastAPI(title="HandballApp Backend")
 
-# --- 2. HINZUGEFÜGT: Statische Dateien (für SVGs, CSS) bereitstellen ---
-# Erfordert einen Ordner: 'frontend/static'
+# Statische Dateien (für SVGs, CSS) bereitstellen
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
 
 # Router einbinden
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
@@ -51,7 +49,8 @@ def home(request: Request):
         {"request": request, "title": "Handball Auswertung"}
     )
 
-# NEUE HAUPTSEITE (ersetzt /app/dashboard)
+# --- GESCHÜTZTE ROUTEN (Laden alle app_layout.html) ---
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -73,10 +72,6 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
     finally:
         db.close()
 
-# --- GESCHÜTZTE ROUTEN (Beispielhaft für alle Seiten) ---
-# ... (deine anderen Seiten-Routen wie /team-management, etc.) ...
-
-# 1. Team Management
 @app.get("/team-management", response_class=HTMLResponse)
 def team_management_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -98,7 +93,6 @@ def team_management_page(request: Request, current_trainer: Trainer = Depends(ge
     finally:
         db.close()
 
-# 2. Game Planning
 @app.get("/game-planning", response_class=HTMLResponse)
 def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -120,7 +114,6 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
     finally:
         db.close()
 
-# 3. Season Analysis
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -142,22 +135,18 @@ def season_analysis_page(request: Request, current_trainer: Trainer = Depends(ge
     finally:
         db.close()
 
-# ==================================================
-# KORREKTUR: NEUE SEITE FÜR LIGA-SCOUTING (DEIN WUNSCH)
-# ==================================================
 @app.get("/league-scouting", response_class=HTMLResponse)
 def league_scouting_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
     try:
         template_vars = {
             "request": request,
-            "title": "Liga Scouting", # Neuer Titel
+            "title": "Liga Scouting", 
             "trainer_name": current_trainer.username,
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            # NEUES TEMPLATE:
             "page_content_template": "league_scouting.html", 
         }
         return templates.TemplateResponse(
@@ -168,7 +157,9 @@ def league_scouting_page(request: Request, current_trainer: Trainer = Depends(ge
         db.close()
 
 
-# Geschützte Route: Protokoll-Oberfläche
+# ==================================================
+# REPARIERTE PROTOKOLL-ROUTE
+# ==================================================
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal() 
@@ -183,37 +174,46 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
         if not team:
             raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
             
+        # KORREKTUR: Lädt protocol.html jetzt wieder DIREKT,
+        # genau wie in deiner hochgeladenen Original-Datei.
         return templates.TemplateResponse(
-            "protocol.html",
-            {"request": request, 
-             "title": "Spielprotokoll", 
-             "game_id": game_id, 
-             "team_id": team.id,
-             "opponent": game.opponent, 
-             "team_name": team.name}
+            "protocol.html", 
+            {
+                "request": request,
+                "title": f"Protokoll: {team.name} vs. {game.opponent}",
+                "game_id": game.id,
+                "team_id": team.id,
+                "opponent": game.opponent,
+                "team_name": team.name,
+                "video_url": game.video_url # (PHASE 8)
+            }
         )
     finally:
         db.close()
 
 
 # ------------------------------------
-# SERVER-START-LOGIK (Für ZWEI-TERMINAL-WORKFLOW)
+# SERVER-START-LOGIK (EINFACHE & STABILE METHODE)
 # ------------------------------------
 
-# Die start_server Funktion wird NICHT MEHR BENÖTIGT
+def start_server():
+    # Wir starten uvicorn.run mit dem app-Objekt
+    # WICHTIG: reload=False, da dies in einem Thread zu Abstürzen führt
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
 
 if __name__ == "__main__":
     
-    # HINWEIS: Stelle sicher, dass der Uvicorn-Server
-    # in einem separaten Terminal läuft:
-    # > uvicorn main:app --reload
-    
-    # Wir starten NUR NOCH das pywebview-Fenster.
+    # Starte den Uvicorn-Server in einem separaten Thread
+    t = threading.Thread(target=start_server, daemon=True)
+    t.start()
+
+    # Starte das pywebview-Fenster im Haupt-Thread
     webview.create_window(
         "Handball Auswertung", 
         "http://127.0.0.1:8000", 
         width=1400, 
         height=800
     )
-    # WICHTIG: debug=True beibehalten
+    # WICHTIG: debug=True beibehalten, um Rechtsklick -> Inspect zu erlauben
     webview.start(debug=True)
+

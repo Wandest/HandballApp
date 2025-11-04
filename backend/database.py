@@ -102,6 +102,12 @@ class Game(Base):
     team_id = Column(Integer, ForeignKey("teams.id"))
     game_category = Column(String, default="Testspiel", nullable=False)
     tournament_name = Column(String, nullable=True) 
+    
+    # ==================================================
+    # NEU (PHASE 8): Video-URL für das Spiel
+    # ==================================================
+    video_url = Column(String, nullable=True) # z.B. YouTube-Link
+
     team = relationship("Team", back_populates="games")
     actions = relationship("Action", back_populates="game", cascade="all, delete-orphan") 
 
@@ -124,6 +130,11 @@ class Action(Base):
     x_coordinate = Column(Float, nullable=True)
     y_coordinate = Column(Float, nullable=True)
     
+    # ==================================================
+    # NEU (PHASE 8): Video-Zeitstempel
+    # ==================================================
+    video_timestamp = Column(String, nullable=True) # z.B. "120.53" (Sekunden)
+
     # ==================================================
     # KORRIGIERTE FOREIGN KEYS (BUGFIX)
     # ==================================================

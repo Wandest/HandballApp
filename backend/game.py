@@ -1,5 +1,5 @@
 # DATEI: backend/game.py
-# (KEINE ÄNDERUNGEN NÖTIG)
+# (KORRIGIERT: Speichert jetzt die video_url)
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ class GameCreate(BaseModel):
     team_id: int
     game_category: str 
     tournament_name: Optional[str] = None 
+    video_url: Optional[str] = None # NEU (PHASE 8)
 
 class GameResponse(BaseModel):
     id: int
@@ -30,6 +31,7 @@ class GameResponse(BaseModel):
     team_id: int
     game_category: str
     tournament_name: Optional[str] = None
+    video_url: Optional[str] = None # NEU (PHASE 8)
 
     class Config:
         from_attributes = True
@@ -65,18 +67,24 @@ def create_game(
     ).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden oder gehört nicht zu diesem Trainer.")
+    
     valid_categories = ["Saison", "Testspiel", "Turnier"]
     if game_data.game_category not in valid_categories:
         raise HTTPException(status_code=400, detail="Ungültige Spielkategorie.")
+    
     if game_data.game_category == "Turnier" and not game_data.tournament_name:
         raise HTTPException(status_code=400, detail="Für Turnierspiele muss ein Turniername angegeben werden.")
+    
     tournament_name_to_save = game_data.tournament_name if game_data.game_category == "Turnier" else None
+    
+    # KORRIGIERT (PHASE 8): video_url wird dem neuen Spiel hinzugefügt
     new_game = Game(
         opponent=game_data.opponent,
         date=game_data.date,
         team_id=game_data.team_id,
         game_category=game_data.game_category,
-        tournament_name=tournament_name_to_save
+        tournament_name=tournament_name_to_save,
+        video_url=game_data.video_url # HIER IST DIE ÄNDERUNG
     )
     db.add(new_game)
     db.commit()
@@ -117,6 +125,8 @@ def list_games(
     ).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team nicht gefunden oder gehört nicht zu diesem Trainer.")
+    
+    # Die GameResponse (inkl. video_url) wird hier automatisch durch SQLAlchemy befüllt
     games = db.query(Game).filter(
         Game.team_id == team_id
     ).order_by(Game.date.desc()).all()

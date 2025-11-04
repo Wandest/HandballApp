@@ -14,7 +14,14 @@
                 <input type="text" id="game-opponent" required>
                 <label for="game-date">Datum:</label>
                 <input type="date" id="game-date" required>
+                
+                <!-- ================================================== -->
+                <!-- NEU (PHASE 8): Video-URL Eingabefeld -->
+                <!-- ================================================== -->
+                <label for="game-video-url">Video URL (Optional):</label>
+                <input type="text" id="game-video-url" placeholder="https://www.youtube.com/watch?v=...">
             </div>
+            
             <div class="form-section" id="tournament-game-fields">
                  <label for="tournament-select">Turnier auswählen:</label>
                  <select id="tournament-select">
@@ -110,6 +117,8 @@
             showToast('Serverfehler beim Löschen des Spiels.', "error");
         }
     }
+    
+    // KORRIGIERT (PHASE 8): Event Listener für Formular-Submit
     document.getElementById('add-game-form').addEventListener('submit', async function(event) {
         event.preventDefault();
         if (!checkVerification()) return;
@@ -121,6 +130,9 @@
         }
         const opponent = document.getElementById('game-opponent').value;
         const date = document.getElementById('game-date').value;
+        // NEU (PHASE 8): Video-URL auslesen
+        const videoUrl = document.getElementById('game-video-url').value.trim();
+        
         const category = activeGameCategoryInput.value;
         let tournamentName = null;
         if (category === "Turnier") {
@@ -142,13 +154,17 @@
         }
         gameMessageDiv.textContent = `Erstelle Spiel gegen ${opponent}...`;
         gameMessageDiv.className = 'message';
+        
+        // NEU (PHASE 8): Payload um video_url erweitert
         const payload = {
             opponent: opponent,
             date: date,
             team_id: parseInt(selectedTeamId),
             game_category: category,
-            tournament_name: tournamentName
+            tournament_name: tournamentName,
+            video_url: videoUrl || null // Sendet die URL oder null, wenn das Feld leer ist
         };
+        
         try {
             const response = await fetch('/games/add', {
                 method: 'POST',
@@ -221,6 +237,8 @@
                     archiveGroups[archiveName].push(game);
                 }
             });
+            
+            // KORRIGIERT (PHASE 8): renderGameList zeigt jetzt ein Video-Icon an
             const renderGameList = (gameList) => {
                 let html = '';
                 gameList.forEach(game => {
@@ -228,10 +246,13 @@
                     const formattedDate = dateObj.toLocaleDateString('de-DE', {
                         year: 'numeric', month: '2-digit', day: '2-digit'
                     });
+                    // NEU (PHASE 8): Fügt ein Kamera-Icon hinzu, wenn eine URL vorhanden ist
+                    const videoIcon = game.video_url ? ' <span title="Video vorhanden">🎬</span>' : '';
+                    
                     html += `
                         <div class="game-list-item">
                             <div class="game-info">
-                                <span>📅 ${formattedDate} <strong>vs. ${game.opponent}</strong></span>
+                                <span>📅 ${formattedDate} <strong>vs. ${game.opponent}</strong>${videoIcon}</span>
                                 <span>Kategorie: ${game.game_category === 'Turnier' ? game.tournament_name : game.game_category}</span>
                             </div>
                             <div class="game-actions">

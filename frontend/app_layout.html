@@ -130,15 +130,11 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
-        
-        /* KORREKTUR: 1-Spalten-Layout als Standard für Analyse-Seiten */
-        .analysis-grid,
-        .analysis-grid-1-col {
+        .analysis-grid, .analysis-grid-1-col { /* NEU: 1-col */
              display: grid;
             grid-template-columns: 1fr; 
             gap: 20px;
         }
-        /* (2-Spalten-Layout wird von season_analysis nicht mehr genutzt) */
         .analysis-grid-2-col {
              display: grid;
             grid-template-columns: 2fr 1fr; 
@@ -154,6 +150,9 @@
             display: flex;
             flex-direction: column;
         }
+        /* Eigener Style für protocol.html-Karten (WIRD HIER NICHT MEHR GEBRAUCHT) */
+        /* .card.protocol-card { ... } */
+        
         
         /* Allgemeine UI-Elemente für alle Seiten */
         h2 { color: #fff; margin-top: 0; margin-bottom: 15px; }
@@ -500,9 +499,9 @@
             display: block;
         }
         
-        /* --- CSS FÜR SHOT CHART (Wird von season_analysis & league_scouting genutzt) --- */
-        
-        /* Container-Stile */
+        /* ================================================== */
+        /* CSS FÜR SHOT CHARTS (GLOBAL) */
+        /* ================================================== */
         .shot-chart-container-half,
         .shot-chart-container-full {
             position: relative;
@@ -520,28 +519,62 @@
             margin-right: auto;
         }
         .shot-chart-container-full {
-            max-width: 700px;
+            max-width: 700px; 
             margin-left: auto;
             margin-right: auto;
         }
-        /* SVG-Bild (bestimmt die Höhe) */
         .svg-handball-pitch {
             width: 100%;
-            height: auto;
-            display: block;
+            height: auto; 
+            display: block; 
             z-index: 1; 
         }
-        /* Overlay (legt sich über das Bild) */
         .shot-overlay {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 2; 
         }
-        .shot-overlay p { /* Text im Overlay (z.B. "Keine Wurfdaten") */
-            color: #000; 
+        /* Text im Overlay (z.B. "Keine Wurfdaten") auf schwarz */
+        .shot-overlay p {
+            color: #000000;
             opacity: 0.7;
+            text-align: center;
         }
+        .shot-dot {
+            position: absolute; width: 12px; height: 12px;
+            border-radius: 50%; transform: translate(-50%, -50%);
+            border: 2px solid rgba(0,0,0,0.7);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .shot-dot.goal { background-color: #38E838; }
+        .shot-dot.miss { background-color: #f44336; }
+        .shot-dot.tech-error-pass { background-color: #ff9800; }
+        .shot-dot.opp-goal { background-color: #9E9E9E; }
+        .shot-dot.opp-miss { background-color: #795548; }
+
+        .shot-chart-legend {
+            display: flex; justify-content: center;
+            gap: 20px; margin-top: 15px;
+            color: white; /* Legenden-Text ist weiß */
+        }
+        .legend-item { display: flex; align-items: center; }
+        .legend-color-box {
+            width: 15px; height: 15px;
+            margin-right: 8px; border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 3px;
+        }
+        .legend-color-box.goal { background-color: #38E838; }
+        .legend-color-box.miss { background-color: #f44336; }
+        .legend-color-box.tech-error-pass { background-color: #ff9800; }
+        .legend-color-box.opp-goal { background-color: #9E9E9E; }
+        .legend-color-box.opp-miss { background-color: #795548; }
+        
+        /* ================================================== */
+        /* CSS FÜR PROTOKOLL-SEITE (ENTFERNT) */
+        /* ================================================== */
         
     </style>
 </head>
@@ -554,8 +587,8 @@
         <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
         <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
         <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
-        <!-- KORREKTUR: NEUER LINK ZUR NEUEN SEITE -->
-        <a id="nav-scouting" href="/league-scouting" class="nav-link">🛰️ Liga Scouting</a>
+        <!-- KORREKTUR: Link zur neuen Seite -->
+        <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
 
         <div style="flex-grow: 1;"></div> 
 
@@ -601,21 +634,12 @@
             document.querySelectorAll('.nav-link').forEach(link => {
                 const url = new URL(link.href);
                 
-                // KORREKTUR: Macht den Link aktiv, auch wenn man auf einer Unterseite ist
-                // z.B. /league-scouting/team/123 würde /league-scouting aktivieren
-                if (window.location.pathname.startsWith(url.pathname)) {
+                if (url.pathname === window.location.pathname) {
                     link.classList.add('active');
                 } else {
                     link.classList.remove('active');
                 }
             });
-            // Ausnahme für Dashboard, das nur bei exakter Übereinstimmung aktiv sein soll
-            const dashboardLink = document.getElementById('nav-dashboard');
-            if (window.location.pathname !== '/dashboard') {
-                 dashboardLink.classList.remove('active');
-            } else {
-                 dashboardLink.classList.add('active');
-            }
         }
         
         function logout() {
@@ -670,3 +694,4 @@
     </script>
 </body>
 </html>
+

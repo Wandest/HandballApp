@@ -24,6 +24,7 @@ class ActionCreate(BaseModel):
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
     active_goalie_id: Optional[int] = None
+    video_timestamp: Optional[str] = None # NEU (PHASE 8)
 
 class ActionResponse(BaseModel):
     id: int
@@ -35,9 +36,11 @@ class ActionResponse(BaseModel):
     player_id: Optional[int]
     x_coordinate: Optional[float] = None
     y_coordinate: Optional[float] = None
+    video_timestamp: Optional[str] = None # NEU (PHASE 8)
     class Config: from_attributes = True
 
 class PlayerStats(BaseModel):
+# ... (Rest des Modells unverändert) ...
     player_id: int
     player_name: str
     player_number: Optional[int]
@@ -58,18 +61,21 @@ class PlayerStats(BaseModel):
     class Config: from_attributes = True
 
 class OpponentStats(BaseModel):
+# ... (Rest des Modells unverändert) ...
     opponent_goals: int
     opponent_misses: int
     opponent_tech_errors: int
     class Config: from_attributes = True
 
 class ShotData(BaseModel):
+# ... (Rest des Modells unverändert) ...
     action_type: str
     x_coordinate: float
     y_coordinate: float
     class Config: from_attributes = True
 
 class ShotDataResponse(BaseModel):
+# ... (Rest des Modells unverändert) ...
     player_id: int
     player_name: str
     player_number: Optional[int]
@@ -77,6 +83,7 @@ class ShotDataResponse(BaseModel):
     class Config: from_attributes = True
 
 def get_db():
+# ... (Funktion unverändert) ...
     db = SessionLocal()
     try:
         yield db
@@ -85,6 +92,7 @@ def get_db():
 
 # --- NEU: Helper-Funktion für Halbzeit-Filter ---
 def apply_half_filter(query, half: str):
+# ... (Funktion unverändert) ...
     """ Wendet einen Filter für H1, H2 oder ALL auf eine Query an. """
     if half == 'H1':
         return query.filter(Action.time_in_game == 'H1')
@@ -120,7 +128,8 @@ def log_action(
         player_id=action_data.player_id,
         x_coordinate=action_data.x_coordinate,
         y_coordinate=action_data.y_coordinate,
-        active_goalie_id=action_data.active_goalie_id
+        active_goalie_id=action_data.active_goalie_id,
+        video_timestamp=action_data.video_timestamp # NEU (PHASE 8)
     )
     db.add(new_action); db.commit(); db.refresh(new_action)
     
@@ -129,7 +138,8 @@ def log_action(
         time_in_game=new_action.time_in_game, game_id=new_action.game_id,
         player_id=new_action.player_id, player_name=player_name_for_action,
         player_number=player_number_for_action, x_coordinate=new_action.x_coordinate,
-        y_coordinate=new_action.y_coordinate
+        y_coordinate=new_action.y_coordinate,
+        video_timestamp=new_action.video_timestamp # NEU (PHASE 8)
     )
 
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
@@ -161,12 +171,14 @@ def list_actions(
             time_in_game=action.time_in_game, game_id=action.game_id,
             player_id=action.player_id, player_name=player_name,
             player_number=player_number, x_coordinate=action.x_coordinate,
-            y_coordinate=action.y_coordinate
+            y_coordinate=action.y_coordinate,
+            video_timestamp=action.video_timestamp # NEU (PHASE 8)
         ))
     return response_list
 
 @router.get("/stats/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
+# ... (Rest der Datei unverändert) ...
     game_id: int,
     half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
     current_trainer: Trainer = Depends(get_current_trainer),
@@ -268,6 +280,7 @@ def get_game_stats(
 
 @router.get("/stats/opponent/{game_id}", response_model=OpponentStats)
 def get_opponent_stats(
+# ... (Rest der Datei unverändert) ...
     game_id: int,
     half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), # NEU: Filter
     current_trainer: Trainer = Depends(get_current_trainer),
@@ -296,6 +309,7 @@ def get_opponent_stats(
 
 @router.get("/stats/season/{team_id}", response_model=List[PlayerStats])
 def get_season_stats(
+# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -394,6 +408,7 @@ def get_season_stats(
 
 @router.get("/stats/season/opponent/{team_id}", response_model=OpponentStats)
 def get_season_opponent_stats(
+# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -420,6 +435,7 @@ def get_season_opponent_stats(
 
 @router.delete("/delete/{action_id}")
 def delete_action(
+# ... (Rest der Datei unverändert) ...
     action_id: int,
     # 'half' wird hier nicht benötigt, da wir einfach die Aktion löschen,
     # unabhängig vom aktuellen Filter
@@ -437,6 +453,7 @@ def delete_action(
 
 @router.get("/shots/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_shot_charts(
+# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -479,6 +496,7 @@ def get_season_shot_charts(
 # ==================================================
 @router.get("/stats/errors/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_error_charts(
+# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -521,6 +539,7 @@ def get_season_error_charts(
 # ==================================================
 @router.get("/shots/opponent/season/{team_id}", response_model=List[ShotData])
 def get_season_opponent_shot_charts(
+# ... (Rest der Datei unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
