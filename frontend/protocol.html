@@ -17,7 +17,7 @@
             box-sizing: border-box; /* Wichtig, damit padding funktioniert */
         }
         
-        /* Allgemeine UI-Elemente */
+        /* ... (Allgemeine UI-Elemente, .btn, Modale, Toast, etc. bleiben gleich) ... */
         h2 { color: #fff; margin-top: 0; margin-bottom: 15px; }
         h3 { color: #ffcc00; margin-top: 0; margin-bottom: 10px; }
         .message { margin-top: 10px; font-weight: bold; }
@@ -51,20 +51,6 @@
             margin: 0; margin-left: 10px; flex-shrink: 0;
         }
 
-        /* Banner (wird von JS hinzugefügt, falls nötig) */
-        .verification-banner {
-            background-color: #ffcc00; color: #1e3c72;
-            padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;
-            display: flex; align-items: center; justify-content: space-between;
-            font-weight: bold; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        }
-        .verification-banner .btn-refresh {
-            background-color: #1e3c72; color: #ffcc00; border: none;
-            padding: 8px 15px; border-radius: 5px; cursor: pointer;
-            font-weight: bold; margin-left: 20px;
-        }
-        
-        /* Modal Styles (Global für Wurf-Modal) */
         .modal {
             display: none; position: fixed; z-index: 1000; 
             left: 0; top: 0; width: 100%; height: 100%;
@@ -77,14 +63,8 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             max-height: 80vh; overflow-y: auto;
         }
-        /* NEU: Eigene Breite für Halbfeld-Modal */
-        .modal-content.modal-content-half {
-            max-width: 450px;
-        }
-        /* Breite für Ganzfeld-Modal */
-        .modal-content.modal-content-full {
-             max-width: 700px;
-        }
+        .modal-content.modal-content-half { max-width: 450px; }
+        .modal-content.modal-content-full { max-width: 700px; }
         
         .close-btn {
             color: #aaa; float: right; font-size: 28px; font-weight: bold;
@@ -93,7 +73,6 @@
             color: white; text-decoration: none; cursor: pointer;
         }
 
-        /* Toast-Nachrichten */
         .toast {
             visibility: hidden; min-width: 250px;
             background-color: #333; color: #fff; text-align: center;
@@ -108,9 +87,7 @@
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
         
-        /* ================================================== */
-        /* STYLES FÜR SHOT CHARTS (im Modal) */
-        /* ================================================== */
+        /* SHOT CHARTS */
         .shot-chart-container-full,
         .shot-chart-container-half {
             position: relative; width: 100%;
@@ -119,13 +96,8 @@
             overflow: hidden; margin-top: 15px;
             margin-left: auto; margin-right: auto;
         }
-        .shot-chart-container-full {
-            max-width: 700px;
-        }
-        /* NEU: Eigene Klasse für Halbfeld */
-        .shot-chart-container-half {
-            max-width: 400px; /* Schmaler */
-        }
+        .shot-chart-container-full { max-width: 700px; }
+        .shot-chart-container-half { max-width: 400px; }
         
         .svg-handball-pitch {
             width: 100%; height: auto; 
@@ -155,6 +127,7 @@
              min-height: 75vh;
         }
         
+        /* HEADER (bleibt gleich) */
         .header {
             background: rgba(0, 0, 0, 0.2);
             padding: 15px 20px;
@@ -203,31 +176,105 @@
             background: #ffcc00; color: #1e3c72; opacity: 1;
         }
         
-        /* Spieler-Buttons */
-        .player-list h3 { text-align: center; }
-        .player-list button {
-            width: 100%; padding: 12px; margin-bottom: 10px;
-            background: #00bcd4; color: white; border: none;
-            border-radius: 5px; cursor: pointer; font-weight: bold;
-            transition: background-color 0.2s;
+        .game-clock-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
-        .player-list button:hover { background: #0097a7; }
-        .player-list button.goalkeeper { background: #ffcc00; color: #333; }
-        .player-list button.selected { background: #ff6666; }
-        .player-list button.opponent {
-            background: #9e9e9e; color: white; border: 2px dashed white;
+        .game-clock-controls .btn {
+            margin: 0;
+            padding: 8px 10px;
+            font-size: 0.9em;
         }
-        .player-list button.opponent.selected {
-            background: #ff6666; border-color: #ff6666;
+        .game-clock-controls .btn-start { background-color: #38E838; color: #1e3c72; }
+        .game-clock-controls .btn-pause { background-color: #f44336; }
+        .game-clock-controls .btn-resume { background-color: #38E838; }
+
+
+        /* +++ NEUE LAYOUT-STILE (Phase 10.5 Workflow) +++ */
+        
+        h3.on-court-header {
+            color: #38E838;
+            border-bottom: 1px solid rgba(56, 232, 56, 0.3);
+            padding-bottom: 5px;
+            margin: 0 0 10px 0;
+            text-align: center;
         }
-        .player-list button.active-goalie {
+        
+        /* Oben-Links: SPIELER AUF DEM FELD (Aktionsauswahl) */
+        #on-court-player-buttons-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 2 Spalten Layout */
+            gap: 8px;
+            margin-bottom: 10px;
+            min-height: 150px; 
+        }
+        .btn-on-court {
+            width: 100%;
+            padding: 12px 5px; 
+            font-size: 1em; 
+            margin: 0;
+            background: #607d8b; /* Grau */
+            color: white;
+            border: 2px solid #607d8b;
+            border-radius: 5px;
+        }
+        .btn-on-court:hover {
+             background: #78909c;
+        }
+        .btn-on-court.selected {
+            background: #ff6666; /* Rot (ausgewählt für Aktion) */
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(255, 102, 102, 0.7);
+        }
+        
+        /* Unten-Links: KADER (Wechsel-Buttons) */
+        #player-buttons-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr; 
+            gap: 6px; 
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px; 
+        }
+        
+        .player-list button.btn-kader {
+            width: 100%; 
+            padding: 8px 4px; 
+            margin-bottom: 6px;
+            font-size: 0.85em; 
+            background: #00bcd4; 
+            color: white; 
+            border: 3px solid #00bcd4;
+            border-radius: 5px;
+            transition: background-color 0.2s, border 0.2s, box-shadow 0.2s, opacity 0.2s;
+            white-space: normal;
+            line-height: 1.2;
+            min-height: 40px; 
+        }
+        .player-list button.btn-kader:hover { background: #0097a7; }
+        .player-list button.btn-kader.goalkeeper { 
+            background: #ffcc00; 
+            color: #333; 
+            border-color: #ffcc00;
+        }
+        
+        .player-list button.btn-kader.on-court {
             border: 3px solid #38E838;
             box-shadow: 0 0 10px rgba(56, 232, 56, 0.7);
         }
-        
-        /* Aktions-Buttons */
+        .player-list button.btn-kader.active-goalie {
+            background: #ffc107; /* Gelb */
+            color: #1e3c72;
+            border: 3px solid #38E838;
+        }
+        /* +++ ENDE NEUE LAYOUT-STILE +++ */
+
+
+        /* AKTIONEN-SPALTE (MITTE) */
         .action-controls h3 { color: #ffcc00; margin-top: 0; text-align: center; }
-        .action-controls button {
+
+        .action-controls .action-button {
             width: 100%; padding: 10px; border: none; border-radius: 5px; 
             font-weight: bold; cursor: pointer; font-size: 1.1em;
             margin: 4px 0; display: flex;
@@ -247,7 +294,7 @@
         .btn-custom-Sonstiges { background: #607d8b; color: white; }
         hr.divider { border-color: rgba(255,255,255,0.2); margin: 15px 0; }
         
-        /* Protokoll Tab-Navigation */
+        /* ... (Restliche Styles für Tabs, Tabellen, Roster etc. bleiben gleich) ... */
         .tab-nav {
             display: flex; border-bottom: 2px solid #ffcc00;
             margin-bottom: 15px;
@@ -273,7 +320,6 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
-        /* Protokoll-Filter-Buttons */
         .stats-filter-container {
             display: flex;
             gap: 10px;
@@ -295,7 +341,6 @@
             background: #607d8b; color: white; border-color: #607d8b;
         }
         
-        /* Tabellen-Styles (Statistik & Log) */
         .stats-table-container { width: 100%; overflow-x: auto; }
         .stats-table, .log-table {
             width: 100%;
@@ -324,7 +369,6 @@
             border-top: 2px solid #ffcc00;
         }
         
-        /* Stile für Video-Analyse (Log-Tab) */
         .video-log-layout {
             display: grid;
             grid-template-columns: 1fr 1fr; /* 50% Log, 50% Video */
@@ -341,7 +385,6 @@
         .video-log-layout .video-column {
             max-height: 70vh;
         }
-        /* Klickbare Log-Zeilen */
         .log-table tbody tr {
             cursor: pointer;
             transition: background-color 0.15s;
@@ -382,7 +425,6 @@
             text-align: center; font-weight: bold; font-size: 1.2em;
         }
         
-        /* Protokoll-Roster-Tab */
         #roster-checklist-container {
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 10px; margin-bottom: 20px;
@@ -396,7 +438,6 @@
         }
         .roster-player-item label { cursor: pointer; font-size: 1.1em; }
         
-        /* Video-Analyse-Tab (PHASE 8) */
         .video-analysis-container {
             width: 100%; 
             margin: 0; padding: 0;
@@ -423,6 +464,49 @@
             width: 100%; height: 100%;
         }
         
+        #timeline-container {
+             background: rgba(0,0,0,0.3); 
+             padding: 15px; 
+             border-radius: 5px; 
+             margin-bottom: 20px; 
+             max-height: 70vh; /* ANGEPASST */
+             overflow-y: auto;
+        }
+        .timeline-row { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 5px; 
+            height: 25px;
+        }
+        .timeline-label { 
+            width: 120px; 
+            font-size: 0.8em; 
+            font-weight: bold; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+            flex-shrink: 0; 
+            padding-right: 10px;
+        }
+        .timeline-bar-container { 
+            flex-grow: 1; 
+            height: 20px; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: 3px; 
+            position: relative; 
+            overflow: hidden;
+        }
+        .timeline-bar { 
+            position: absolute; 
+            height: 100%; 
+            background: #38E838; 
+            border-radius: 3px; 
+            opacity: 0.8; 
+        }
+        .timeline-bar.goalkeeper { 
+            background: #ffcc00; 
+        }
+        
     </style>
 </head>
 <body data-game-id="{{ game_id }}" data-team-id="{{ team_id }}" data-video-url="{{ video_url | default('') }}">
@@ -442,36 +526,57 @@
                 <button id="half-btn-H2" class="header-half-button" onclick="setHalf('H2')">Hälfte 2</button>
             </div>
         </div>
-        <button class="btn btn-info header-button" onclick="updateAllStats()">🔄 Aktualisieren</button>
+        
+        <!-- +++ KORRIGIERTER HTML-BLOCK (Spieluhr) +++ -->
+        <div class="game-clock-controls">
+            <button id="btn-game-start" class="btn btn-start" onclick="handleGameClock('GAME_START')">▶ Spiel Start</button>
+            <button id="btn-game-pause" class="btn btn-pause" onclick="handleGameClock('GAME_PAUSE')" style="display: none;">❚❚ Pause / Timeout</button>
+            <button id="btn-game-resume" class="btn btn-resume" onclick="handleGameClock('GAME_RESUME')" style="display: none;">▶ Weiter</button>
+        </div>
+        <!-- +++ ENDE KORRIGIERTER BLOCK +++ -->
     </div>
 
     <div class="protocol-grid">
         
         <div class="player-list card protocol-card">
-            <h3>Teilnehmende Spieler</h3>
             
-            <div id="substitution-buttons" style="margin-bottom: 15px;">
-                 <p style="opacity: 0.6; text-align: center;">Spieler auswählen.</p>
+            <h3 class="on-court-header">Spieler auf dem Feld (<span id="on-court-count">0</span>)</h3>
+            <p style="font-size: 0.9em; opacity: 0.7; text-align: center; margin-bottom: 10px;">
+                Klicke hier, um Spieler für Aktionen auszuwählen.
+            </p>
+            <div id="on-court-player-buttons-container">
+                <p style="opacity: 0.6; text-align: center; font-size: 0.9em; padding: 20px 0;">
+                    Bitte Spieler (unten) einwechseln.
+                </p>
             </div>
             
-            <p style="font-weight: bold;">Ausgewählt: <span id="selected-player-info" style="color: #ffcc00;">Keiner</span></p>
+            <hr class="divider">
+
+            <h3>Kader & Wechsel</h3>
+            <p style="font-size: 0.9em; opacity: 0.7; text-align: center; margin-bottom: 10px;">
+                Klicke hier, um Spieler ein- oder auszuwechseln.
+            </p>
             <div id="player-buttons-container">
                 <p style="text-align: center;">Lade Kader...</p>
             </div>
         </div>
 
         <div class="action-controls card protocol-card">
+            
+            <p style="font-weight: bold; font-size: 1.1em; text-align: center;">Ausgewählt: <span id="selected-player-info" style="color: #ffcc00;">Keiner</span></p>
+            <hr class="divider">
+
             <h3>Meine Aktionen</h3>
             
-            <button class="btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
-            <button class="btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
-            <button class="btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
-            <button class="btn-miss" onclick="showShotModal('Miss', true)">🧱 7m verworfen</button>
-            <button class="btn-error" onclick="showShotModal('TechError', false)">⚠️ Technischer Fehler</button>
+            <button class="action-button btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
+            <button class="action-button btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
+            <button class="action-button btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
+            <button class="action-button btn-miss" onclick="showShotModal('Miss', true)">🧱 7m verworfen</button>
+            <button class="action-button btn-error" onclick="showShotModal('TechError', false)">⚠️ Technischer Fehler</button>
             
-            <button class="btn-error" onclick="showShotModal('Fehlpass', false)">🚫 Fehlpass</button>
+            <button class="action-button btn-error" onclick="showShotModal('Fehlpass', false)">🚫 Fehlpass</button>
             
-            <button class="btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
+            <button class="action-button btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
             <hr class="divider">
             <h3>Team-Aktionen</h3>
             <div id="custom-action-buttons">
@@ -479,21 +584,23 @@
             </div>
             <hr class="divider">
             <h3>Torwart-Aktionen</h3>
-            <button class="btn-save-opp" onclick="handleGoalieAction('Save')">🧤 Parade Torwart</button>
-            <button class="btn-save-opp" onclick="handleGoalieAction('SEVEN_METER_SAVE')">🧱 7m Gehalten</button>
-            <button class="btn-opp-goal" onclick="handleGoalieAction('SEVEN_METER_RECEIVED')">🥅 7m Tor (kassiert)</button>
+            <button class="action-button btn-save-opp" onclick="handleGoalieAction('Save')">🧤 Parade Torwart</button>
+            <button class="action-button btn-save-opp" onclick="handleGoalieAction('SEVEN_METER_SAVE')">🧱 7m Gehalten</button>
+            <button class="action-button btn-opp-goal" onclick="handleGoalieAction('SEVEN_METER_RECEIVED')">🥅 7m Tor (kassiert)</button>
             
             <hr class="divider">
             <h3>Gegner-Aktionen</h3>
-            <button class="btn-opp-goal" onclick="showShotModal('OppGoal', false)">🟡 Gegner Tor</button>
-            <button class="btn-opp-miss" onclick="showShotModal('OppMiss', false)">💨 Gegner Fehlwurf</button>
-            <button class="btn-opp-error" onclick="handleOpponentAction('OppTechError')">🚫 Gegner Tech. Fehler</button>
+            <button class="action-button btn-opp-goal" onclick="handleOpponentAction('OppGoal')">🟡 Gegner Tor</button>
+            <button class="action-button btn-opp-miss" onclick="handleOpponentAction('OppMiss')">💨 Gegner Fehlwurf</button>
+            <button class="action-button btn-opp-error" onclick="handleOpponentAction('OppTechError')">🚫 Gegner Tech. Fehler</button>
         </div>
         
         <div class="right-column-area card protocol-card">
             
+            <!-- +++ NEUE TAB-REIHENFOLGE +++ -->
             <div class="tab-nav">
                 <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
+                <button class="tab-button" onclick="showTab('timeline')">Timeline</button> <!-- NEU -->
                 <button class="tab-button" onclick="showTab('log')">Protokoll & Video</button>
                 <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
             </div>
@@ -527,13 +634,28 @@
                 </div>
             </div>
 
+            <!-- +++ NEUER TAB-CONTAINER +++ -->
+            <div id="timeline-tab" class="tab-content">
+                <h3>Aufstellungs-Timeline</h3>
+                <div class="stats-filter-container">
+                    <button id="timeline-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', 'timeline')">Gesamt</button>
+                    <button id="timeline-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', 'timeline')">Hälfte 1</button>
+                    <button id="timeline-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', 'timeline')">Hälfte 2</button>
+                </div>
+                <div id="timeline-container">
+                    <p style="opacity: 0.6;">Lade Timeline-Daten...</p>
+                </div>
+            </div>
+
             <div id="log-tab" class="tab-content">
                 <h3>Protokoll & Video-Analyse (Älteste Aktionen zuerst)</h3>
                 <div class="stats-filter-container">
-                    <button id="log-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', true)">Gesamt</button>
-                    <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', true)">Hälfte 1</button>
-                    <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', true)">Hälfte 2</button>
+                    <button id="log-filter-btn-ALL" class="filter-button active" onclick="setFilterHalf('ALL', 'log')">Gesamt</button>
+                    <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', 'log')">Hälfte 1</button>
+                    <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', 'log')">Hälfte 2</button>
                 </div>
+                
+                <!-- TIMELINE WURDE VON HIER ENTFERNT -->
                 
                 <div class="video-log-layout">
                     
@@ -611,10 +733,6 @@
     <script>
         // --- Globale Player-Variable (Muss hier definiert werden für YouTube API) ---
         var youtubePlayer = null; 
-        
-        // KORREKTUR: Alle Deklarationen (const SHOT_MODAL_FULL) wurden entfernt.
-        // Die Logik wird nach protocol.js verschoben.
-        
     </script>
     
     <script src="/static/global.js"></script>

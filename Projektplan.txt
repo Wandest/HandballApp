@@ -104,10 +104,10 @@ Status: ✅ ABGESCHLOSSEN (War nicht im Plan, ist aber implementiert)
 [✅] UI (Team Management): Vollständige Oberfläche zur Verwaltung des Trainer-Staffs.
 
 Phase 10.5: Key-Feature: Spielzeit-Tracking
-Status: 🟡 IN ARBEIT
+Status: ✅ ABGESCHLOSSEN
 [✅] Backend: Logik zur automatischen Berechnung der "Time on Court" (Spielzeit) aus den "SubIn"/"SubOut"-Action-Logs.
 [✅] Statistik-UI: Spielzeit pro Spieler (pro Spiel / Saison) in den Statistik-Tabellen anzeigen.
-[⬜] Fundament für Belastungssteuerung: protocol.html erweitern mit "Einwechseln" / "Auswechseln" Buttons für Spieler.
+[✅] Fundament für Belastungssteuerung: protocol.html erweitert mit "Einwechseln" / "Auswechseln" Buttons für Spieler (Neuer Workflow implementiert).
 [⬜] (Optional/Profi): Grafische "Timeline" der Aufstellungen während eines Spiels.
 
 Phase 11: Athletik & Belastungssteuerung
