@@ -37,204 +37,180 @@
       border-radius: 5px;
       background: rgba(255, 255, 255, 0.9);
       color: #333;
-      box-sizing: border-box; 
-      font-size: 1em; 
+      font-size: 1em;
+      box-sizing: border-box;
     }
-    button {
-      width: 100%;
-      padding: 10px; 
-      margin-top: 20px; 
-      border: none;
-      border-radius: 5px;
-      font-size: 1.1em; 
-      background: #ffcc00; 
-      color: #333; 
-      cursor: pointer;
-      transition: 0.2s;
-      font-weight: normal; 
-    }
-    button:hover {
-      background: #ffdd44; 
-    }
-    button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        background: #9e9e9e; 
-        color: #fff; 
-    }
-    .message {
-      margin-top: 15px; 
-      font-weight: bold;
-      font-size: 1em; 
-    }
-    .success { color: #38E838; }
-    .error { color: #FF6666; }
-    
     .form-group {
-        display: flex; 
-        align-items: center;
-        width: 90%; 
-        margin: 8px auto; 
-        box-sizing: border-box;
-    }
-    .form-group input {
-        flex-grow: 1; 
-        margin: 0; 
-        margin-right: 5px; 
+        position: relative;
     }
     .form-group .icon {
-        width: 30px;
-        text-align: right;
-        font-size: 1.2em; 
-        font-weight: bold;
-        flex-shrink: 0; 
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
     }
-
-    .password-validation-list {
-        width: 90%; 
-        margin: 5px auto 15px auto; 
-        text-align: left;
-        font-size: 0.8em; 
-        line-height: 1.4; 
-        color: lightgray;
+    .btn {
+      width: 90%;
+      padding: 12px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #ffcc00;
+      color: #1e3c72;
+      font-weight: bold;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: background-color 0.2s;
     }
-    .password-validation-list p {
-        margin: 0 0 3px 0; 
-        display: flex;
-        align-items: center;
+    .btn:hover:not(:disabled) {
+      background-color: #ffd633;
     }
-    .password-validation-list .status-icon {
-        font-size: 1.1em;
-        margin-right: 5px;
-        width: 15px;
-        text-align: center;
+    .btn:disabled {
+        background-color: #666;
+        color: #bbb;
+        cursor: not-allowed;
     }
-    
-    .username-info {
-        font-size: 0.8em; 
-        margin-top: -5px; 
-        margin-bottom: 5px; 
-        text-align: left;
-        padding-left: 5%; 
-        color: lightgray;
+    .message {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 0.9em;
     }
-    .alternative-link {
+    .error {
+        background: rgba(255, 102, 102, 0.2);
+        color: #FF6666;
+        border: 1px solid #FF6666;
+    }
+    .success {
+        background: rgba(56, 232, 56, 0.2);
+        color: #38E838;
+        border: 1px solid #38E838;
+    }
+    a {
         color: #ffcc00;
-        cursor: pointer;
-        text-decoration: underline;
-        margin-left: 5px;
-    }
-
-    .terms-checkbox-group {
-        display: flex;
-        align-items: flex-start;
-        margin-top: 20px; 
-        font-size: 0.9em; 
-        line-height: 1.4; 
-        text-align: left;
-        color: lightgray;
-        width: 90%; 
-        margin-left: auto; 
-        margin-right: auto;
-    }
-    .terms-checkbox-group input[type="checkbox"] {
-        margin-top: 2px; 
-        margin-right: 8px; 
-        width: 16px; 
-        height: 16px;
-        flex-shrink: 0;
-        cursor: pointer;
-    }
-    .terms-checkbox-group a {
-        color: #ffcc00; 
-        text-decoration: underline; 
-        font-weight: normal;
-    }
-    .terms-checkbox-group a:hover {
-        text-decoration: none; 
-    }
-
-    .link-below-button {
-        color: #ffcc00;
-        cursor: pointer;
-        text-decoration: underline;
-        margin-top: 20px;
+        text-decoration: none;
+        margin-top: 15px;
         display: block;
         font-size: 0.9em;
     }
-    .link-below-button:hover {
-        text-decoration: none;
+    .mode-switch {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    .mode-switch button {
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 15px;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+        font-weight: bold;
+    }
+    .mode-switch #mode-trainer {
+        border-radius: 5px 0 0 5px;
+    }
+    .mode-switch #mode-player {
+        border-radius: 0 5px 5px 0;
+    }
+    .mode-switch button.active {
+        background-color: #ffcc00;
+        color: #1e3c72;
+        border-color: #ffcc00;
+    }
+    
+    .alternative-link {
+        color: #ffcc00;
+        text-decoration: underline;
+        cursor: pointer;
+        margin-left: 5px;
     }
 
+    /* NEU: Passwort Validierung Liste */
+    .password-validation-list {
+        text-align: left;
+        padding: 10px 20px;
+        margin-top: -5px;
+        font-size: 0.9em;
+    }
+    .password-validation-list p {
+        margin: 4px 0;
+    }
+    .status-icon {
+        display: inline-block;
+        width: 20px;
+        text-align: center;
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
+    <h1 id="check-header">Trainer-Login</h1>
+    <p id="check-info">(Trainer: Benutzername oder E-Mail / Spieler: Nur E-Mail)</p>
     
-    <div id="username-check-view" style="display: block;">
-        <h1>Trainer-Login</h1>
+    <div id="username-check-view">
+        <div class="mode-switch">
+            <button id="mode-trainer" class="active" onclick="switchLoginMode('trainer')">Trainer</button>
+            <button id="mode-player" onclick="switchLoginMode('player')">Spieler</button>
+        </div>
         <form id="username-check-form">
             <input type="text" id="username-input" placeholder="Benutzername oder E-Mail" required>
-            <p class="username-info">(Benutzername: Nur Buchstaben und Zahlen)</p>
-            <button type="submit" id="check-button">Weiter</button>
+            <button type="submit" id="check-button" class="btn">Weiter</button>
         </form>
         <div id="message-check" class="message"></div>
+        <a href="/public/public-stats">Öffentliche Team-Analysen ansehen</a>
     </div>
-    
+
     <div id="login-view" style="display: none;">
-        <h1 id="login-header">Login für...</h1>
+        <h2 id="login-header"></h2>
         <form id="login-form">
             <input type="password" id="password-login" placeholder="Passwort" required>
-            <button type="submit" id="login-button">Login</button>
+            <button type="submit" class="btn">Login</button>
         </form>
         <div id="message-login" class="message"></div>
-        <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
-            Identifikation ändern
-        </a>
+        <a href="#" onclick="showUsernameCheckView(); return false;">&larr; Zurück</a>
     </div>
 
     <div id="register-view" style="display: none;">
-        <h1 id="register-header">Registrieren für...</h1>
-        
-        <div class="form-group">
-            <input type="text" id="username-reg" placeholder="Benutzername" required onkeyup="checkRegistrationUsernameAvailability()">
-            <span id="username-icon" class="icon"></span>
-        </div>
-        <div id="username-reg-status" class="username-info"></div>
-
+        <h2 id="register-header">Registrieren</h2>
         <form id="register-form">
+            
+            <div class="form-group">
+                <input type="text" id="username-reg" placeholder="Benutzername" required onkeyup="checkRegistrationUsernameAvailability()">
+                <span id="username-icon" class="icon"></span>
+            </div>
+            <div id="username-reg-status" style="font-size: 0.8em; margin-bottom: 5px;"></div>
+            
             <div class="form-group">
                 <input type="email" id="email-reg" placeholder="E-Mail" required onkeyup="checkEmailAvailability()">
                 <span id="email-icon" class="icon"></span>
             </div>
-            
-            
+
             <div class="form-group">
                 <input type="password" id="password-reg" placeholder="Passwort" required onkeyup="validatePassword()">
-                <span class="icon"></span> </div>
-            <div id="password-requirements" class="password-validation-list">
+                <span class="icon"></span> 
             </div>
-            
+            <div id="password-requirements" class="password-validation-list">
+            </div> 
+
             <div class="form-group">
                 <input type="password" id="confirm-password-reg" placeholder="Passwort bestätigen" required onkeyup="validatePassword()">
                 <span id="match-icon" class="icon"></span>
             </div>
-
-            <div class="terms-checkbox-group">
+            
+            <div style="text-align: left; margin: 15px 0 10px 0;">
                 <input type="checkbox" id="terms-checkbox" onchange="updateRegisterButtonState()">
-                <span>Ich habe die <a href="http://example.com/agb" target="_blank">AGB</a> und die <a href="http://example.com/datenschutz" target="_blank">Datenschutzerklärung</a> gelesen und stimme diesen zu.</span>
+                <label for="terms-checkbox" style="display: inline; font-size: 0.9em; cursor: pointer;">Ich akzeptiere die <a href="#" style="display: inline; font-size: 1em;">AGB</a>.</label>
             </div>
 
-            <button type="submit" id="register-button" disabled>Jetzt registrieren</button>
+            <button type="submit" id="register-button" class="btn" disabled>Jetzt registrieren</button>
         </form>
-
         <div id="message-reg" class="message"></div>
-        <a href="#" onclick="showUsernameCheckView()" class="link-below-button">
-            Abbrechen und Identifikation ändern
-        </a>
+        <a href="#" onclick="showUsernameCheckView(); return false;">&larr; Zurück</a>
     </div>
-
+    
   </div>
 
   <script>
@@ -250,55 +226,23 @@
     const emailIcon = document.getElementById('email-icon');
     const matchIcon = document.getElementById('match-icon');
     const usernameRegStatusDiv = document.getElementById('username-reg-status');
-    const passwordRequirementsDiv = document.getElementById('password-requirements');
+    
+    // HIER KORRIGIERT: Muss 'password-requirements' verwenden
+    const passwordRequirementsDiv = document.getElementById('password-requirements'); 
+    
     const termsCheckbox = document.getElementById('terms-checkbox'); 
     const messageCheckDiv = document.getElementById('message-check');
     const messageLoginDiv = document.getElementById('message-login');
     const messageRegDiv = document.getElementById('message-reg');
+    const checkHeader = document.getElementById('check-header');
+    const checkInfo = document.getElementById('check-info');
 
     let currentIdentifier = ''; 
-    let currentPassword = '';
     let isUsernameAvailable = false;
     let isEmailAvailable = false;
-    let arePasswordsValid = false; 
+    let arePasswordsValid = false; // Steuert den Registrierungsbutton
+    let loginMode = 'trainer'; 
     
-    function showView(viewId) {
-        checkView.style.display = 'none';
-        loginView.style.display = 'none';
-        registerView.style.display = 'none';
-        document.getElementById(viewId).style.display = 'block';
-        
-        messageCheckDiv.textContent = '';
-        messageLoginDiv.textContent = '';
-        messageRegDiv.textContent = '';
-    }
-
-    function showUsernameCheckView() {
-        showView('username-check-view');
-        document.getElementById('password-login').value = '';
-        document.getElementById('register-form').reset();
-    }
-    
-    function showLoginView() {
-        showView('login-view');
-        document.getElementById('login-header').textContent = `Login für ${currentIdentifier}`;
-    }
-
-    function showRegisterView() {
-        const checkedUsername = document.getElementById('username-input').value;
-        usernameRegInput.value = checkedUsername;
-        currentIdentifier = checkedUsername; 
-
-        showView('register-view');
-        document.getElementById('register-header').textContent = `Registrieren für ${currentIdentifier}`;
-        
-        checkRegistrationUsernameAvailability(true);
-        checkEmailAvailability(true);
-        validatePassword();
-    }
-    
-    showUsernameCheckView(); 
-
     // --- 0. Hilfsfunktion: Button-Status aktualisieren ---
     function updateRegisterButtonState() {
         const button = document.getElementById('register-button');
@@ -307,18 +251,110 @@
              button.disabled = !(arePasswordsValid && isUsernameAvailable && isEmailAvailable && termsCheckbox.checked);
         }
     }
+    window.updateRegisterButtonState = updateRegisterButtonState;
+
+
+    // --- View-Steuerung ---
+    function showView(viewId, isPlayer = false) {
+        checkView.style.display = 'none';
+        loginView.style.display = 'none';
+        registerView.style.display = 'none';
+        document.getElementById(viewId).style.display = 'block';
+        
+        if (viewId === 'login-view') {
+            const headerText = isPlayer ? 'Spieler-Login' : 'Trainer-Login';
+            document.getElementById('login-header').textContent = headerText;
+        }
+        
+        messageCheckDiv.textContent = '';
+        messageLoginDiv.textContent = '';
+        messageRegDiv.textContent = '';
+    }
+
+    function showUsernameCheckView() {
+        showView('username-check-view');
+        document.getElementById('register-form').reset();
+        
+        // Stellt sicher, dass der aktuelle Modus visuell aktiv ist
+        document.getElementById('mode-trainer').classList.remove('active');
+        document.getElementById('mode-player').classList.remove('active');
+        document.getElementById(`mode-${loginMode}`).classList.add('active');
+    }
+    window.showUsernameCheckView = showUsernameCheckView;
+
+    function showLoginView(isPlayer = false) {
+        showView('login-view', isPlayer);
+        
+        const passwordLoginInput = document.getElementById('password-login');
+        if (passwordLoginInput) {
+             if (isPlayer) {
+                 passwordLoginInput.placeholder = 'Passwort für ' + currentIdentifier;
+             } else {
+                 passwordLoginInput.placeholder = 'Passwort';
+             }
+             passwordLoginInput.focus();
+        }
+    }
+
+    function showRegisterView() {
+        const checkedIdentifier = usernameInput.value.trim();
+        usernameRegInput.value = checkedIdentifier; 
+        currentIdentifier = checkedIdentifier;
+
+        showView('register-view');
+        document.getElementById('register-header').textContent = `Registrieren für ${currentIdentifier}`;
+        
+        checkRegistrationUsernameAvailability(true);
+        checkEmailAvailability(true);
+        validatePassword(); // WICHTIG: Startet die Passwort-Validierung und zeigt die Regeln an
+    }
+    
+    // --- Login Modus Wechsel ---
+    function switchLoginMode(mode) {
+        loginMode = mode;
+        document.getElementById('mode-trainer').classList.remove('active');
+        document.getElementById('mode-player').classList.remove('active');
+        document.getElementById(`mode-${mode}`).classList.add('active');
+        
+        // UI anpassen
+        if (mode === 'trainer') {
+            checkHeader.textContent = 'Trainer-Login';
+            checkInfo.innerHTML = '(Trainer: Benutzername oder E-Mail / Spieler: Nur E-Mail)';
+            usernameInput.placeholder = 'Benutzername oder E-Mail';
+            document.getElementById('check-button').textContent = 'Weiter';
+        } else {
+            checkHeader.textContent = 'Spieler-Login';
+            checkInfo.innerHTML = '(Nur E-Mail-Adresse erlaubt)';
+            usernameInput.placeholder = 'E-Mail-Adresse';
+            document.getElementById('check-button').textContent = 'Login';
+        }
+        
+        showUsernameCheckView(); // Reset zur Identifikationsprüfung
+    }
+    window.switchLoginMode = switchLoginMode; 
+
+    // Initialisiere mit Trainer-Modus beim Laden der Seite
+    document.addEventListener('DOMContentLoaded', () => {
+        // checkLoginStatus() wird ganz unten aufgerufen
+    });
 
 
     // --- 1. USERNAME CHECK FORM (Hybrider Check) ---
     document.getElementById('username-check-form').addEventListener('submit', async function(event) {
         event.preventDefault();
 
-        currentIdentifier = usernameInput.value;
+        currentIdentifier = usernameInput.value.trim();
         
         const usernameRegex = /^[a-zA-Z0-9]+$/;
-        
         const isEmail = currentIdentifier.includes('@');
-        if (!isEmail && !usernameRegex.test(currentIdentifier)) {
+        
+        // Modus-Validierung
+        if (loginMode === 'player' && !isEmail) {
+             messageCheckDiv.textContent = '❌ Im Spieler-Modus muss eine E-Mail-Adresse verwendet werden.';
+             messageCheckDiv.className = 'message error';
+             return;
+        }
+        if (loginMode === 'trainer' && !isEmail && !usernameRegex.test(currentIdentifier)) {
              messageCheckDiv.textContent = '❌ Der Benutzername darf nur Buchstaben und Zahlen enthalten.';
              messageCheckDiv.className = 'message error';
              return; 
@@ -335,16 +371,25 @@
             });
 
             const data = await response.json();
-
+            
             if (data.exists) {
+                // FALL 1: Benutzer gefunden (Trainer ODER Spieler)
                 messageCheckDiv.textContent = '';
-                showLoginView();
+                
+                const isPlayer = data.user_type === 'player'; 
+                showLoginView(isPlayer); 
+                
             } else {
+                // FALL 2: Nichts gefunden
                 messageCheckDiv.textContent = '';
                 
-                usernameRegInput.value = currentIdentifier;
-                
-                showRegisterView();
+                if (loginMode === 'player') {
+                     messageCheckDiv.textContent = '❌ Spieler-Account nicht gefunden. Bitte warten Sie auf eine Einladung durch Ihren Trainer.';
+                     messageCheckDiv.className = 'message error';
+                } else {
+                     usernameRegInput.value = currentIdentifier;
+                     showRegisterView();
+                }
             }
 
         } catch (error) {
@@ -369,6 +414,7 @@
         emailIcon.innerHTML = '<span style="color: lightgray;">...</span>';
 
         try {
+            // NOTE: Diese Route war der 404 Fehler und wurde im Backend wiederhergestellt.
             const response = await fetch('/auth/check-email-availability', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -389,6 +435,7 @@
         }
         updateRegisterButtonState();
     }
+    window.checkEmailAvailability = checkEmailAvailability;
 
 
     // --- 3. REGISTRIERUNG: USERNAME VERFÜGBARKEITSPRÜFUNG ---
@@ -417,6 +464,7 @@
         currentIdentifier = username;
 
         try {
+            // NOTE: Diese Route war der 404 Fehler und wurde im Backend wiederhergestellt.
             const response = await fetch('/auth/check-availability', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -446,20 +494,22 @@
         }
         updateRegisterButtonState();
     }
+    window.checkRegistrationUsernameAvailability = checkRegistrationUsernameAvailability;
     
     function setUsername(newUsername) {
         usernameRegInput.value = newUsername;
         checkRegistrationUsernameAvailability();
     }
+    window.setUsername = setUsername;
 
 
-    // --- 4. PASSWORD VALIDATION ---
+    // --- 4. PASSWORD VALIDATION (Behebt die fehlenden Restrictions) ---
     const requirements = [
         { id: 'req-length', regex: /.{8,}/, msg: 'Mindestens 8 Zeichen' },
         { id: 'req-upper', regex: /[A-Z]/, msg: 'Mindestens 1 Großbuchstabe' },
         { id: 'req-lower', regex: /[a-z]/, msg: 'Mindestens 1 Kleinbuchstabe' },
         { id: 'req-digit', regex: /\d/, msg: 'Mindestens 1 Ziffer' },
-        { id: 'req-special', regex: /[@$!%*?&]/, msg: 'Mindestens 1 Sonderzeichen' }
+        { id: 'req-special', regex: /[@$!%*?&]/, msg: 'Mindestens 1 Sonderzeichen (@$!%*?&)' }
     ];
 
     const confirmPasswordField = document.getElementById('confirm-password-reg');
@@ -474,7 +524,8 @@
 
         requirements.forEach(req => {
             const isValid = req.regex.test(password);
-            const statusIcon = isValid ? '&#10003;' : '☐';
+            // Korrekte Anzeige: Haken für gültig, Kasten für ungültig/leer
+            const statusIcon = isValid ? '&#10003;' : '☐'; 
             const statusColor = isValid ? '#38E838' : 'lightgray';
             
             htmlContent += `<p style="color: ${statusColor};"><span class="status-icon">${statusIcon}</span> ${req.msg}</p>`;
@@ -487,8 +538,10 @@
 
         const passwordsMatch = password === confirmPasswordField.value && password.length > 0;
         
+        // Gesamtgültigkeit ist die Summe aus allen Anforderungen UND Passwort-Match
         arePasswordsValid = allValid && passwordsMatch; 
 
+        // Match Icon Logik
         if (password.length > 0 && confirmPasswordField.value.length > 0) {
             matchIcon.innerHTML = passwordsMatch ? '<span style="color: #38E838;">&#10003;</span>' : '<span style="color: #FF6666;">❌</span>';
         } else {
@@ -497,10 +550,7 @@
 
         updateRegisterButtonState(); 
     }
-    
-    if(registerView.style.display === 'block') {
-        validatePassword();
-    }
+    window.validatePassword = validatePassword;
 
     // --- 5. REGISTRATION SUBMISSION (Führt automatischen Login durch) ---
     document.getElementById('register-form').addEventListener('submit', async function(event) {
@@ -519,8 +569,9 @@
             return;
         }
         
-        const email = document.getElementById('email-reg').value;
-        const password = document.getElementById('password-reg').value;
+        const username = usernameRegInput.value.trim();
+        const email = emailRegInput.value;
+        const password = passwordField.value;
 
         messageRegDiv.textContent = 'Registriere...';
         messageRegDiv.className = 'message';
@@ -530,26 +581,26 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    username: currentIdentifier, 
+                    username: username, 
                     email: email, 
                     password: password 
                 }),
             });
 
             if (response.ok) {
-                // Registrierung war erfolgreich. Jetzt automatisch einloggen.
                 messageRegDiv.textContent = '✅ Registrierung erfolgreich. Logge automatisch ein...';
                 
-                await loginAndRedirect(currentIdentifier, password, messageRegDiv);
+                await loginAndRedirect(username, password, messageRegDiv, true);
                 
             } else {
                 const data = await response.json(); 
                 let detail = data.detail || 'Unbekannter Fehler';
 
+                // Erweiterte Fehlerbehandlung für Passwort-Validierungsfehler vom Backend
                 if (data.detail && typeof data.detail === 'string') {
                     if (data.detail.includes("value_error")) {
                          try {
-                            // Versuche, die spezifische Fehlermeldung aus der Pydantic-Validierung zu extrahieren
+                            // Versuche, die genaue Fehlermeldung aus dem FastAPI-Error zu extrahieren
                             detail = data.detail.split("value_error, msg='")[1].split("',")[0] || 'Validierungsfehler auf dem Server';
                          } catch (e) {
                             detail = "Passwortanforderungen nicht erfüllt.";
@@ -570,24 +621,26 @@
         }
     });
 
-    // --- HILFSFUNKTION: Login und Weiterleitung (KORRIGIERT für Cookies) ---
-    async function loginAndRedirect(identifier, password, messageDiv) {
+    // --- 6. HILFSFUNKTION: Login und Weiterleitung ---
+    async function loginAndRedirect(identifier, password, messageDiv, isAutoLogin = false) {
         try {
-            const response = await fetch('/auth/login', {
+            const response = await fetch('/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifier: identifier, password: password }),
+                body: JSON.stringify({ username: identifier, password: password }),
             });
 
             if (response.ok) {
-                // Das Cookie wird vom Server gesetzt (HttpOnly).
-                // Wir müssen hier nichts mehr im localStorage speichern.
+                const data = await response.json();
                 
-                messageDiv.innerHTML = `✅ Login erfolgreich. Weiterleitung...`;
+                localStorage.setItem('logged_in_user_type', data.user_type);
+                localStorage.setItem('logged_in_username', data.username);
+                localStorage.setItem('is_verified', data.is_verified);
+                
+                messageDiv.innerHTML = `✅ Login erfolgreich! Leite weiter...`;
                 messageDiv.className = 'message success';
                 
-                // KORREKTUR: Direkt zum /dashboard, nicht /app/dashboard
-                window.location.href = "/dashboard"; 
+                window.location.href = data.redirect_url; 
                 
             } else {
                 let detail = 'Unbekannter Fehler';
@@ -598,15 +651,15 @@
                     detail = `Server-Fehler: ${response.status} ${response.statusText}`;
                 }
 
-                if (messageDiv.id === 'message-reg') {
-                    // Auto-Login nach Registrierung ist fehlgeschlagen
+                if (isAutoLogin) {
+                    // Automatischer Login-Versuch nach Registrierung fehlgeschlagen
                     messageDiv.innerHTML = `⚠️ Registrierung war erfolgreich, aber Auto-Login fehlgeschlagen: ${detail}. Bitte manuell einloggen.`;
                     messageDiv.className = 'message error';
-                    showLoginView();
+                    showLoginView(false); 
                     document.getElementById('password-login').value = password;
                 } else {
                     // Manueller Login-Versuch ist fehlgeschlagen
-                    messageDiv.innerHTML = `❌ ${detail}`; // z.B. "Falsche Anmeldedaten"
+                    messageDiv.innerHTML = `❌ ${detail}`; 
                     messageDiv.className = 'message error';
                 }
             }
@@ -619,7 +672,7 @@
     }
 
 
-    // --- 6. LOGIN LOGIK ---
+    // --- 7. LOGIN LOGIK ---
     document.getElementById('login-form').addEventListener('submit', async function(event) {
         event.preventDefault();
 
@@ -632,13 +685,14 @@
     });
 
 
-    // --- HILFSFUNKTIONEN ---
-    function setUsername(newUsername) {
-        usernameRegInput.value = newUsername;
-        checkRegistrationUsernameAvailability();
+    // --- 8. STATUS CHECK BEIM LADEN (Finaler Initialisierungspunkt) ---
+    async function checkLoginStatus() {
+        switchLoginMode('trainer'); 
     }
+    
+    document.addEventListener('DOMContentLoaded', checkLoginStatus);
+
   </script>
 
 </body>
 </html>
-

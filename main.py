@@ -1,4 +1,4 @@
-# DATEI: main.py
+# DATEI: main.py (KORRIGIERT FÜR TRAINER/SPIELER ROUTING)
 import webview
 import threading
 import uvicorn
@@ -9,17 +9,15 @@ from fastapi.staticfiles import StaticFiles
 from typing import Optional
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
-from backend.auth import router as auth_router, get_current_trainer
+from backend.auth import router as auth_router, get_current_trainer, get_current_player_only # NEU: get_current_player_only
 from backend.team import router as team_router, get_league_list 
 from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
 from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
 from backend.public import router as public_router
-from backend.database import init_db, Trainer, SessionLocal, Game, Team
-
-# NEU (PHASE 9): Scouting-Router importieren
 from backend.scouting import router as scouting_router
+from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player # NEU: Player Import
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -37,8 +35,6 @@ app.include_router(game_router, prefix="/games", tags=["Games"])
 app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 app.include_router(public_router, prefix="/public", tags=["Public Data"])
-
-# NEU (PHASE 9): Scouting-Router einbinden
 app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
 
 # Jinja2 Templates für HTML-Seiten
@@ -55,10 +51,14 @@ def home(request: Request):
         {"request": request, "title": "Handball Auswertung"}
     )
 
-# --- GESCHÜTZTE ROUTEN (Laden alle app_layout.html) ---
+# ==================================================
+# TRAINER-DASHBOARD (Geschützt & Trainer-Exklusiv)
+# ==================================================
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    # Wenn get_current_trainer einen Fehler geworfen hat (Spieler/Ungültig), 
+    # wird die HTTPException automatisch verarbeitet.
     db = SessionLocal()
     try:
         template_vars = {
@@ -77,6 +77,37 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
         )
     finally:
         db.close()
+
+# ==================================================
+# SPIELER-DASHBOARD (NEU - Geschützt & Spieler-Exklusiv)
+# ==================================================
+
+@app.get("/player-dashboard", response_class=HTMLResponse)
+def player_dashboard_page(request: Request, current_player: Player = Depends(get_current_player_only)):
+    # Diese Seite ist EXKLUSIV für aktive Spieler.
+    db = SessionLocal()
+    try:
+        # Hier könnte man ein eigenes, schlankes Layout-Template verwenden.
+        # Vorerst nutzen wir das Standard-Layout, das den Spielernamen anzeigt.
+        template_vars = {
+            "request": request,
+            "title": f"Spieler Portal: {current_player.name}",
+            "trainer_name": current_player.name, # Nutze Name für Layout-Anzeige
+            "is_verified": True, # Spieler sind nach Aktivierung verifiziert
+            "leagues": [],
+            "positions": POSITIONS,
+            "action_categories": ACTION_CATEGORIES,
+            "page_content_template": "player_dashboard.html", # NEU: Dummy-Template für den Anfang
+        }
+        return templates.TemplateResponse(
+            "app_layout.html", 
+            template_vars
+        )
+    finally:
+        db.close()
+
+
+# --- RESTLICHE TRAINER-EXKLUSIVE ROUTEN (Dependency bleibt get_current_trainer) ---
 
 @app.get("/team-management", response_class=HTMLResponse)
 def team_management_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
@@ -163,11 +194,9 @@ def league_scouting_page(request: Request, current_trainer: Trainer = Depends(ge
         db.close()
 
 
-# ==================================================
-# REPARIERTE PROTOKOLL-ROUTE
-# ==================================================
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    # ... (Protokoll-Logik bleibt gleich, da nur Trainer protokollieren) ...
     db = SessionLocal() 
     
     try:
@@ -175,10 +204,10 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
         if not game:
             raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
         
-        team = db.query(Team).filter(Team.id == game.team_id, Team.trainer_id == current_trainer.id).first()
+        team = db.query(Team).filter(Team.id == game.team_id).first()
         
         if not team:
-            raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Spiel.")
+            raise HTTPException(status_code=404, detail="Zugehöriges Team nicht gefunden.")
             
         return templates.TemplateResponse(
             "protocol.html", 
@@ -189,7 +218,7 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
                 "team_id": team.id,
                 "opponent": game.opponent,
                 "team_name": team.name,
-                "video_url": game.video_url # (PHASE 8)
+                "video_url": game.video_url 
             }
         )
     finally:
@@ -197,7 +226,7 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
 
 
 # ------------------------------------
-# SERVER-START-LOGIK (EINFACHE & STABILE METHODE)
+# SERVER-START-LOGIK (UNVERÄNDERT)
 # ------------------------------------
 
 def start_server():

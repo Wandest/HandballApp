@@ -1,17 +1,19 @@
-# DATEI: backend/scouting.py (NEU FÜR PHASE 9)
+# DATEI: backend/scouting.py
+# (KORRIGIERT: Autorisierung nutzt check_team_auth_and_get_role)
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
 
 from backend.database import SessionLocal, Trainer, Team, Game, ScoutingReport
-from backend.auth import get_current_trainer
+from backend.auth import get_current_trainer, check_team_auth_and_get_role
+from backend.database import UserRole # Für Löschberechtigung
 
 router = APIRouter()
 
-# --- Pydantic Modelle ---
+# ... (Pydantic Modelle unverändert) ...
 
 class ScoutingReportBase(BaseModel):
     title: str
@@ -41,16 +43,6 @@ def get_db():
     finally:
         db.close()
 
-# --- Helper-Funktion zur Berechtigungsprüfung ---
-def check_team_auth(team_id: int, trainer_id: int, db: Session) -> Team:
-    team = db.query(Team).filter(
-        Team.id == team_id,
-        Team.trainer_id == trainer_id
-    ).first()
-    if not team:
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
-    return team
-
 # --- API-Endpunkte ---
 
 @router.post("/add", response_model=ScoutingReportResponse)
@@ -59,22 +51,15 @@ def create_scouting_report(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """ Erstellt einen neuen Scouting-Bericht für ein Team. """
-    team = check_team_auth(report_data.team_id, current_trainer.id, db)
+    # Berechtigung prüfen: Jeder Trainer im Team darf Berichte erstellen
+    check_team_auth_and_get_role(db, current_trainer.id, report_data.team_id)
     
-    game_date = None
-    if report_data.game_id:
-        game = db.query(Game).filter(Game.id == report_data.game_id, Game.team_id == team.id).first()
-        if not game:
-            raise HTTPException(status_code=404, detail="Zugehöriges Spiel nicht gefunden.")
-        game_date = game.date
-
     new_report = ScoutingReport(
         title=report_data.title,
         content=report_data.content,
         opponent_name=report_data.opponent_name,
         game_id=report_data.game_id,
-        team_id=team.id,
+        team_id=report_data.team_id,
         trainer_id=current_trainer.id
     )
     
@@ -82,9 +67,12 @@ def create_scouting_report(
     db.commit()
     db.refresh(new_report)
     
-    # Füge das Spieldatum zur Antwort hinzu
+    # Spieldaten zur Antwort hinzufügen
     response_data = ScoutingReportResponse.from_orm(new_report)
-    response_data.game_date = game_date
+    if new_report.game_id:
+        game = db.query(Game.date).filter(Game.id == new_report.game_id).first()
+        if game:
+            response_data.game_date = game.date
     return response_data
 
 @router.get("/list/{team_id}", response_model=List[ScoutingReportResponse])
@@ -94,17 +82,17 @@ def get_scouting_reports(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """ Listet alle Scouting-Berichte für ein Team auf, optional gefiltert nach Gegner. """
-    check_team_auth(team_id, current_trainer.id, db)
+    # Berechtigung prüfen
+    check_team_auth_and_get_role(db, current_trainer.id, team_id)
     
     query = db.query(ScoutingReport).filter(ScoutingReport.team_id == team_id)
     
     if opponent_name:
         query = query.filter(ScoutingReport.opponent_name == opponent_name)
         
+    # ... (Rest der Logik unverändert) ...
     reports = query.order_by(ScoutingReport.created_at.desc()).all()
     
-    # Spieldaten für die Antwort anreichern
     response_list = []
     for report in reports:
         response_data = ScoutingReportResponse.from_orm(report)
@@ -123,17 +111,19 @@ def update_scouting_report(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """ Aktualisiert einen bestehenden Scouting-Bericht. """
     report = db.query(ScoutingReport).filter(ScoutingReport.id == report_id).first()
     
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden.")
+    
+    # Berechtigungsprüfung: Nur der Ersteller darf bearbeiten (Standard)
     if report.trainer_id != current_trainer.id:
         raise HTTPException(status_code=403, detail="Keine Berechtigung, diesen Bericht zu bearbeiten.")
     
-    # Prüfen, ob das (neue) Spiel zum Team gehört
+    # ... (Rest der Logik unverändert) ...
     game_date = None
     if report_data.game_id:
+        # Prüfen, ob das Spiel zum Team gehört
         game = db.query(Game).filter(Game.id == report_data.game_id, Game.team_id == report.team_id).first()
         if not game:
             raise HTTPException(status_code=404, detail="Zugehöriges Spiel nicht gefunden.")
@@ -158,14 +148,15 @@ def delete_scouting_report(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """ Löscht einen Scouting-Bericht. """
     report = db.query(ScoutingReport).filter(ScoutingReport.id == report_id).first()
     
     if not report:
         raise HTTPException(status_code=404, detail="Bericht nicht gefunden.")
-    if report.trainer_id != current_trainer.id:
-        # Alternativ: Team-Trainer dürfen alle Berichte des Teams löschen
-        # check_team_auth(report.team_id, current_trainer.id, db)
+        
+    # Berechtigungsprüfung: Nur der Ersteller ODER ein MAIN_COACH/TEAM_ADMIN darf löschen
+    role = check_team_auth_and_get_role(db, current_trainer.id, report.team_id)
+    
+    if report.trainer_id != current_trainer.id and role not in [UserRole.MAIN_COACH, UserRole.TEAM_ADMIN]:
         raise HTTPException(status_code=403, detail="Keine Berechtigung, diesen Bericht zu löschen.")
         
     db.delete(report)

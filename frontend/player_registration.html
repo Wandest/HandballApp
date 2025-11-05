@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Account-Aktivierung - HandballApp</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: linear-gradient(120deg, #1e3c72, #2a5298);
+            color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h2 {
+            color: #ffcc00;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #2c2c2c;
+            color: white;
+            box-sizing: border-box;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 20px;
+        }
+        .btn-primary {
+            background-color: #00bcd4;
+            color: #1e3c72;
+        }
+        .btn-primary:hover {
+            background-color: #00a6bb;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { color: #38E838; background-color: rgba(56, 232, 56, 0.1); }
+        .error { color: #FF6666; background-color: rgba(255, 102, 102, 0.1); }
+        
+        #player-info {
+            background-color: #1e3c72;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        /* NEUE STILE für Validierung */
+        .validation-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+            text-align: left;
+        }
+        .validation-list li {
+            font-size: 0.9em;
+            color: #ccc; /* Standardfarbe */
+        }
+        .validation-list li.valid {
+            color: #38E838;
+        }
+        .validation-list li.invalid {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Account-Aktivierung</h2>
+    
+    <div id="loading-message">
+        <p>Lade Spielerdaten...</p>
+    </div>
+
+    <div id="player-info" style="display: none;">
+        <span id="player-name"></span> (<span id="team-name"></span>)
+    </div>
+
+    <form id="registration-form" style="display: none;">
+        <p>
+            Dein Trainer hat das Profil für dich reserviert. Schließe die Registrierung ab,
+            indem du ein sicheres Passwort wählst.
+        </p>
+
+        <label for="email">Deine E-Mail:</label>
+        <input type="email" id="email" required readonly>
+
+        <label for="password">Passwort festlegen:</label>
+        <input type="password" id="password" required minlength="8" onkeyup="validatePasswordStrength()">
+        
+        <ul id="password-validation-list" class="validation-list">
+            <li id="rule-length">Mindestens 8 Zeichen</li>
+            <li id="rule-upper">Mindestens 1 Großbuchstabe</li>
+            <li id="rule-lower">Mindestens 1 Kleinbuchstabe</li>
+            <li id="rule-digit">Mindestens 1 Ziffer</li>
+            <li id="rule-special">Mindestens 1 Sonderzeichen (@$!%*?&)</li>
+        </ul>
+        
+        <label for="confirm-password">Passwort bestätigen:</label>
+        <input type="password" id="confirm-password" required minlength="8">
+        
+        <button type="submit" class="btn btn-primary" id="register-button">
+            Account jetzt aktivieren
+        </button>
+    </form>
+
+    <div id="form-message" class="message"></div>
+</div>
+
+<script>
+    // Funktion zum Auslesen des Tokens aus der URL (z.B. ?token=abc)
+    function getQueryParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+    
+    const token = getQueryParameter('token');
+    const loadingMessage = document.getElementById('loading-message');
+    const registrationForm = document.getElementById('registration-form');
+    const formMessage = document.getElementById('form-message');
+    const playerNameSpan = document.getElementById('player-name');
+    const teamNameSpan = document.getElementById('team-name');
+    const playerInfoDiv = document.getElementById('player-info');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    
+    // NEU: Validierungs-DOM-Elemente
+    const validationList = document.getElementById('password-validation-list');
+    const ruleLength = document.getElementById('rule-length');
+    const ruleUpper = document.getElementById('rule-upper');
+    const ruleLower = document.getElementById('rule-lower');
+    const ruleDigit = document.getElementById('rule-digit');
+    const ruleSpecial = document.getElementById('rule-special');
+
+    if (!token) {
+        loadingMessage.innerHTML = '<p class="error">❌ Fehler: Es wurde kein Aktivierungstoken in der URL gefunden.</p>';
+    } else {
+        // 1. Daten per Token laden
+        loadPlayerInfo(token);
+    }
+
+    async function loadPlayerInfo(token) {
+        try {
+            const response = await fetch(`/public/player-info-by-token/${token}`);
+            const data = await response.json();
+            
+            loadingMessage.style.display = 'none';
+
+            if (response.ok) {
+                playerNameSpan.textContent = data.player_name;
+                teamNameSpan.textContent = data.team_name;
+                emailInput.value = data.email;
+                playerInfoDiv.style.display = 'block';
+                registrationForm.style.display = 'block';
+                
+            } else {
+                // Zeigt Fehler, z.B. ungültiger oder abgelaufener Token
+                loadingMessage.innerHTML = `<p class="error">❌ Fehler beim Laden: ${data.detail || 'Token ist ungültig oder wurde bereits verwendet.'}</p>`;
+            }
+        } catch (error) {
+            loadingMessage.innerHTML = '<p class="error">❌ Serverfehler beim Laden der Daten.</p>';
+            console.error('Ladefehler:', error);
+        }
+    }
+    
+    // NEU: Funktion zur Live-Überprüfung der Passwortstärke
+    function validatePasswordStrength() {
+        const password = passwordInput.value;
+        let allValid = true;
+
+        const checks = [
+            { element: ruleLength, regex: /.{8,}/, message: "Mindestens 8 Zeichen" },
+            { element: ruleUpper, regex: /[A-Z]/, message: "Mindestens 1 Großbuchstabe" },
+            { element: ruleLower, regex: /[a-z]/, message: "Mindestens 1 Kleinbuchstabe" },
+            { element: ruleDigit, regex: /\d/, message: "Mindestens 1 Ziffer" },
+            { element: ruleSpecial, regex: /[@$!%*?&]/, message: "Mindestens 1 Sonderzeichen (@$!%*?&)" }
+        ];
+
+        checks.forEach(check => {
+            const isValid = check.regex.test(password);
+            check.element.className = isValid ? 'valid' : 'invalid';
+            if (!isValid) {
+                allValid = false;
+            }
+        });
+
+        // Rückgabe, ob alle Regeln erfüllt sind
+        return allValid;
+    }
+
+
+    // 2. Registrierung abschließen
+    registrationForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        // 1. NEUE PRÜFUNG: Stärke
+        if (!validatePasswordStrength()) {
+            formMessage.textContent = '❌ Das Passwort erfüllt nicht alle Sicherheitsanforderungen.';
+            formMessage.className = 'message error';
+            return;
+        }
+
+        // 2. PRÜFUNG: Bestätigung
+        if (password !== confirmPassword) {
+            formMessage.textContent = '❌ Die Passwörter stimmen nicht überein.';
+            formMessage.className = 'message error';
+            return;
+        }
+        
+        formMessage.textContent = 'Aktivierung läuft...';
+        formMessage.className = 'message';
+        
+        try {
+            const response = await fetch('/public/register-player', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    token: token,
+                    email: emailInput.value, 
+                    password: password
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                formMessage.textContent = '🎉 Account erfolgreich aktiviert! Du kannst dich jetzt einloggen.';
+                formMessage.className = 'message success';
+                registrationForm.style.display = 'none';
+                
+                // Optional: Weiterleitung zur Login-Seite nach 3 Sekunden
+                setTimeout(() => {
+                     // KORRIGIERT: Weiterleitung zur Haupt-Login-Seite
+                     window.location.href = '/'; 
+                }, 3000);
+
+            } else {
+                formMessage.textContent = `❌ Aktivierungsfehler: ${data.detail || 'Unbekannt.'}`;
+                formMessage.className = 'message error';
+            }
+        } catch (error) {
+            formMessage.textContent = '❌ Serverfehler bei der Aktivierung.';
+            formMessage.className = 'message error';
+            console.error('Registrierungsfehler:', error);
+        }
+    });
+</script>
+
+</body>
+</html>

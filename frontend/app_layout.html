@@ -150,8 +150,6 @@
             display: flex;
             flex-direction: column;
         }
-        /* Eigener Style für protocol.html-Karten (WIRD HIER NICHT MEHR GEBRAUCHT) */
-        /* .card.protocol-card { ... } */
         
         
         /* Allgemeine UI-Elemente für alle Seiten */
@@ -572,10 +570,6 @@
         .legend-color-box.opp-goal { background-color: #9E9E9E; }
         .legend-color-box.opp-miss { background-color: #795548; }
         
-        /* ================================================== */
-        /* CSS FÜR PROTOKOLL-SEITE (ENTFERNT) */
-        /* ================================================== */
-        
     </style>
 </head>
 <body>
@@ -587,7 +581,6 @@
         <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
         <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
         <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
-        <!-- KORREKTUR: Link zur neuen Seite -->
         <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
 
         <div style="flex-grow: 1;"></div> 
@@ -611,6 +604,8 @@
             <h1>{{ title }}</h1>
         </div>
 
+        <script src="/static/global.js"></script> 
+        
         <div id="page-content">
              {# Hier wird der Inhalt der spezifischen Seite eingefügt #}
              {% include page_content_template %}
@@ -620,78 +615,17 @@
     <div id="toast-message" class="toast"></div>
 
     <script>
-        // --- Globale Navigations- und Token-Logik ---
+        // --- Globale Jinja2 Variablen in JS / Local Storage speichern ---
         
+        // Status wird für alle Seiten benötigt, auch nach einem Reload
         const isVerified = {{ is_verified | tojson }};
-        
         localStorage.setItem('is_verified', isVerified); 
         
+        // window.showToast ist hier dank der neuen Ladereihenfolge verfügbar
         if (!isVerified) {
             document.getElementById('verification-banner').classList.add('visible');
         }
-
-        function updateNavLinks() {
-            document.querySelectorAll('.nav-link').forEach(link => {
-                const url = new URL(link.href);
-                
-                if (url.pathname === window.location.pathname) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            });
-        }
-        
-        function logout() {
-            fetch('/auth/logout', { 
-                method: 'POST' 
-            })
-            .finally(() => {
-                localStorage.removeItem('is_verified');
-                localStorage.removeItem('selected_team_id');
-                localStorage.removeItem('selected_team_name');
-                window.location.href = "/"; 
-            });
-        }
-
-        updateNavLinks();
-        
-        // --- Globale Verifizierungs- und Toast-Logik ---
-        const globalShowToast = function(message, type = 'info') {
-            const toast = document.getElementById('toast-message');
-            if (!toast) return;
-            toast.textContent = message;
-            toast.className = `toast show ${type}`;
-            setTimeout(() => {
-                toast.className = toast.className.replace('show', '');
-            }, 3000);
-        }
-        const showToast = globalShowToast;
-
-
-        function checkVerification() {
-            const currentIsVerified = localStorage.getItem('is_verified') === 'true';
-
-            if (currentIsVerified) {
-                return true;
-            } else {
-                showToast("Bitte verifiziere dein Konto, um diese Aktion auszuführen.", "error");
-                return false;
-            }
-        }
-        
-        const currentPage = "{{ page_content_template }}";
-        
-        document.addEventListener('DOMContentLoaded', (event) => {
-            // Stelle sicher, dass Buttons in Formularen die volle Breite haben
-            document.querySelectorAll('form .btn').forEach(btn => {
-                if (!btn.classList.contains('btn-inline') && !btn.classList.contains('btn-inline-delete')) {
-                    btn.classList.add('btn-full-width');
-                }
-            });
-        });
-
     </script>
-</body>
+    
+    </body>
 </html>
-

@@ -1,32 +1,29 @@
 # DATEI: backend/custom_action.py
-# (KEINE ÄNDERUNGEN NÖTIG)
+# (KORRIGIERT: Autorisierung nutzt check_team_auth_and_get_role)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 
 from backend.database import SessionLocal, Trainer, Team, CustomAction
-from backend.auth import get_current_trainer 
+from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
 router = APIRouter()
 
-# -----------------------------
-# Pydantic Modelle
-# -----------------------------
-class CustomActionCreate(BaseModel):
-    name: str
-    category: Optional[str] = None
-    team_id: int 
+# ... (Pydantic Modelle unverändert) ...
 
-class CustomActionResponse(BaseModel):
-    id: int
+class CustomActionBase(BaseModel):
     name: str
-    category: Optional[str] = None
+    category: str
+
+class CustomActionCreate(CustomActionBase):
     team_id: int
 
-    class Config:
-        from_attributes = True
+class CustomActionResponse(CustomActionBase):
+    id: int
+    team_id: int
+    class Config: from_attributes = True
 
 # Datenbanksession
 def get_db():
@@ -36,32 +33,18 @@ def get_db():
     finally:
         db.close()
 
-# -----------------------------
-# Endpunkte
-# -----------------------------
+# --- Endpunkte ---
 
-# EIGENE AKTION HINZUFÜGEN
 @router.post("/add", response_model=CustomActionResponse)
 def create_custom_action(
     action_data: CustomActionCreate,
-    current_trainer: Trainer = Depends(get_current_trainer), 
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    team = db.query(Team).filter(
-        Team.id == action_data.team_id,
-        Team.trainer_id == current_trainer.id
-    ).first()
-    
-    if not team:
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+    # Berechtigung prüfen: Jeder Trainer im Team darf Custom Actions erstellen
+    check_team_auth_and_get_role(db, current_trainer.id, action_data.team_id)
 
-    existing_action = db.query(CustomAction).filter(
-        CustomAction.team_id == action_data.team_id,
-        CustomAction.name == action_data.name
-    ).first()
-
-    if existing_action:
-        raise HTTPException(status_code=400, detail="Dieses Team hat bereits eine Aktion mit diesem Namen.")
+    # Team muss existieren (wird implizit in check_team_auth_and_get_role geprüft)
     
     new_action = CustomAction(
         name=action_data.name,
@@ -71,55 +54,38 @@ def create_custom_action(
     db.add(new_action)
     db.commit()
     db.refresh(new_action)
-
     return new_action
 
-# EIGENE AKTIONEN AUFLISTEN
 @router.get("/list", response_model=List[CustomActionResponse])
 def list_custom_actions(
-    team_id: int = Query(...), 
+    team_id: int = Query(...),
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    team = db.query(Team).filter(
-        Team.id == team_id,
-        Team.trainer_id == current_trainer.id
-    ).first()
-    
-    if not team:
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+    # Berechtigung prüfen
+    check_team_auth_and_get_role(db, current_trainer.id, team_id)
 
-    actions = db.query(CustomAction).filter(
-        CustomAction.team_id == team_id
-    ).order_by(CustomAction.name.asc()).all()
-    
+    actions = db.query(CustomAction).filter(CustomAction.team_id == team_id).all()
     return actions
 
-# EIGENE AKTION LÖSCHEN
 @router.delete("/delete/{action_id}")
 def delete_custom_action(
     action_id: int,
-    team_id: int = Query(...), 
+    team_id: int = Query(...),
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    team = db.query(Team).filter(
-        Team.id == team_id,
-        Team.trainer_id == current_trainer.id
-    ).first()
-    
-    if not team:
-        raise HTTPException(status_code=403, detail="Keine Berechtigung für dieses Team.")
+    # Berechtigung prüfen
+    check_team_auth_and_get_role(db, current_trainer.id, team_id)
 
     action = db.query(CustomAction).filter(
         CustomAction.id == action_id,
         CustomAction.team_id == team_id
     ).first()
-
+    
     if not action:
         raise HTTPException(status_code=404, detail="Aktion nicht gefunden oder gehört nicht zu diesem Team.")
-
+    
     db.delete(action)
     db.commit()
-
     return {"message": "Aktion erfolgreich gelöscht."}

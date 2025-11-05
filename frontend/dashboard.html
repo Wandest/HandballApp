@@ -33,12 +33,12 @@
     const gameplanTeamName = document.getElementById('gameplan-team-name');
     const gameListContainer = document.getElementById('game-list-container');
     
-    // --- Team-Auswahl Logik ---
+    // --- Dashboard Logik ---
+    
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
         
-        // UI-Update für Team-Auswahl
         document.querySelectorAll('.team-list-item').forEach(item => {
             item.classList.remove('selected');
         });
@@ -48,16 +48,17 @@
         }
        
         selectedTeamInfo.textContent = `Ausgewählt: ${teamName}`;
-        
-        // UI-Update für Spielplan
         gameplanTeamName.textContent = teamName;
         
-        // Speichern für alle Seiten
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
         
-        // Spielplan für das ausgewählte Team laden
-        loadGames(teamId);
+        // Nutzt die bereits global verfügbare Funktion aus game_planning.js (wird im nächsten Schritt importiert)
+        if (typeof loadGames === 'function') {
+            loadGames(teamId);
+        } else {
+             gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
+        }
     }
     
     async function loadTeams() {
@@ -75,7 +76,6 @@
             }
 
             const teams = await response.json();
-            
             teamListDiv.innerHTML = ''; 
             
             if (teams.length === 0) {
@@ -116,140 +116,15 @@
         }
     }
 
-    // --- Spielplan-Logik ---
+    // ACHTUNG: loadGames, deleteGame und startProtocol werden aus game_planning.js übernommen.
+    // Wir definieren hier nur die Stubs, falls game_planning.js noch nicht geladen ist (was bei Dashboard nicht der Fall sein sollte, da es die Startseite ist)
     
-    function startProtocol(gameId) {
-        if (!checkVerification()) return; 
-        
-        window.location.href = `/protocol/${gameId}`;
-    }
-    
-    async function deleteGame(gameId) {
-        if (!checkVerification()) return; 
-        if (!confirm("Sind Sie sicher, dass Sie dieses Spiel löschen möchten?")) return;
-        
-        try {
-            const response = await fetch(`/games/delete/${gameId}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                showToast("Spiel erfolgreich gelöscht.", "success");
-                loadGames(selectedTeamId); 
-            } else {
-                const data = await response.json();
-                showToast(`Fehler beim Löschen: ${data.detail || 'Unbekannt.'}`, "error");
-            }
-        } catch (error) {
-            showToast('Serverfehler beim Löschen des Spiels.', "error");
-        }
-    }
-
-    async function loadGames(teamId) {
-        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
-        
-        if (!teamId) {
-            gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team auswählen.</p>';
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/games/list/${teamId}`, {
-                method: 'GET'
-            });
-            if (response.status === 401 || response.status === 403) { logout(); return; }
-            if (!response.ok) throw new Error('Fehler beim Laden des Spielplans.');
-                
-            const games = await response.json();
-            gameListContainer.innerHTML = '';
-            
-            if (games.length === 0) {
-                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt. Bitte im "Spielplanung" ein Spiel erstellen.</p>`;
-                return;
-            }
-            
-            const groupedGames = {
-                'Saison': [],
-                'Testspiel': [],
-                'Turnier': {}
-            };
-            const archiveGroups = {}; 
-            games.forEach(game => {
-                if (game.game_category === 'Saison') {
-                    groupedGames.Saison.push(game);
-                } else if (game.game_category === 'Testspiel') {
-                    groupedGames.Testspiel.push(game);
-                } else if (game.game_category === 'Turnier') {
-                    const tourName = game.tournament_name || 'Unbenanntes Turnier';
-                    if (!groupedGames.Turnier[tourName]) {
-                        groupedGames.Turnier[tourName] = [];
-                    }
-                    groupedGames.Turnier[tourName].push(game);
-                } else {
-                    const archiveName = game.game_category;
-                    if (!archiveGroups[archiveName]) {
-                        archiveGroups[archiveName] = [];
-                    }
-                    archiveGroups[archiveName].push(game);
-                }
-            });
-            const renderGameList = (gameList) => {
-                let html = '';
-                gameList.forEach(game => {
-                    const dateObj = new Date(game.date);
-                    const formattedDate = dateObj.toLocaleDateString('de-DE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit'
-                    });
-                    html += `
-                        <div class="game-list-item">
-                            <div class="game-info">
-                                <span>📅 ${formattedDate} <strong>vs. ${game.opponent}</strong></span>
-                                <span>Kategorie: ${game.game_category === 'Turnier' ? game.tournament_name : game.game_category}</span>
-                            </div>
-                            <div class="game-actions">
-                                <button class="btn btn-info btn-inline" onclick="startProtocol(${game.id})">Protokoll</button>
-                                <button class="btn btn-danger btn-inline-delete" onclick="deleteGame(${game.id})">Löschen</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                return html;
-            };
-            
-            let finalHtml = '';
-            if (groupedGames.Saison.length > 0) {
-                finalHtml += '<h3 class="game-list-header">Saison (Liga)</h3>';
-                finalHtml += renderGameList(groupedGames.Saison);
-            }
-            if (groupedGames.Testspiel.length > 0) {
-                finalHtml += '<h3 class="game-list-header">Testspiele</h3>';
-                finalHtml += renderGameList(groupedGames.Testspiel);
-            }
-            if (Object.keys(groupedGames.Turnier).length > 0) {
-                finalHtml += '<h3 class="game-list-header">Turniere</h3>';
-                for (const tourName in groupedGames.Turnier) {
-                    finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ddd;">${tourName}</h4>`;
-                    finalHtml += renderGameList(groupedGames.Turnier[tourName]);
-                }
-            }
-            if (Object.keys(archiveGroups).length > 0) {
-                finalHtml += '<h3 class="game-list-header" style="color: #9e9e9e;">Archiv</h3>';
-                for (const archiveName in archiveGroups) {
-                    finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ccc;">${archiveName}</h4>`;
-                    finalHtml += renderGameList(archiveGroups[archiveName]);
-                }
-            }
-            gameListContainer.innerHTML = finalHtml;
-        } catch (error) {
-            gameListContainer.innerHTML = `<p class="error">FEHLER beim Laden des Spielplans.</p>`;
-        }
-    }
-
     // --- Initialisierung ---
     function initDashboard() {
         console.log("initDashboard() wird aufgerufen.");
         loadTeams();
     }
     
-    // KORREKTUR: Selbstaufruf wieder hinzugefügt
-    initDashboard();
+    document.addEventListener('DOMContentLoaded', initDashboard);
 </script>
+<script src="/static/game_planning.js"></script>
