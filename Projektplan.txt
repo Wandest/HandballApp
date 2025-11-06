@@ -14,110 +14,91 @@ Status: ✅ ABGESCHLOSSEN
 
 ==================================================
 BLOCK 3: NON-PLUS-ULTRA: TEAM-ÖKOSYSTEM
-Status: 🟡 IN ARBEIT
+Status: ✅ GRÖSSTENTEILS ABGESCHLOSSEN (MVP)
 
 Phase 9: Pro-Level: Detailliertes Gegner-Scouting & Live-Sync
-Status: ✅ ABGESCHLOSSEN
+Status: ✅ FERTIG (MVP)
 [✅] STRATEGISCHES KEY-FEATURE: protocol.html erweitern: Klick auf "Gegner Tor" / "Gegner Fehlwurf" öffnet (Halbfeld-)Modal zur Erfassung von x/y-Koordinaten.
 [✅] Statistik-UI (Gegner): Neue Ansicht "Gegner-Wurfbild-Analyse".
 [✅] Statistik-UI (Filter): Gegner-Wurfbild nach Spiel filterbar.
 [✅] Integration von Liga-Daten zur Gegneranalyse.
 [✅] Feature (Scouting-Berichte): Text-Editor für qualitative Berichte über Gegner.
-[⬜] Scouting-Modus: Volles Gegnerprotokoll.
-[⬜] Multi-Device-Protokoll via WebSockets (Echtzeit-Sync).
+[⬜] Scouting-Modus: Volles Gegnerprotokoll (zu Phase 13 verschoben).
+[⬜] Multi-Device-Protokoll via WebSockets (Echtzeit-Sync) (zu Phase 14 verschoben).
 
 Phase 10: Spieler-Portal & App
-Status: 🟡 IN ARBEIT
+Status: ✅ FERTIG (MVP)
 [✅] Backend: Spieler-Login-System (Einladung durch Trainer, Dashboard-Seite).
-[⬜] PWA: Vereinfachte Web-/Mobile-Ansicht für Spieler.
-[⬜] Kalender-Integration (Spiele/Training).
-[⬜] Eigene Statistiken und Video-Szenen abrufbar.
-[⬜] Anwesenheitsmeldung (Zu-/Absage, Grund).
-[⬜] Wellness-Log (aus Phase 11) ausfüllbar.
-[⬜] Individuelle Entwicklungsziele setzen & verfolgen.
-[⬜] Dashboard: Termine, letzte Spielzeit, aktueller Wellness-Status.
-[🆕] Push-Benachrichtigungen (Training, Termine, Scouting, Wellness).
-[🆕] Gamification-System (XP, Aktiv-Badges für Spieler).
-[🆕] In-App-Kommunikation (Team-Kommentare, Reaktionen).
+[✅] PWA: Vereinfachte Web-/Mobile-Ansicht für Spieler (Dashboard & Kalender).
+[✅] Kalender-Integration (Spiele/Training) (7-Tage & Gesamtansicht).
+[✅] Eigene Statistiken (Feldspieler vs. Torwart getrennt) und Video-Szenen abrufbar.
+[✅] Anwesenheitsmeldung (Zu-/Absage, Grund, Frist-Logik).
+[⬜] Wellness-Log (aus Phase 11) ausfüllbar (Wird in Phase 11 integriert).
+[⬜] Individuelle Entwicklungsziele setzen & verfolgen (Wird in Phase 13 integriert).
+[✅] Dashboard: Termine, letzte Spielzeit, aktueller Wellness-Status (Platzhalter).
 
-Phase 10.2: Multi-Trainer-Management ✅
-[✅] Vollständige Verwaltung von Trainer-Staffs (Backend + UI).
+Phase 10.2: Multi-Trainer-Management
+Status: ✅ FERTIG
+[✅] Vollständige Verwaltung von Trainer-Staffs (Rollen, Hinzufügen, Entfernen, Tauschen).
 
-Phase 10.5: Spielzeit-Tracking ✅
+Phase 10.5: Spielzeit-Tracking
+Status: ✅ FERTIG
 [✅] Automatische Spielzeitberechnung (SubIn/SubOut-Logs).
 [✅] Anzeige pro Spiel / Saison.
 [✅] Grafische Timeline der Aufstellungen.
 [✅] Erweiterte GameClock-Logik (GameStart/GameStop).
 
-Phase 11: Athletik & Belastungssteuerung
-Status: ⬜ ZU PLANEN
-[⬜] Modelle für Verletzungen & WellnessLog.
-[⬜] Wellness-Tracking (Schlaf, Muskelkater, Stress, RPE).
-[⬜] Verletzungs-Log durch Trainer/Physio.
-[⬜] Dashboard-Warnungen bei erhöhter Belastung.
-[⬜] Grafische Verlauöe über 30 Tage.
-[🆕] KI-basiertes Belastungsmodell (Risiko-Score für Überlastung).
-
 Phase 12: Trainings- & Termin-Management
+Status: ✅ FERTIG (MVP)
+[✅] Modelle für TeamEvent und Attendance.
+[✅] Kalender-Ansicht für Trainer.
+[✅] Anwesenheits-Übersicht (Zusagen/Absagen/Vielleicht) inkl. Trainer-Rollen-Anzeige.
+[🆕] Automatische Erinnerungen an Termine (Wird in Phase 14 integriert).
+[⬜] Übungs-DB mit Beschreibung, Skizze, Video-Link (Zu Phase 12.5 verschoben).
+[⬜] Animierte Taktiktafel (Zeichnen & Abspielen) (Zu Phase 12.5 verschoben).
+
+==================================================
+BLOCK 3.5: VERTIEFTES TRAINING & TAKTIK (NEU)
 Status: ⬜ ZU PLANEN
-[⬜] Modelle für TrainingSession, Drill, TeamEvent.
-[⬜] Kalender-Ansicht für Trainer.
-[⬜] Anwesenheits-Übersicht (Zusagen/Absagen/Vielleicht).
-[⬜] Automatische Erinnerungen an Termine.
-[⬜] Übungs-DB mit Beschreibung, Skizze, Video-Link.
-[⬜] Animierte Taktiktafel (Zeichnen & Abspielen).
-[⬜] Trainings-RPE (Gefühlte Belastung nach Training).
+
+Phase 12.5: Übungs- & Taktik-Modul
+[🆕] Übungs-DB: Erstellung, Speicherung und Filterung von Trainingseinheiten/Drills.
+[🆕] Taktiktafel: Interaktives 2D-Zeichenwerkzeug mit Exportfunktion.
+[🆕] Trainingsplan-Erstellung: Zuweisung von Übungen zu Events.
 
 ==================================================
 BLOCK 4: ENDGAME: KI & KONNEKTIVITÄT
 Status: ⬜ ZU PLANEN
 
+Phase 11: Athletik & Belastungssteuerung
+Status: ⬜ ZU PLANEN
+[🆕] Athletik-Modelle: Verletzungs- und WellnessLog-Modelle anlegen.
+[🆕] Wellness-Tracking: Frontend-UI zur Erfassung von RPE, Schlaf, Muskelkater (Täglich).
+[🆕] Dashboard-Warnungen: Visuelle Indikatoren bei hohem Belastungs-Risiko (Ampel).
+[🆕] Grafische Verläufe: 30-Tage-Historie für Belastungswerte.
+
 Phase 13: KI-Analyse & Integration
 Status: ⬜ ZU PLANEN
-[⬜] Analyse von Aktionsketten (z. B. erfolgreiche Passfolgen).
-[⬜] KI-Prognose für Abwehr-Formationen / Torwart-Positionen.
-[⬜] Trainingsplanungsempfehlungen basierend auf Wellness & Spielzeit.
-[⬜] Auto-Tagging von Video-Clips (z. B. "Tor #7 Meier" 04:32).
-[⬜] Automatische Heatmaps für Wurfbilder.
-[⬜] PDF-/Druck-Export für Statistiken und Scouting-Berichte.
-[⬜] Gesicherte API für Trainer (Import/Export von Rohdaten).
-[⬜] Kalenderexport (.ics / iCal).
-[⬜] Internes Messaging-System.
-[🆕] KI-Coaching-Assistent (automatische Textanalysen und Empfehlungen).
-[🆕] Videoanalyse via Computer Vision (Ereigniserkennung aus Spielvideos).
-[🆕] Team-Vergleichs-Feature (Benchmark vs. Liga-Durchschnitt).
+[🆕] Analyse von Aktionsketten (z. B. erfolgreiche Passfolgen).
+[🆕] KI-Prognose: Empfehlungen für die beste Startaufstellung basierend auf Matchup-Daten.
+[🆕] Auto-Tagging: KI-gestützte Vorschläge für Video-Tags (z. B. "Tor #7 Meier" 04:32).
+[🆕] Export-Center: PDF-/Druck-Export für Statistiken, Roster und Scouting-Berichte.
 
 ==================================================
 BLOCK 5: INTEGRATION & ÖKOSYSTEM-ERWEITERUNG (NEU)
 Status: ⬜ ZU PLANEN
 
 Phase 14: Integration & Erweiterung
-[🆕] Schnittstellen zu Verbandsportalen (nuLiga, DHB, EHF).
-[🆕] Club-Admin-Modul (mehrere Teams verwalten).
-[🆕] Cloud-Sync / Offline-Modus für Hallenbetrieb.
-[🆕] Analytics API (für Vereinswebseiten).
-[🆕] Datenschutz-Modul (DSGVO-konform, automatische Datenlöschung).
+[🆕] Echtzeit-Multi-Protokoll: WebSocket-Implementierung für Live-Protokoll-Sync zwischen Geräten.
+[🆕] Push-Benachrichtigungen: Integration von Benachrichtigungen für Deadlines/Termine.
+[🆕] Club-Admin-Modul: Verwaltung mehrerer Teams unter einem Hauptaccount.
+[🆕] Cloud-Sync / Offline-Modus: Strategie für die App-Nutzung ohne Internet.
 
 ==================================================
 BLOCK 6: UX & MONETARISIERUNG (NEU)
 Status: ⬜ ZU PLANEN
 
-[🆕] Cross-Plattform-Framework (Flutter oder React Native).
-[🆕] Touch-optimierte UI für Tablets (große Buttons, klare Modale).
-[🆕] Dark Mode / Hallenmodus.
-[🆕] Freemium-Modell (Basis + Pro-Version).
-[🆕] Team Marketplace (Trainer teilen oder verkaufen Übungen/Taktiken).
-
-==================================================
-GIT-HINWEISE (Backup)
-
-1. **Dateien hinzufügen:**
-
-   ```bash
-   git add backend/time_tracking.py backend/action.py Projektplan_Aktualisiert.txt
-   ```
-2. **Commit:**
-
-   ```bash
-   git commit -m "UPDATE: Erweiterte Phasen KI, Integration & UX hinzugefügt"
-   ```
+Phase 15: UX & Monetarisierung
+[🆕] Cross-Plattform-Framework: Wahl und Start der Migration (z.B. React Native/Flutter).
+[🆕] Touch-optimierte UI: Überarbeitung aller Seiten für Tablet- und Mobile-Nutzung.
+[🆕] Dark Mode / Hallenmodus: Umschaltbare, kontrastreiche Oberfläche.

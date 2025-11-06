@@ -1,12 +1,12 @@
 // DATEI: frontend/static/calendar.js
-// +++ FIX: Korrigiert die DOM-Zuweisungen (IDs) und die Logik zum Senden der Frist +++
-// +++ FIX: Korrigiert die Zähl-Logik im Attendance-Modal (nutzt ENUM NAME) +++
+// +++ ERWEITERT: Logik für Regeltermine (inkl. Multi-Woche), Bearbeiten-Modal und PUT-Anfrage +++
 
 (function() {
     
-    // Globale Variablen (müssen im IIFE-Scope deklariert werden)
+    // Globale Variablen
     var selectedTeamId = localStorage.getItem('selected_team_id');
     var selectedTeamName = localStorage.getItem('selected_team_name');
+    var currentTeamDeadlines = {}; // Speichert die Standard-Fristen des Teams
 
     // DOM-Elemente
     var calendarTeamName, addEventButton, eventMessageDiv, createEventForm;
@@ -14,6 +14,13 @@
     var defaultStatusSelect, responseDeadlineInput; 
     var eventListContainer;
     var attendanceModal, attendanceModalTitle, attendanceModalStats, attendanceList;
+    
+    // NEU: DOM-Elemente für Regeltermine
+    var isRecurringCheckbox, recurringOptionsDiv, repeatFrequencySelect, repeatUntilInput, repeatIntervalInput;
+
+    // NEU: DOM-Elemente für Bearbeiten-Modal
+    var editEventModal, editEventForm, editEventId, editEventTitle, editEventType, editEventStartTime, editEventEndTime, editEventLocation, editEventDescription, editDefaultStatusSelect, editResponseDeadlineInput, editMessageDiv, editModalTitle;
+
 
     // ==================================================
     // --- H I L F S F U N K T I O N E N ---
@@ -31,6 +38,31 @@
         }) + ' Uhr';
     }
 
+    /**
+     * Wählt die korrekte Standard-Deadline aus den Team Settings.
+     */
+    function getDefaultDeadline(eventType) {
+        if (!currentTeamDeadlines) return 0;
+        
+        // Die Logik muss den Team-Settings (team.py) entsprechen:
+        // deadline_game/tournament/testspiel/training/other
+        
+        if (eventType === 'Training') return currentTeamDeadlines.deadline_training || 0;
+        
+        // Annahme: Wenn der Typ "Spiel" ist, verwenden wir den allgemeinen Spiel-Deadline-Wert.
+        if (eventType === 'Spiel') return currentTeamDeadlines.deadline_game || 0;
+        
+        // Für 'Sonstiges' nutzen wir den 'other' Wert.
+        if (eventType === 'Sonstiges') return currentTeamDeadlines.deadline_other || 0;
+        
+        // Fallback
+        if (eventType === 'Turnier') return currentTeamDeadlines.deadline_tournament || 0;
+        if (eventType === 'Testspiel') return currentTeamDeadlines.deadline_testspiel || 0;
+        
+        return 0;
+    }
+
+
     // ==================================================
     // --- L A D E N   &   A N Z E I G E N ---
     // ==================================================
@@ -46,6 +78,8 @@
         eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
         if (addEventButton) addEventButton.disabled = false;
         
+        await loadTeamDeadlines(teamId); 
+
         try {
             const response = await fetch(`/calendar/list/${teamId}`);
             if (response.status === 401) { window.logout(); return; }
@@ -71,6 +105,32 @@
     }
     window.loadEvents = loadEvents;
 
+
+    async function loadTeamDeadlines(teamId) {
+        try {
+            const response = await fetch(`/teams/settings/${teamId}`);
+            if (response.status === 401) { window.logout(); return; }
+            
+            if (response.status === 404) {
+                 currentTeamDeadlines = {};
+                 responseDeadlineInput.value = 0;
+                 return;
+            }
+            if (!response.ok) throw new Error("Deadlines konnten nicht geladen werden.");
+
+            const settings = await response.json();
+            currentTeamDeadlines = settings;
+            
+            const selectedType = eventType.value;
+            responseDeadlineInput.value = getDefaultDeadline(selectedType);
+
+        } catch (error) {
+            console.error('Fehler beim Laden der Standard-Deadlines:', error);
+            currentTeamDeadlines = {}; 
+            responseDeadlineInput.value = 0;
+        }
+    }
+
     function renderEvents(events) {
         eventListContainer.innerHTML = '';
         if (events.length === 0) {
@@ -78,7 +138,6 @@
             return;
         }
         
-        // Termine nach Startdatum sortieren (aufsteigend)
         events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         
         events.forEach(event => {
@@ -94,20 +153,29 @@
                  deadlineHtml = `<br><span style="color:#ffcc00; font-size:0.9em;">Frist: ${event.response_deadline_hours}h vorher</span>`;
             }
 
+            // NEU: Bugfix: Prüft, ob es sich wirklich um einen Regeltermin handelt (Startdatum != Enddatum)
+            // Dies behebt den Fehler, dass Einzeltermine, bei denen end_time gleich start_time war, fälschlicherweise als Regeltermin galten.
+            let isRecurringEvent = event.end_time && (new Date(event.end_time).getDate() !== new Date(event.start_time).getDate() || new Date(event.end_time).getMonth() !== new Date(event.start_time).getMonth());
+            
+            const isRecurringDisplay = isRecurringEvent ? ' (Regeltermin)' : '';
+            const recurringClass = isRecurringEvent ? 'recurring' : '';
+
             item.innerHTML = `
                 <div class="event-info">
-                    <h4>${event.title}</h4>
+                    <h4 class="${recurringClass}">${event.title}${isRecurringDisplay}</h4>
                     <p>Typ: ${event.event_type}${deadlineHtml}</p>
                     <p>Zeit: ${startTime}${endTime}${location}</p>
                 </div>
                 <div class="event-actions">
                     <button class="btn btn-info btn-inline" onclick="showAttendance(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Anwesenheit</button>
+                    <button class="btn btn-secondary btn-inline" onclick="openEditModal(${event.id})">Bearbeiten</button>
                     <button class="btn btn-danger btn-inline-delete" onclick="deleteEvent(${event.id})">Löschen</button>
                 </div>
             `;
             eventListContainer.appendChild(item);
         });
     }
+
 
     // ==================================================
     // --- T E R M I N - E R S T E L L U N G ---
@@ -116,9 +184,8 @@
     async function handleCreateEvent(event) {
         event.preventDefault();
         
-        // KORRIGIERTE NULL-PRÜFUNG: Prüft, ob alle Elemente zugewiesen wurden
-        if (!window.checkVerification() || !selectedTeamId || !defaultStatusSelect || !responseDeadlineInput) {
-             eventMessageDiv.textContent = '❌ Fehler: Formular-Elemente fehlen. Team ausgewählt?';
+        if (!window.checkVerification() || !selectedTeamId) {
+             eventMessageDiv.textContent = '❌ Fehler: Team nicht ausgewählt oder Konto nicht verifiziert.';
              eventMessageDiv.className = 'message error';
              addEventButton.disabled = false;
              return;
@@ -128,7 +195,6 @@
         eventMessageDiv.textContent = 'Erstelle Termin...';
         eventMessageDiv.className = 'message';
         
-        // --- KORRIGIERTE LOGIK: Felder auslesen ---
         const hoursInput = responseDeadlineInput.value;
         let deadlineHours = null;
         
@@ -142,10 +208,42 @@
              }
              deadlineHours = parsedHours;
         } else {
-             deadlineHours = null; // Sende null, wenn Feld leer
+             deadlineHours = null;
         }
-        // --- ENDE KORRIGIERTE LOGIK ---
         
+        // Regeltermin-Validierung
+        const isRecurring = isRecurringCheckbox.checked;
+        let repeatUntilValue = null;
+        let repeatFrequency = null;
+        let repeatInterval = null; 
+
+        if (isRecurring) {
+            repeatUntilValue = repeatUntilInput.value;
+            repeatFrequency = repeatFrequencySelect.value;
+            repeatInterval = parseInt(repeatIntervalInput.value) || 1; // NEU: Wiederholungsintervall
+            
+            if (!repeatUntilValue) {
+                 eventMessageDiv.textContent = '❌ Fehler: Für Regeltermine muss ein Enddatum gewählt werden.';
+                 eventMessageDiv.className = 'message error';
+                 addEventButton.disabled = false;
+                 return;
+            }
+            if (repeatInterval <= 0) {
+                 eventMessageDiv.textContent = '❌ Fehler: Wiederholungsintervall muss größer als 0 sein.';
+                 eventMessageDiv.className = 'message error';
+                 addEventButton.disabled = false;
+                 return;
+            }
+        }
+        
+        if (!eventStartTime.value) {
+            eventMessageDiv.textContent = '❌ Fehler: Startzeit ist erforderlich.';
+            eventMessageDiv.className = 'message error';
+            addEventButton.disabled = false;
+            return;
+        }
+
+
         const payload = {
             team_id: parseInt(selectedTeamId),
             title: eventTitle.value,
@@ -154,9 +252,13 @@
             end_time: eventEndTime.value || null,
             location: eventLocation.value || null,
             description: eventDescription.value || null,
-            
             default_status: defaultStatusSelect.value, 
-            response_deadline_hours: deadlineHours
+            response_deadline_hours: deadlineHours,
+            
+            is_recurring: isRecurring,
+            repeat_until: repeatUntilValue ? new Date(repeatUntilValue + 'T23:59:59').toISOString() : null,
+            repeat_frequency: repeatFrequency,
+            repeat_interval: repeatInterval
         };
 
         try {
@@ -175,10 +277,16 @@
                  throw new Error(detail);
             }
             
-            window.showToast('✅ Termin erfolgreich erstellt.', 'success');
-            eventMessageDiv.textContent = '✅ Termin erfolgreich erstellt.';
+            const count = Array.isArray(data) ? data.length : 1;
+            window.showToast(`✅ ${count} Termin(e) erfolgreich erstellt.`, "success");
+            eventMessageDiv.textContent = `✅ ${count} Termin(e) erfolgreich erstellt.`;
             eventMessageDiv.className = 'message success';
             createEventForm.reset();
+            
+            if(isRecurringCheckbox) isRecurringCheckbox.checked = false;
+            if(recurringOptionsDiv) recurringOptionsDiv.style.display = 'none';
+            if(repeatIntervalInput) repeatIntervalInput.value = 1; // Intervall zurücksetzen
+
             loadEvents(selectedTeamId);
             
         } catch (error) {
@@ -205,100 +313,144 @@
                 throw new Error(data.detail || 'Fehler beim Löschen.');
             }
             
-            window.showToast('✅ Termin gelöscht.', 'success');
+            window.showToast('✅ Termin gelöscht.', "success");
             loadEvents(selectedTeamId);
             
         } catch (error) {
             console.error('Fehler beim Löschen:', error);
-            window.showToast(`❌ ${error.message}`, 'error');
+            window.showToast(`❌ ${error.message}`, "error");
         }
     }
     window.deleteEvent = deleteEvent;
-
+    
     // ==================================================
-    // --- A N W E S E N H E I T ---
+    // --- T E R M I N - B E A R B E I T E N ---
     // ==================================================
     
-    function closeAttendanceModal() {
-        if (attendanceModal) {
-            attendanceModal.style.display = 'none';
+    function closeEditModal() {
+        editEventModal.style.display = 'none';
+        editMessageDiv.textContent = '';
+    }
+    window.closeEditModal = closeEditModal;
+
+    async function openEditModal(eventId) {
+        editMessageDiv.textContent = 'Lade Event-Daten...';
+        editEventModal.style.display = 'block';
+
+        try {
+            const response = await fetch(`/calendar/list/${selectedTeamId}`);
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error('Terminliste konnte nicht geladen werden.');
+            
+            const events = await response.json();
+            const event = events.find(e => e.id === eventId);
+            
+            if (!event) throw new Error('Termin nicht gefunden.');
+            
+            const formatForInput = (dt) => {
+                 if (!dt) return '';
+                 const date = new Date(dt);
+                 return date.toISOString().substring(0, 16);
+            };
+
+            editEventId.value = event.id;
+            editEventTitle.value = event.title;
+            editEventType.value = event.event_type;
+            editEventStartTime.value = formatForInput(event.start_time);
+            
+            // end_time kann null sein
+            editEventEndTime.value = event.end_time ? formatForInput(event.end_time) : '';
+            
+            editEventLocation.value = event.location || '';
+            editEventDescription.value = event.description || '';
+            
+            // Status und Deadline
+            editDefaultStatusSelect.value = event.default_status;
+            editResponseDeadlineInput.value = event.response_deadline_hours || 0;
+
+            editMessageDiv.textContent = '';
+            editModalTitle.textContent = `Termin bearbeiten: ${event.title}`;
+
+        } catch (error) {
+            editMessageDiv.textContent = `❌ Fehler beim Laden: ${error.message}`;
+            editMessageDiv.className = 'message error';
         }
     }
-    window.closeAttendanceModal = closeAttendanceModal;
+    window.openEditModal = openEditModal;
+    
+    async function handleEditEvent(event) {
+        event.preventDefault();
+        if (!window.checkVerification()) return;
+        
+        const eventId = editEventId.value;
+        const saveButton = document.getElementById('save-edit-button');
 
-    async function showAttendance(eventId, eventTitleStr) {
-        attendanceModal.style.display = 'block';
-        attendanceModalTitle.textContent = `Anwesenheit für: ${eventTitleStr}`;
-        attendanceList.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Anwesenheitsliste...</p>';
-        attendanceModalStats.textContent = '';
+        saveButton.disabled = true;
+        editMessageDiv.textContent = 'Speichere Änderungen...';
+        editMessageDiv.className = 'message';
+        
+        const hoursInput = editResponseDeadlineInput.value;
+        let deadlineHours = null;
+        
+        if (hoursInput !== "") {
+             const parsedHours = parseInt(hoursInput);
+             if (isNaN(parsedHours) || parsedHours < 0) {
+                 editMessageDiv.textContent = '❌ Fehler: Frist muss eine positive Zahl (Stunden) sein.';
+                 editMessageDiv.className = 'message error';
+                 saveButton.disabled = false;
+                 return;
+             }
+             deadlineHours = parsedHours;
+        }
+        
+        const payload = {
+            title: editEventTitle.value,
+            event_type: editEventType.value,
+            start_time: editEventStartTime.value,
+            end_time: editEventEndTime.value || null,
+            location: editEventLocation.value || null,
+            description: editEventDescription.value || null,
+            default_status: editDefaultStatusSelect.value, 
+            response_deadline_hours: deadlineHours
+        };
         
         try {
-            const response = await fetch(`/calendar/attendance/${eventId}`);
-            if (response.status === 401) { window.logout(); return; }
-            if (!response.ok) throw new Error('Anwesenheit konnte nicht geladen werden.');
-            
-            const attendanceData = await response.json();
-            
-            // --- FIX: ZÄHLLOGIK mit internen ENUM NAMES ---
-            let counts = { ATTENDING: 0, DECLINED: 0, TENTATIVE: 0, NOT_RESPONDED: 0, TRAINER: 0 };
-            
-            attendanceList.innerHTML = '';
-            
-            attendanceData.forEach(item => {
-                const isPlayer = item.status in counts; // Prüft, ob es ein normaler Status ist
-                
-                if (!isPlayer) {
-                    counts.TRAINER++; // Zählt Trainer und Admins
-                } else {
-                    counts[item.status]++; // Zählt Spielerstatus
-                }
-                
-                const itemEl = document.createElement('div');
-                itemEl.className = 'attendance-item';
-                
-                // Status-Anzeige
-                const statusKey = isPlayer ? item.status : 'TRAINER'; 
-                const statusMap = {
-                    ATTENDING: 'Zugesagt',
-                    DECLINED: 'Abgesagt',
-                    TENTATIVE: 'Vielleicht',
-                    NOT_RESPONDED: 'Keine Antwort',
-                    TRAINER: item.status.replace('_', ' ') // Zeigt die Rolle des Trainers an
-                };
-                
-                const reasonHtml = item.reason ? `<span class="attendance-reason">(${item.reason})</span>` : '';
-                const numberDisplay = item.player_number ? `#${item.player_number}` : '';
-
-                itemEl.innerHTML = `
-                    <span style="${isPlayer ? '' : 'color: #ffcc00;'}">${numberDisplay} <strong>${item.player_name}</strong></span>
-                    <span>
-                        <span class="attendance-status-${statusKey}">${statusMap[statusKey] || statusKey}</span>
-                        ${reasonHtml}
-                    </span>
-                `;
-                attendanceList.appendChild(itemEl);
+            const response = await fetch(`/calendar/update/${eventId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
+
+            const data = await response.json();
             
-            attendanceModalStats.innerHTML = `
-                <span style="color: #38E838;">Zugesagt: ${counts.ATTENDING}</span> | 
-                <span style="color: #f44336;">Abgesagt: ${counts.DECLINED}</span> | 
-                <span style="color: #ffcc00;">Vielleicht: ${counts.TENTATIVE}</span> | 
-                <span style="color: #9e9e9e;">Offen: ${counts.NOT_RESPONDED}</span> |
-                <span style="color: #00bcd4;">Trainer/Admin: ${counts.TRAINER}</span>
-            `;
+            if (response.status === 401) { window.logout(); return; }
             
+            if (!response.ok) {
+                const detail = data.detail ? (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join('; ') : data.detail) : 'Unbekannter Fehler beim Bearbeiten des Termins.';
+                throw new Error(detail);
+            }
+            
+            window.showToast('✅ Termin erfolgreich aktualisiert.', "success");
+            editMessageDiv.textContent = '✅ Termin erfolgreich aktualisiert.';
+            editMessageDiv.className = 'message success';
+            loadEvents(selectedTeamId);
+            setTimeout(closeEditModal, 1500);
+
         } catch (error) {
-            console.error('Fehler beim Laden der Anwesenheit:', error);
-            attendanceList.innerHTML = `<p class="error">${error.message}</p>`;
+            console.error('Fehler beim Bearbeiten des Termins:', error);
+            editMessageDiv.textContent = `❌ ${error.message}`;
+            editMessageDiv.className = 'message error';
+        } finally {
+            saveButton.disabled = false;
         }
     }
-    window.showAttendance = showAttendance;
+
 
     // ==================================================
     // --- I N I T I A L I S I E R U N G ---
     // ==================================================
     function initCalendar() {
-        // DOM-Zuweisung
+        // DOM-Zuweisung (Erstellung)
         calendarTeamName = document.getElementById('calendar-team-name');
         addEventButton = document.getElementById('add-event-button');
         eventMessageDiv = document.getElementById('event-message');
@@ -314,10 +466,31 @@
         attendanceModalTitle = document.getElementById('attendance-modal-title');
         attendanceModalStats = document.getElementById('attendance-modal-stats');
         attendanceList = document.getElementById('attendance-list');
-        
-        // +++ KORRIGIERTE ZUWEISUNG DER NEUEN ELEMENTE +++
         defaultStatusSelect = document.getElementById('default-status-select');
         responseDeadlineInput = document.getElementById('response-deadline-input');
+        
+        // NEU: DOM-Zuweisung (Regeltermine)
+        isRecurringCheckbox = document.getElementById('is-recurring-checkbox');
+        recurringOptionsDiv = document.getElementById('recurring-options');
+        repeatFrequencySelect = document.getElementById('repeat-frequency-select');
+        repeatUntilInput = document.getElementById('repeat-until');
+        repeatIntervalInput = document.getElementById('repeat-interval-input'); 
+        
+        // NEU: DOM-Zuweisung (Bearbeiten)
+        editEventModal = document.getElementById('edit-event-modal');
+        editEventForm = document.getElementById('edit-event-form');
+        editEventId = document.getElementById('edit-event-id');
+        editEventTitle = document.getElementById('edit-event-title');
+        editEventType = document.getElementById('edit-event-type');
+        editEventStartTime = document.getElementById('edit-event-start-time');
+        editEventEndTime = document.getElementById('edit-event-end-time');
+        editEventLocation = document.getElementById('edit-event-location');
+        editEventDescription = document.getElementById('edit-event-description');
+        editDefaultStatusSelect = document.getElementById('edit-default-status-select');
+        editResponseDeadlineInput = document.getElementById('edit-response-deadline-input');
+        editMessageDiv = document.getElementById('edit-message');
+        editModalTitle = document.getElementById('edit-modal-title');
+
 
         console.log("initCalendar() wird aufgerufen.");
         
@@ -336,10 +509,39 @@
             createEventForm.addEventListener('submit', handleCreateEvent);
         }
         
+        // NEU: Event Listener für Regeltermine Umschalter
+        if(isRecurringCheckbox) {
+             isRecurringCheckbox.addEventListener('change', function() {
+                 if (recurringOptionsDiv) {
+                     recurringOptionsDiv.style.display = this.checked ? 'block' : 'none';
+                 }
+             });
+        }
+        
+        // NEU: Event Listener für dynamisches Vorfüllen der Deadline
+        if(eventType) {
+            eventType.addEventListener('change', function() {
+                responseDeadlineInput.value = getDefaultDeadline(this.value);
+            });
+        }
+        
+        // NEU: Event Listener für Bearbeiten
+        if(editEventForm) {
+             editEventForm.addEventListener('submit', handleEditEvent);
+        }
+        
+        // Event Listener für Modal-Klicks (Schließen)
         if(attendanceModal) {
             attendanceModal.addEventListener('click', function(event) {
                 if (event.target == attendanceModal) {
-                    closeAttendanceModal();
+                    // closeAttendanceModal ist global im HTML definiert
+                }
+            });
+        }
+        if(editEventModal) {
+            editEventModal.addEventListener('click', function(event) {
+                if (event.target == editEventModal) {
+                    closeEditModal();
                 }
             });
         }

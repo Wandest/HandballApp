@@ -1,6 +1,5 @@
 # DATEI: backend/database.py
-# +++ NEU: ERWEITERT UM 'default_status' FÜR EVENTS +++
-# +++ NEU: ERWEITERT UM 'response_deadline_hours' FÜR EVENTS +++
+# +++ NEU: ERWEITERT UM TeamSettings MODELL für Standard-Deadlines +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -99,6 +98,9 @@ class Team(Base):
     
     # +++ NEU: Beziehung zu Events (Phase 12) +++
     events = relationship("TeamEvent", back_populates="team", cascade="all, delete-orphan")
+
+    # +++ NEU: Beziehung zu den Einstellungen +++
+    settings = relationship("TeamSettings", back_populates="team", uselist=False, cascade="all, delete-orphan")
 
 
 # --- Verknüpfungstabelle (Spieler:Spiel) ---
@@ -248,9 +250,27 @@ class ScoutingReport(Base):
     trainer = relationship("Trainer", back_populates="scouting_reports")
 
 
+# +++ NEUES MODELL (PHASE 16 - Deadlines) +++
+# ---------------------------------
+# 8. TeamSettings (Standard-Deadlines)
+# ---------------------------------
+class TeamSettings(Base):
+    __tablename__ = "team_settings"
+    team_id = Column(Integer, ForeignKey("teams.id"), primary_key=True)
+    
+    # Standard-Deadline in Stunden (Response Deadline Hours)
+    game_deadline_hours = Column(Integer, default=48)
+    tournament_deadline_hours = Column(Integer, default=72)
+    testspiel_deadline_hours = Column(Integer, default=48)
+    training_deadline_hours = Column(Integer, default=24)
+    other_deadline_hours = Column(Integer, default=24)
+
+    team = relationship("Team", back_populates="settings")
+
+
 # +++ NEUES MODELL (PHASE 12) +++
 # ---------------------------------
-# 8. TeamEvent (Kalender-Termin) Modell
+# 9. TeamEvent (Kalender-Termin) Modell
 # ---------------------------------
 class TeamEvent(Base):
     __tablename__ = "team_events"
@@ -284,7 +304,7 @@ class TeamEvent(Base):
 
 # +++ NEUES MODELL (PHASE 10/12) +++
 # ---------------------------------
-# 9. Attendance (Anwesenheit) Modell
+# 10. Attendance (Anwesenheit) Modell
 # ---------------------------------
 class Attendance(Base):
     __tablename__ = "attendances"

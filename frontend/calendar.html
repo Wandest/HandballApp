@@ -1,7 +1,3 @@
-<!-- 
-  DATEI: frontend/calendar.html
-  +++ FIX: Korrigiert die IDs und die Struktur des Attendance Modals, um die Zählungen und Trainer-Rollen korrekt darzustellen. +++
--->
 <style>
     /* Spezifische Stile für die Kalenderseite */
     .calendar-layout {
@@ -40,6 +36,11 @@
         margin: 0 0 5px 0;
         color: #fff;
     }
+    /* NEU: Style für Regeltermine */
+    .event-info h4.recurring {
+        color: #ffcc00;
+    }
+    
     .event-info p {
         margin: 0;
         font-size: 0.9em;
@@ -81,7 +82,6 @@
         font-size: 0.9em;
         opacity: 0.7;
         margin-left: 5px;
-        /* Grund-Text wird von JS nur für Trainer gesetzt */
     }
     
     /* Status-Farben (basierend auf internem ENUM-Namen) */
@@ -124,10 +124,10 @@
                 <div class="form-section active">
                     <label for="default-status-select">Anwesenheits-Standard:</label>
                     <select id="default-status-select" required>
-                        <!-- HIER WIRD AUF DIE DEUTSCHEN ENUM-WERTE GEÄNDERT -->
-                        <option value="Zugesagt">Anwesenheit erwartet (Standard)</option>
-                        <option value="Keine Antwort">Antwort erforderlich</option>
-                        <option value="Abgesagt">Abwesenheit erwartet</option>
+                        <option value="ATTENDING">Anwesenheit erwartet (Zugesagt)</option>
+                        <option value="NOT_RESPONDED">Antwort erforderlich (Keine Antwort)</option>
+                        <option value="DECLINED">Abwesenheit erwartet (Abgesagt)</option>
+                        <option value="TENTATIVE">Vielleicht</option>
                     </select>
                     <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">
                         Legt fest, ob Spieler automatisch auf "Zugesagt" stehen oder aktiv antworten müssen.
@@ -135,9 +135,9 @@
                 </div>
                 <div class="form-section active">
                     <label for="response-deadline-input">Antwortfrist (Stunden vor Event):</label>
-                    <input type="number" id="response-deadline-input" min="0" placeholder="z.B. 24 (24 Stunden vorher)">
+                    <input type="number" id="response-deadline-input" min="0" placeholder="Standard: 24h. 0 oder leer = keine Frist.">
                     <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">
-                        Gibt an, wie viele Stunden vor Event-Beginn eine Zusage/Absage spätestens erfolgen muss (0 oder leer = keine Frist).
+                        Wird beim Erstellen des Termins gesetzt. (Standard kann im Team-Management eingestellt werden).
                     </p>
                 </div>
                 <div class="form-section active">
@@ -150,6 +150,27 @@
                     <input type="datetime-local" id="event-end-time">
                 </div>
                 
+                <hr style="border-color: rgba(255, 255, 255, 0.1); margin: 20px 0;">
+                
+                <div class="form-section active" style="margin-bottom: 15px;">
+                    <input type="checkbox" id="is-recurring-checkbox">
+                    <label for="is-recurring-checkbox" style="display: inline; margin-bottom: 0;">Termin wiederholen</label>
+                </div>
+                
+                <div id="recurring-options" style="display: none; margin-bottom: 15px;">
+                    <label for="repeat-frequency-select">Wiederholungsfrequenz:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span style="white-space: nowrap;">Alle</span>
+                        <input type="number" id="repeat-interval-input" value="1" min="1" max="52" style="width: 60px; margin-bottom: 0;">
+                        <select id="repeat-frequency-select" style="margin-bottom: 0;">
+                            <option value="weekly">Woche(n)</option>
+                        </select>
+                    </div>
+                    
+                    <label for="repeat-until" style="margin-top: 15px;">Wiederholen bis (Datum):</label>
+                    <input type="date" id="repeat-until" placeholder="Bis wann wiederholen?">
+                </div>
+
                 <div class="form-section active">
                     <label for="event-location">Ort (Optional):</label>
                     <input type="text" id="event-location" placeholder="z.B. Halle am Stadion">
@@ -178,17 +199,82 @@
     </div>
 </div>
 
-<!-- Modal für Anwesenheit -->
 <div id="attendance-modal" class="modal">
     <div class="modal-content card">
         <span class="close-btn" onclick="closeAttendanceModal()">&times;</span>
         <div class="card-content">
             <h3 id="attendance-modal-title">Anwesenheit</h3>
-            <!-- DIESER DIV ZEIGT DIE ZÄHLUNG AN -->
             <div id="attendance-modal-stats"></div>
-            <!-- DIESER DIV ZEIGT DIE LISTE AN -->
             <div id="attendance-list">
                 </div>
+        </div>
+    </div>
+</div>
+
+<div id="edit-event-modal" class="modal">
+    <div class="modal-content card">
+        <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        <div class="card-content">
+            <h3 id="edit-modal-title">Termin bearbeiten</h3>
+            
+            <form id="edit-event-form">
+                <input type="hidden" id="edit-event-id">
+                
+                <div class="form-section active">
+                    <label for="edit-event-title">Titel:</label>
+                    <input type="text" id="edit-event-title" required>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="edit-event-type">Termin-Typ:</label>
+                    <select id="edit-event-type" required>
+                        {% for type in event_types %}
+                            <option value="{{ type }}">{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="edit-default-status-select">Anwesenheits-Standard:</label>
+                    <select id="edit-default-status-select" required>
+                        <option value="ATTENDING">Anwesenheit erwartet (Zugesagt)</option>
+                        <option value="NOT_RESPONDED">Antwort erforderlich (Keine Antwort)</option>
+                        <option value="DECLINED">Abwesenheit erwartet (Abgesagt)</option>
+                        <option value="TENTATIVE">Vielleicht</option>
+                    </select>
+                    <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">
+                        HINWEIS: Nur Spieler, die noch NICHT geantwortet haben, werden auf diesen neuen Status gesetzt.
+                    </p>
+                </div>
+                <div class="form-section active">
+                    <label for="edit-response-deadline-input">Antwortfrist (Stunden vor Event):</label>
+                    <input type="number" id="edit-response-deadline-input" min="0" placeholder="0 oder leer = keine Frist.">
+                </div>
+                <div class="form-section active">
+                    <label for="edit-event-start-time">Beginn:</label>
+                    <input type="datetime-local" id="edit-event-start-time" required>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="edit-event-end-time">Ende (Optional):</label>
+                    <input type="datetime-local" id="edit-event-end-time">
+                </div>
+                
+                <div class="form-section active">
+                    <label for="edit-event-location">Ort (Optional):</label>
+                    <input type="text" id="edit-event-location" placeholder="z.B. Halle am Stadion">
+                </div>
+                
+                <div class="form-section active">
+                    <label for="edit-event-description">Beschreibung (Optional):</label>
+                    <textarea id="edit-event-description" rows="4"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full-width" id="save-edit-button">
+                    Änderungen speichern
+                </button>
+            </form>
+            <div id="edit-message" class="message"></div>
         </div>
     </div>
 </div>

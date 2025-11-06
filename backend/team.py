@@ -1,12 +1,12 @@
 # DATEI: backend/team.py
-# (KORRIGIERT: Fügt detaillierte Ligenliste und Multi-Trainer-Logik hinzu)
+# +++ ERWEITERT: Routen für TeamSettings (Standard-Deadlines) +++
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
-from backend.database import SessionLocal, Trainer, Team, UserRole, team_trainer_association
+from backend.database import SessionLocal, Trainer, Team, UserRole, team_trainer_association, TeamSettings # WICHTIG: TeamSettings importieren
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 from sqlalchemy import select 
 
@@ -48,8 +48,21 @@ def get_league_list():
     ]
 
 # -----------------------------
-# Pydantic Modelle (unverändert)
+# Pydantic Modelle (NEU: für Deadlines)
 # -----------------------------
+
+class TeamSettingsResponse(BaseModel):
+    game_deadline_hours: int
+    tournament_deadline_hours: int
+    testspiel_deadline_hours: int
+    training_deadline_hours: int
+    other_deadline_hours: int
+
+    class Config:
+        from_attributes = True
+
+class TeamSettingsUpdate(TeamSettingsResponse):
+    pass 
 
 class TeamCreate(BaseModel):
     name: str
@@ -117,6 +130,10 @@ def create_team(
             role=UserRole.MAIN_COACH
         )
     )
+    
+    # NEU: Standardeinstellungen für das Team erstellen
+    new_settings = TeamSettings(team_id=new_team.id)
+    db.add(new_settings)
 
     db.commit()
     db.refresh(new_team)
@@ -182,7 +199,64 @@ def delete_team(
 
 
 # -------------------------------------------------------------------
-# NEU (PHASE 10.2): TRAINER-MANAGER-ENDPUNKTE
+# NEU: Team-Settings Endpunkte
+# -------------------------------------------------------------------
+
+@router.get("/settings/{team_id}", response_model=TeamSettingsResponse)
+def get_team_settings(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    check_team_auth_and_get_role(db, current_trainer.id, team_id)
+
+    settings = db.query(TeamSettings).filter(TeamSettings.team_id == team_id).first()
+    
+    if not settings:
+        # Erzeuge Standardeinstellungen, falls sie noch nicht existieren (sollte durch create_team bereits existieren, aber als Fallback)
+        new_settings = TeamSettings(team_id=team_id)
+        db.add(new_settings)
+        db.commit()
+        db.refresh(new_settings)
+        settings = new_settings
+        
+    return settings
+
+@router.put("/settings/{team_id}", response_model=TeamSettingsResponse)
+def update_team_settings(
+    team_id: int,
+    settings_data: TeamSettingsUpdate,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    # Nur Admins/Haupttrainer dürfen die Standard-Deadlines ändern
+    check_team_auth_and_get_role(
+        db, 
+        current_trainer.id, 
+        team_id, 
+        required_roles=[UserRole.MAIN_COACH, UserRole.TEAM_ADMIN]
+    )
+
+    settings = db.query(TeamSettings).filter(TeamSettings.team_id == team_id).first()
+    
+    if not settings:
+         raise HTTPException(status_code=404, detail="Einstellungen nicht gefunden.")
+         
+    # Aktualisiere die Felder
+    settings.game_deadline_hours = settings_data.game_deadline_hours
+    settings.tournament_deadline_hours = settings_data.tournament_deadline_hours
+    settings.testspiel_deadline_hours = settings_data.testspiel_deadline_hours
+    settings.training_deadline_hours = settings_data.training_deadline_hours
+    settings.other_deadline_hours = settings_data.other_deadline_hours
+
+    db.commit()
+    db.refresh(settings)
+        
+    return settings
+
+
+# -------------------------------------------------------------------
+# Trainer-Manager-Endpunkte (unverändert)
 # -------------------------------------------------------------------
 
 # Trainer-Staff auflisten (Jeder Trainer im Team darf dies)

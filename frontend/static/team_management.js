@@ -17,16 +17,37 @@
     var currentLoggedInTrainerRole = null; 
     var targetCoachId = null; 
 
-    // DOM-Variablen-Stubs (KEINE Deklaration mit let/const/var nötig, da Zuweisung in init erfolgt)
+    // DOM-Variablen-Stubs 
     var teamListDiv, teamMessageDiv, playerMessageDiv, playerListContainer, kaderTeamName, customActionTeamName, kaderTeamNameForm, customActionTeamNameForm, addPlayerButton, addCustomActionButton, customActionMessageDiv, customActionListContainer, selectedTeamInfoDiv;
     var invitePlayerModal, inviteModalTitle, invitePlayerIdInput, invitePlayerEmailInput, invitePlayerMessage;
     var staffTeamName, staffListContainer, addCoachButton, coachMessageDiv, addCoachForm, roleChangeModal, roleModalCoachName, roleSwapSection, roleUpdateSection, swapTargetName, updateTargetName, newRoleSelectSwap, newRoleSelectUpdate, roleModalMessage;
+    
+    // NEUE DOM-ELEMENTE für Deadlines
+    var settingsTeamName, settingsLoadingIndicator, settingsFormContent, saveSettingsBtn, settingsMessage, updateSettingsForm;
+    var settingGame, settingTournament, settingTestspiel, settingTraining, settingOther;
+
 
     const ROLE_LABELS = {
         'MAIN_COACH': 'Haupttrainer 👑',
         'TEAM_ADMIN': 'Team-Admin 🛠️',
         'ASSISTANT_COACH': 'Co-Trainer 👨‍🏫'
     };
+    
+    // --- Hilfsfunktion zum Zuweisen der Input-Elemente (muss hier sein) ---
+    function assignSettingsElements() {
+        settingsTeamName = document.getElementById('settings-team-name');
+        settingsLoadingIndicator = document.getElementById('settings-loading-indicator');
+        settingsFormContent = document.getElementById('settings-form-content');
+        saveSettingsBtn = document.getElementById('save-settings-btn');
+        settingsMessage = document.getElementById('settings-message');
+        updateSettingsForm = document.getElementById('update-settings-form');
+        
+        settingGame = document.getElementById('setting-game');
+        settingTournament = document.getElementById('setting-tournament');
+        settingTestspiel = document.getElementById('setting-testspiel');
+        settingTraining = document.getElementById('setting-training');
+        settingOther = document.getElementById('setting-other');
+    }
 
 
     // ==================================================
@@ -54,22 +75,25 @@
         kaderTeamNameForm.textContent = teamName;
         customActionTeamNameForm.textContent = teamName;
         staffTeamName.textContent = teamName;
+        settingsTeamName.textContent = teamName; // NEU
         
         addPlayerButton.disabled = false;
         addCustomActionButton.disabled = false;
+        
         loadPlayers(teamId);
         loadCustomActions(teamId);
         loadStaff(teamId); 
+        loadDeadlines(teamId); // NEU: Lade Fristen
 
         // Speichern für alle Seiten
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
     }
-    // Wird im Dashboard benötigt
     window.selectTeam = selectTeam; 
 
     // --- Teams laden und Toggle ---
     async function loadTeams() {
+        // ... (Unveränderte Logik zum Laden und Rendern der Teams) ...
         try {
             // Ladeindikator sichtbar machen
             teamListDiv.innerHTML = '<p style="opacity: 0.6;">Lade Mannschaften...</p>';
@@ -87,9 +111,11 @@
                 if(selectedTeamInfoDiv) selectedTeamInfoDiv.textContent = "";
                 kaderTeamName.textContent = "(Team wählen)";
                 staffTeamName.textContent = "(Team wählen)";
+                settingsTeamName.textContent = "(Team wählen)"; // NEU
                 addPlayerButton.disabled = true;
                 playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
                 loadStaff(null);
+                loadDeadlines(null); // NEU
             }
 
             if (teams.length === 0) {
@@ -144,9 +170,9 @@
             teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams.</p>`;
         }
     }
-    // Wird im Dashboard benötigt
     window.loadTeams = loadTeams;
 
+    // ... (toggleTeamPublic Logik unverändert) ...
     async function toggleTeamPublic(teamId, teamName, isPublic) {
         if (!window.checkVerification()) {
             const checkbox = document.getElementById(`public-checkbox-${teamId}`);
@@ -181,8 +207,7 @@
             console.error('Toggle Public Fehler:', error);
         }
     }
-
-    // --- Formular: Team erstellen ---
+    // ... (Formular: Team erstellen Logik unverändert) ...
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-team-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -220,10 +245,97 @@
 
 
     // ==================================================
+    // --- D E A D L I N E S   S E T T I N G S (NEU) ---
+    // ==================================================
+
+    async function loadDeadlines(teamId) {
+        if (!settingsFormContent || !settingsLoadingIndicator) return;
+        
+        settingsLoadingIndicator.style.display = 'block';
+        settingsFormContent.style.display = 'none';
+        saveSettingsBtn.style.display = 'none';
+        saveSettingsBtn.disabled = true;
+        settingsMessage.textContent = '';
+        
+        if (!teamId) {
+             settingsLoadingIndicator.textContent = 'Bitte Team auswählen.';
+             return;
+        }
+        
+        settingsLoadingIndicator.textContent = 'Lade Standard-Fristen...';
+
+        try {
+            const response = await fetch(`/teams/settings/${teamId}`);
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error('Fristen konnten nicht geladen werden.');
+            
+            const settings = await response.json();
+            
+            // Felder mit Werten füllen
+            settingGame.value = settings.deadline_game || 0;
+            settingTournament.value = settings.deadline_tournament || 0;
+            settingTestspiel.value = settings.deadline_testspiel || 0;
+            settingTraining.value = settings.deadline_training || 0;
+            settingOther.value = settings.deadline_other || 0;
+            
+            settingsLoadingIndicator.style.display = 'none';
+            settingsFormContent.style.display = 'grid';
+            saveSettingsBtn.style.display = 'block';
+            saveSettingsBtn.disabled = false;
+
+        } catch (error) {
+            settingsLoadingIndicator.textContent = `❌ Fehler: ${error.message}`;
+            settingsLoadingIndicator.className = 'message error';
+        }
+    }
+    window.loadDeadlines = loadDeadlines;
+
+    async function handleSaveDeadlines(event) {
+        event.preventDefault();
+        if (!window.checkVerification() || !selectedTeamId) return;
+
+        settingsMessage.textContent = 'Speichere Fristen...';
+        settingsMessage.className = 'message';
+        saveSettingsBtn.disabled = true;
+        
+        const payload = {
+            team_id: selectedTeamId,
+            deadline_game: parseInt(settingGame.value) || 0,
+            deadline_tournament: parseInt(settingTournament.value) || 0,
+            deadline_testspiel: parseInt(settingTestspiel.value) || 0,
+            deadline_training: parseInt(settingTraining.value) || 0,
+            deadline_other: parseInt(settingOther.value) || 0
+        };
+
+        try {
+            const response = await fetch(`/teams/settings/${selectedTeamId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                window.showToast("✅ Fristen erfolgreich gespeichert.", "success");
+                settingsMessage.textContent = '✅ Standard-Fristen erfolgreich gespeichert.';
+                settingsMessage.className = 'message success';
+            } else {
+                 settingsMessage.textContent = `❌ Fehler: ${data.detail || 'Unbekannter Fehler'}`;
+                 settingsMessage.className = 'message error';
+            }
+        } catch (error) {
+            settingsMessage.textContent = '❌ Serverfehler beim Speichern der Fristen.';
+            settingsMessage.className = 'message error';
+        } finally {
+            saveSettingsBtn.disabled = false;
+        }
+    }
+
+    // ==================================================
     // --- P L A Y E R   M A N A G E M E N T ---
     // ==================================================
 
-    // --- Spieler laden und Status anzeigen ---
+    // ... (loadPlayers Logik unverändert) ...
     async function loadPlayers(teamId) {
         if (!teamId) {
              playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
@@ -288,6 +400,7 @@
     }
     window.loadPlayers = loadPlayers; 
 
+    // ... (Restliche Logik für Spieler und Custom Actions unverändert) ...
     // --- Formular: Spieler erstellen ---
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-player-form').addEventListener('submit', async function(event) {
@@ -420,7 +533,6 @@
     }
     window.sendInvitation = sendInvitation;
 
-
     // ==================================================
     // --- C U S T O M   A C T I O N S ---
     // ==================================================
@@ -526,7 +638,6 @@
         }
     }
     window.deleteCustomAction = deleteCustomAction;
-
 
     // ==================================================
     // --- S T A F F   M A N A G E M E N T (PHASE 10.2) ---
@@ -812,7 +923,7 @@
 
     // --- Initialisierung ---
     function initTeamManagement() {
-        // 💡 FIX: Zuweisung der DOM-Elemente ohne 'let/const'
+        // 💡 FIX: Zuweisung der DOM-Elemente
         teamListDiv = document.getElementById('team-list');
         teamMessageDiv = document.getElementById('team-message');
         playerMessageDiv = document.getElementById('player-message');
@@ -845,9 +956,17 @@
         newRoleSelectSwap = document.getElementById('new-role-select-swap');
         newRoleSelectUpdate = document.getElementById('new-role-select-update');
         roleModalMessage = document.getElementById('role-modal-message');
+        
+        // Zuweisung der NEUEN SETTINGS-Elemente
+        assignSettingsElements(); 
 
         console.log("initTeamManagement() wird aufgerufen. Lade Teams...");
         loadTeams();
+        
+        // Event Listener für Deadline-Formular
+        if (updateSettingsForm) {
+            updateSettingsForm.addEventListener('submit', handleSaveDeadlines);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', initTeamManagement);
