@@ -1,4 +1,5 @@
-// DATEI: frontend/static/player_dashboard.js (NEUE DATEI)
+// DATEI: frontend/static/player_dashboard.js (AKTUALISIERT)
+// +++ NEU: Fügt die komplette Kalender-Logik für Spieler hinzu +++
 
 (function() {
     
@@ -12,6 +13,9 @@
     // DOM-Elemente
     var statsContainerField, statsContainerGoalie, statsContainerCustom, playerStatsMessage;
     var cutterActionSelect, cutterGameSelect, cutterPlaylistContainer, cutterVideoTitle, cutterYouTubePlayerEl;
+    
+    // +++ NEUE DOM-ELEMENTE FÜR KALENDER +++
+    var playerCalendarContainer, playerCalendarMessage;
 
     // ==================================================
     // --- H I L F S F U N K T I O N E N ---
@@ -23,6 +27,19 @@
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = Math.floor(seconds % 60);
         return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+    }
+    
+    // +++ NEUE HILFSFUNKTION FÜR DATUM +++
+    function formatDateTime(dateTimeStr) {
+        if (!dateTimeStr) return 'N/A';
+        const date = new Date(dateTimeStr);
+        return date.toLocaleString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) + ' Uhr';
     }
     
     // Wir definieren showToast lokal, falls global.js noch nicht geladen ist
@@ -49,6 +66,12 @@
     // ==================================================
 
     async function loadMyStats() {
+        // Sicherstellen, dass die DOM-Elemente existieren
+        if (!statsContainerField || !statsContainerGoalie || !statsContainerCustom || !playerStatsMessage) {
+            console.warn("Statistik-DOM-Elemente nicht gefunden.");
+            return;
+        }
+        
         statsContainerField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade...</p>';
         statsContainerGoalie.innerHTML = '';
         statsContainerCustom.innerHTML = '';
@@ -73,8 +96,6 @@
             playerStatsMessage.textContent = '✅ Statistik erfolgreich geladen.';
             playerStatsMessage.className = 'message success';
             
-            // Wir verwenden die exakt gleiche Render-Funktion wie in season_analysis.js
-            // (Hier vereinfacht, da wir wissen, dass es nur 1 Spieler ist)
             displayMyStats(myStats); 
             
         } catch (error) {
@@ -86,8 +107,7 @@
     }
     
     function displayMyStats(stats) {
-        // Diese Funktion ist eine 1:1 Kopie von displaySeasonPlayerStats aus season_analysis.js,
-        // angepasst, um die Container direkt anzusprechen.
+        if (!statsContainerField || !statsContainerGoalie || !statsContainerCustom) return;
         
         let fieldHeaders = ['#', 'Spiele', 'Zeit (M:S)', 'Tore (Quote)', 'Tore/Spiel', 'Fehlwürfe', 'Tech. Fehler / Fehlpässe', '7m Tor', '7m Fehl', '7m Verursacht'];
         let goalieHeaders = ['#', 'Spiele', 'Zeit (M:S)', 'Paraden Ges. (Quote)', '7m-Quote'];
@@ -168,10 +188,10 @@
 
     // ==================================================
     // --- V I D E O - C U T T E R   L O G I K ---
-    // (Wiederverwendet aus season_analysis.js)
     // ==================================================
     
     function populateCutterFilters() {
+        if (!cutterActionSelect || !cutterGameSelect) return;
         if (myActionData.length === 0) return;
 
         const actions = new Set();
@@ -196,6 +216,8 @@
     }
 
     function renderCutterPlaylist() {
+        if (!cutterActionSelect || !cutterGameSelect || !cutterPlaylistContainer) return;
+        
         const filterActionType = cutterActionSelect.value;
         const filterGameId = cutterGameSelect.value;
 
@@ -242,7 +264,8 @@
     function createPlayer(videoId) {
         if (!cutterPlayerReady) { return; }
         if (cutterPlayer) { cutterPlayer.destroy(); }
-        cutterYouTubePlayerEl.innerHTML = ''; 
+        if (cutterYouTubePlayerEl) cutterYouTubePlayerEl.innerHTML = ''; 
+        
         cutterPlayer = new YT.Player('cutter-youtube-player', {
             height: '100%', width: '100%',
             videoId: videoId,
@@ -260,7 +283,7 @@
     }
 
     function playCut(item) {
-        if (!item) return;
+        if (!item || !cutterVideoTitle) return;
         const videoId = getYouTubeId(item.game_video_url);
         if (!videoId) {
             showToast("Keine gültige YouTube-URL für dieses Spiel.", "error");
@@ -286,6 +309,7 @@
     window.playCut = playCut; // Mache es global für onclick
 
     async function loadMyClips() {
+        if (!cutterPlaylistContainer) return;
         cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Lade deine Video-Clips...</p>';
         
         try {
@@ -304,6 +328,123 @@
         }
     }
 
+    // ==================================================
+    // --- (NEU) S P I E L E R - K A L E N D E R ---
+    // ==================================================
+    
+    async function loadMyCalendar() {
+        if (!playerCalendarContainer) return;
+        playerCalendarContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Termine...</p>';
+        if (playerCalendarMessage) playerCalendarMessage.textContent = '';
+        
+        try {
+            const response = await fetch('/portal/calendar/list');
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) throw new Error('Kalender konnte nicht geladen werden.');
+            
+            const events = await response.json();
+            
+            if (events.length === 0) {
+                playerCalendarContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Termine für dich gefunden.</p>';
+                return;
+            }
+            
+            playerCalendarContainer.innerHTML = '';
+            events.forEach(event => {
+                const itemEl = document.createElement('div');
+                itemEl.className = `player-event-item event-type-${event.event_type.replace(' ', '-')}`;
+                itemEl.id = `player-event-${event.id}`;
+                
+                const startTime = formatDateTime(event.start_time);
+                const endTime = event.end_time ? ` - ${formatDateTime(event.end_time)}` : '';
+                const location = event.location ? `<br>Ort: ${event.location}` : '';
+                const description = event.description ? `<br>Notiz: ${event.description}` : '';
+                
+                const statusText = event.my_status.replace('_', ' ');
+                const reasonText = event.my_reason ? ` (${event.my_reason})` : '';
+                
+                itemEl.innerHTML = `
+                    <div class="player-event-info">
+                        <h4>${event.title}</h4>
+                        <p>Typ: ${event.event_type}</p>
+                        <p>Zeit: ${startTime}${endTime}${location}${description}</p>
+                    </div>
+                    <div class="player-event-status">
+                        <span id="status-badge-${event.id}" class="status-badge ${event.my_status}">
+                            ${statusText}${reasonText}
+                        </span>
+                        <div class="status-buttons">
+                            <button class="btn btn-secondary btn-reason" onclick="respondToEvent(${event.id}, 'TENTATIVE')">Vielleicht</button>
+                            <button class="btn btn-danger" onclick="respondToEvent(${event.id}, 'DECLINED')">Absagen</button>
+                            <button class="btn btn-primary" onclick="respondToEvent(${event.id}, 'ATTENDING')">Zusagen</button>
+                        </div>
+                    </div>
+                `;
+                playerCalendarContainer.appendChild(itemEl);
+            });
+            
+        } catch (error) {
+            console.error("Fehler beim Laden meines Kalenders:", error);
+            if (playerCalendarMessage) {
+                playerCalendarMessage.textContent = `❌ ${error.message}`;
+                playerCalendarMessage.className = 'message error';
+            }
+        }
+    }
+    
+    async function respondToEvent(eventId, status) {
+        let reason = null;
+        if (status === 'DECLINED' || status === 'TENTATIVE') {
+            reason = prompt(`Grund für '${status === 'DECLINED' ? 'Absage' : 'Vielleicht'}' (optional):`, '');
+            if (reason === null) { // Benutzer hat auf "Abbrechen" geklickt
+                return;
+            }
+        }
+        
+        const payload = {
+            status: status,
+            reason: reason || null
+        };
+        
+        // UI sofort aktualisieren (Optimistic Update)
+        const badge = document.getElementById(`status-badge-${eventId}`);
+        if (badge) {
+            badge.textContent = 'Speichere...';
+            badge.className = 'status-badge NOT_RESPONDED';
+        }
+
+        try {
+            const response = await fetch(`/portal/calendar/respond/${eventId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) throw new Error('Antwort konnte nicht gespeichert werden.');
+            
+            const updatedEvent = await response.json();
+            
+            // UI final aktualisieren
+            if (badge) {
+                const statusText = updatedEvent.my_status.replace('_', ' ');
+                const reasonText = updatedEvent.my_reason ? ` (${updatedEvent.my_reason})` : '';
+                badge.textContent = `${statusText}${reasonText}`;
+                badge.className = `status-badge ${updatedEvent.my_status}`;
+            }
+            window.showToast("Antwort gespeichert!", "success");
+
+        } catch (error) {
+            console.error("Fehler beim Antworten:", error);
+            window.showToast(`❌ ${error.message}`, "error");
+            // TODO: Alten Status wiederherstellen
+            if (badge) badge.textContent = 'Fehler!';
+        }
+    }
+    // Mache die Funktion global verfügbar für die onclick-Handler
+    window.respondToEvent = respondToEvent;
+
+
     // --- Initialisierung ---
     function initPlayerDashboard() {
         // DOM-Zuweisung
@@ -316,16 +457,21 @@
         cutterPlaylistContainer = document.getElementById('cutter-playlist-container');
         cutterVideoTitle = document.getElementById('cutter-video-title');
         cutterYouTubePlayerEl = document.getElementById('cutter-youtube-player'); 
+        
+        // +++ NEUE DOM-ELEMENTE +++
+        playerCalendarContainer = document.getElementById('player-calendar-container');
+        playerCalendarMessage = document.getElementById('player-calendar-message');
 
         console.log("initPlayerDashboard() wird aufgerufen.");
         
         // Lade Daten
         loadMyStats();
         loadMyClips();
+        loadMyCalendar(); // +++ NEUER AUFRUF +++
         
         // Event Listeners
-        cutterActionSelect.addEventListener('change', renderCutterPlaylist);
-        cutterGameSelect.addEventListener('change', renderCutterPlaylist);
+        if (cutterActionSelect) cutterActionSelect.addEventListener('change', renderCutterPlaylist);
+        if (cutterGameSelect) cutterGameSelect.addEventListener('change', renderCutterPlaylist);
     }
 
     document.addEventListener('DOMContentLoaded', initPlayerDashboard);

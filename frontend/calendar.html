@@ -1,7 +1,6 @@
 <!-- 
   DATEI: frontend/calendar.html
-  KORREKTUR: Dies ist das fehlende HTML-Template. 
-  Dein Server (main.py) lädt diese Datei in das Hauptlayout.
+  +++ AKTUALISIERT: Fügt das Dropdown-Menü "Anwesenheits-Standard" hinzu +++
 -->
 <style>
     /* Spezifische Stile für die Kalenderseite */
@@ -117,6 +116,20 @@
                     </select>
                 </div>
                 
+                <!-- +++ NEUES FORMULARFELD (PHASE 10/12) +++ -->
+                <div class="form-section active">
+                    <label for="event-default-status">Anwesenheits-Standard:</label>
+                    <select id="event-default-status" required>
+                        <option value="ATTENDING">Anwesenheit erwartet (Standard)</option>
+                        <option value="NOT_RESPONDED">Antwort erforderlich</option>
+                        <option value="DECLINED">Abwesenheit erwartet</option>
+                    </select>
+                    <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">
+                        Legt fest, ob Spieler automatisch auf "Zugesagt" stehen oder aktiv antworten müssen.
+                    </p>
+                </div>
+                <!-- +++ ENDE NEUES FELD +++ -->
+                
                 <div class="form-section active">
                     <label for="event-start-time">Beginn:</label>
                     <input type="datetime-local" id="event-start-time" required>
@@ -171,6 +184,5 @@
 
 <!-- 
   Diese Seite lädt die KORRIGIERTE calendar.js-Datei.
-  Der Fehler war in der JS-Datei, nicht hier.
 -->
 <script src="/static/calendar.js"></script>

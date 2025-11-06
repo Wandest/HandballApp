@@ -1,4 +1,6 @@
-// DATEI: frontend/static/calendar.js (KORRIGIERT: Behebt 404-Fehler bei leerer Team-ID)
+// DATEI: frontend/static/calendar.js
+// +++ AKTUALISIERT: Sendet das neue Feld 'default_status'
+// +++ FIX: Korrigiert Fehlerbehandlung für 'body stream already read'
 
 (function() {
     
@@ -9,6 +11,8 @@
     // DOM-Elemente
     var calendarTeamName, addEventButton, eventMessageDiv, createEventForm;
     var eventTitle, eventType, eventStartTime, eventEndTime, eventLocation, eventDescription;
+    // +++ NEUES DOM-ELEMENT +++
+    var eventDefaultStatus;
     var eventListContainer;
     var attendanceModal, attendanceModalTitle, attendanceModalStats, attendanceList;
 
@@ -33,33 +37,42 @@
     // ==================================================
 
     async function loadEvents(teamId) {
-        
         // --- KORREKTUR: Robuste Schutzprüfung (Guard Clause) ---
         // Verhindert API-Aufrufe mit "null", "undefined" oder leeren Strings
         if (!teamId || teamId === 'null' || teamId === 'undefined') {
             console.warn("loadEvents: Keine gültige team_id ausgewählt. Breche Ladevorgang ab.");
-            eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
+            if (eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
             if (addEventButton) addEventButton.disabled = true; // Sicherstellen, dass der Button deaktiviert ist
             return;
         }
         // --- ENDE KORREKTUR ---
-
-        eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
+        
+        if (eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
         if (addEventButton) addEventButton.disabled = false; // Team ist gültig, Button aktivieren
         
         try {
             const response = await fetch(`/calendar/list/${teamId}`);
             if (response.status === 401) { window.logout(); return; }
-
-            // --- KORREKTUR: Detailliertere Fehlerbehandlung ---
+            
+            // --- KORREKTUR: Detailliertere Fehlerbehandlung (Fix für 'body stream already read') ---
             if (!response.ok) {
                 let errorMsg = `Status: ${response.status}`;
                 try {
+                    // Versuche ZUERST, JSON zu lesen
                     const errorData = await response.json();
                     errorMsg = errorData.detail || JSON.stringify(errorData);
                 } catch (e) {
-                    // Fallback, wenn response.json() fehlschlägt
-                    errorMsg = await response.text() || errorMsg;
+                    // Wenn JSON fehlschlägt (z.B. bei 500er-Fehler mit HTML-Antwort), lies Text
+                    // WICHTIG: response.text() kann nur aufgerufen werden, wenn response.json() FEHLSCHLÄGT.
+                    // Da wir im catch-Block sind, ist der Stream noch nicht gelesen.
+                    try {
+                        errorMsg = await response.text();
+                        // Optional: HTML kürzen, falls es eine lange Fehlerseite ist
+                        if (errorMsg.includes('<html>')) errorMsg = "Serverfehler (500) - HTML-Antwort erhalten.";
+                    } catch (textError) {
+                        // Fallback, falls alles fehlschlägt
+                        errorMsg = `Status: ${response.status} (Fehlerantwort konnte nicht gelesen werden)`;
+                    }
                 }
                 // Werfe einen Fehler mit der sauberen Server-Nachricht
                 throw new Error(errorMsg);
@@ -72,24 +85,25 @@
         } catch (error) {
             console.error('Fehler beim Laden der Termine:', error);
             // Zeigt jetzt die saubere Fehlermeldung statt [object Response]
-            eventListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
+            if (eventListContainer) eventListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
         }
     }
     window.loadEvents = loadEvents;
 
     function renderEvents(events) {
+        if (!eventListContainer) return;
         eventListContainer.innerHTML = '';
         if (events.length === 0) {
             eventListContainer.innerHTML = '<p style="opacity: 0.6;">Keine Termine für dieses Team erstellt.</p>';
             return;
         }
         
-        // Sortiere Events, neueste zuerst (oder asc() im Backend)
-        events.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+        // Sortiere Events (älteste zuerst, damit man sieht, was als Nächstes ansteht)
+        events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         
         events.forEach(event => {
             const item = document.createElement('div');
-            // KORREKTUR (aus deinem Upload übernommen): event.event_type ist ein String
+            // KORREKTUR: event.event_type ist jetzt ein String (z.B. "Training")
             item.className = `event-item event-type-${event.event_type.replace(' ', '-')}`;
             
             const startTime = formatDateTime(event.start_time);
@@ -117,12 +131,7 @@
 
     async function handleCreateEvent(event) {
         event.preventDefault();
-        // KORREKTUR: Prüfe auf selectedTeamId, *bevor* checkVerification aufgerufen wird
-        if (!selectedTeamId || selectedTeamId === 'null' || !window.checkVerification()) {
-            eventMessageDiv.textContent = '❌ Bitte zuerst ein Team auswählen.';
-            eventMessageDiv.className = 'message error';
-            return;
-        }
+        if (!window.checkVerification() || !selectedTeamId) return;
         
         addEventButton.disabled = true;
         eventMessageDiv.textContent = 'Erstelle Termin...';
@@ -132,6 +141,8 @@
             team_id: parseInt(selectedTeamId),
             title: eventTitle.value,
             event_type: eventType.value, // "Training", "Spiel", "Sonstiges"
+            // +++ NEUES FELD +++
+            default_status: eventDefaultStatus.value, // "ATTENDING", "NOT_RESPONDED", "DECLINED"
             start_time: eventStartTime.value,
             end_time: eventEndTime.value || null,
             location: eventLocation.value || null,
@@ -146,11 +157,14 @@
             });
             
             if (response.status === 401) { window.logout(); return; }
-            const data = await response.json();
             
+            // Fehlerbehandlung für Erstellung
             if (!response.ok) {
+                const data = await response.json();
                 throw new Error(data.detail || 'Fehler beim Erstellen des Termins.');
             }
+            
+            // const data = await response.json(); // Nicht nötig, wenn wir nur 'ok' prüfen
             
             window.showToast('✅ Termin erfolgreich erstellt.', 'success');
             eventMessageDiv.textContent = '✅ Termin erfolgreich erstellt.';
@@ -204,6 +218,7 @@
     window.closeAttendanceModal = closeAttendanceModal;
 
     async function showAttendance(eventId, eventTitleStr) {
+        if (!attendanceModal) return;
         attendanceModal.style.display = 'block';
         attendanceModalTitle.textContent = `Anwesenheit für: ${eventTitleStr}`;
         attendanceList.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Anwesenheitsliste...</p>';
@@ -212,7 +227,18 @@
         try {
             const response = await fetch(`/calendar/attendance/${eventId}`);
             if (response.status === 401) { window.logout(); return; }
-            if (!response.ok) throw new Error('Anwesenheit konnte nicht geladen werden.');
+            
+            if (!response.ok) {
+                 // Detaillierte Fehlerbehandlung
+                let errorMsg = `Status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.detail || JSON.stringify(errorData);
+                } catch (e) {
+                    errorMsg = await response.text() || errorMsg;
+                }
+                throw new Error(errorMsg);
+            }
             
             const attendanceData = await response.json();
             
@@ -232,7 +258,7 @@
                 const itemEl = document.createElement('div');
                 itemEl.className = 'attendance-item';
                 
-                // +++ KORREKTUR (aus deinem Upload übernommen): item.status ist ein String +++
+                // +++ KORREKTUR: item.status ist ein String (der Enum-Wert, z.B. "ATTENDING") +++
                 const statusKey = item.status; 
                 const statusValue = statusKey.replace("_", " "); // z.B. "NOT RESPONDED"
                 const statusClass = `attendance-status-${statusKey}`; 
@@ -249,7 +275,7 @@
                 `;
                 attendanceList.appendChild(itemEl);
                 
-                // +++ KORREKTUR (aus deinem Upload übernommen): Vergleiche mit dem String-Wert +++
+                // +++ KORREKTUR: Vergleiche mit dem String-Wert +++
                 if (statusKey === 'ATTENDING') attending++;
                 else if (statusKey === 'DECLINED') declined++;
                 else if (statusKey === 'TENTATIVE') tentative++;
@@ -281,6 +307,8 @@
         createEventForm = document.getElementById('create-event-form');
         eventTitle = document.getElementById('event-title');
         eventType = document.getElementById('event-type');
+        // +++ NEUES DOM-ELEMENT +++
+        eventDefaultStatus = document.getElementById('event-default-status');
         eventStartTime = document.getElementById('event-start-time');
         eventEndTime = document.getElementById('event-end-time');
         eventLocation = document.getElementById('event-location');
@@ -293,19 +321,20 @@
 
         console.log("initCalendar() wird aufgerufen.");
         
-        // Globale Variablen neu aus LocalStorage lesen (für den Fall, dass sie sich geändert haben)
+        // Aktualisierten Local Storage abrufen
         selectedTeamId = localStorage.getItem('selected_team_id');
         selectedTeamName = localStorage.getItem('selected_team_name');
         
-        // --- KORREKTUR: Robuste Prüfung beim Initialisieren ---
+        // Initialer Ladezustand
+        // --- KORREKTUR: Prüft explizit auf 'null' (String) ---
         if (selectedTeamId && selectedTeamName && selectedTeamId !== 'null' && selectedTeamName !== 'null') {
-            calendarTeamName.textContent = selectedTeamName;
+            if(calendarTeamName) calendarTeamName.textContent = selectedTeamName;
             // addEventButton.disabled = false; // Wird jetzt von loadEvents() gesteuert
             loadEvents(selectedTeamId);
         } else {
-            calendarTeamName.textContent = "(Team wählen)";
-            addEventButton.disabled = true;
-            eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
+            if(calendarTeamName) calendarTeamName.textContent = "(Team wählen)";
+            if(addEventButton) addEventButton.disabled = true;
+            if(eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
         }
         // --- ENDE KORREKTUR ---
 

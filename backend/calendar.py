@@ -1,4 +1,6 @@
-# DATEI: backend/calendar.py (KORRIGIERT: CSS-Code entfernt)
+# DATEI: backend/calendar.py
+# +++ AKTUALISIERT: Fügt 'default_status' beim Erstellen hinzu +++
+# +++ FIX: Behebt 500 Internal Server Error bei /list, indem EventResponse manuell erstellt wird +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -39,20 +41,23 @@ class EventCreate(BaseModel):
     end_time: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
+    # +++ NEUES FELD (PHASE 10/12) +++
+    default_status: AttendanceStatus 
 
 class EventResponse(BaseModel):
     id: int
     team_id: int
     title: str
-    event_type: EventType
+    event_type: str # +++ KORRIGIERT: Muss String sein, da wir .value übergeben
     start_time: datetime
     end_time: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
     created_by_trainer_id: int
-    
+    default_status: AttendanceStatus # +++ NEUES FELD
+
     class Config:
-        from_attributes = True
+        from_attributes = True # Erlaubt das Lesen von ORM-Objekten
 
 class AttendancePlayerResponse(BaseModel):
     player_id: int
@@ -77,7 +82,8 @@ def create_team_event(
 ):
     """
     Erstellt einen neuen Termin für ein Team.
-    WICHTIG: Erstellt automatisch "NOT_RESPONDED" Einträge für alle Spieler im Team.
+    WICHTIG: Erstellt automatisch Anwesenheits-Einträge für alle Spieler im Team,
+    basierend auf dem gewählten 'default_status'.
     """
     # Berechtigung prüfen: Jeder Trainer im Team darf Termine erstellen
     check_team_auth_and_get_role(db, current_trainer.id, event_data.team_id)
@@ -90,7 +96,8 @@ def create_team_event(
         start_time=event_data.start_time,
         end_time=event_data.end_time,
         location=event_data.location,
-        description=event_data.description
+        description=event_data.description,
+        default_status=event_data.default_status # +++ NEUES FELD
     )
     
     db.add(new_event)
@@ -104,14 +111,26 @@ def create_team_event(
         new_attendance = Attendance(
             event_id=new_event.id,
             player_id=player.id,
-            status=AttendanceStatus.NOT_RESPONDED
+            status=event_data.default_status # +++ NUTZT DEN STANDARD-STATUS
         )
         db.add(new_attendance)
         
     db.commit()
     db.refresh(new_event)
     
-    return new_event
+    # +++ KORRIGIERT: Gebe EventResponse manuell zurück, um Enum-Problem zu lösen
+    return EventResponse(
+        id=new_event.id,
+        team_id=new_event.team_id,
+        title=new_event.title,
+        event_type=new_event.event_type.value, # Wichtig: .value
+        start_time=new_event.start_time,
+        end_time=new_event.end_time,
+        location=new_event.location,
+        description=new_event.description,
+        created_by_trainer_id=new_event.created_by_trainer_id,
+        default_status=new_event.default_status
+    )
 
 @router.get("/list/{team_id}", response_model=List[EventResponse])
 def get_team_events(
@@ -124,11 +143,29 @@ def get_team_events(
     """
     check_team_auth_and_get_role(db, current_trainer.id, team_id)
     
-    events = db.query(TeamEvent).filter(
+    events_query = db.query(TeamEvent).filter(
         TeamEvent.team_id == team_id
     ).order_by(TeamEvent.start_time.asc()).all()
     
-    return events
+    # +++ KORREKTUR (FIX FÜR 500 ERROR):
+    # Wir müssen die Liste manuell erstellen, um das Enum (event_type)
+    # korrekt als String (.value) zu serialisieren.
+    response_list = []
+    for event in events_query:
+        response_list.append(EventResponse(
+            id=event.id,
+            team_id=event.team_id,
+            title=event.title,
+            event_type=event.event_type.value, # Wichtig: .value
+            start_time=event.start_time,
+            end_time=event.end_time,
+            location=event.location,
+            description=event.description,
+            created_by_trainer_id=event.created_by_trainer_id,
+            default_status=event.default_status
+        ))
+        
+    return response_list
 
 @router.get("/attendance/{event_id}", response_model=List[AttendancePlayerResponse])
 def get_event_attendance(

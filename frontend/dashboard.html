@@ -53,7 +53,7 @@
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
         
-        // Nutzt die bereits global verfügbare Funktion aus game_planning.js (wird im nächsten Schritt importiert)
+        // Nutzt die bereits global verfügbare Funktion aus game_planning.js
         if (typeof loadGames === 'function') {
             loadGames(teamId);
         } else {
@@ -68,7 +68,12 @@
             });
 
             if (response.status === 401 || response.status === 403) { 
-                logout(); 
+                // Rufen Sie die globale logout-Funktion auf (aus global.js)
+                if(typeof logout === 'function') {
+                    logout(); 
+                } else {
+                    window.location.href = "/";
+                }
                 return; 
             }
             if (!response.ok) {
@@ -116,15 +121,22 @@
         }
     }
 
-    // ACHTUNG: loadGames, deleteGame und startProtocol werden aus game_planning.js übernommen.
-    // Wir definieren hier nur die Stubs, falls game_planning.js noch nicht geladen ist (was bei Dashboard nicht der Fall sein sollte, da es die Startseite ist)
-    
     // --- Initialisierung ---
     function initDashboard() {
         console.log("initDashboard() wird aufgerufen.");
         loadTeams();
     }
     
+    // Wir müssen warten, bis global.js geladen ist, falls selectTeam/loadGames von dort abhängen
+    // (obwohl sie jetzt in game_planning.js sind)
     document.addEventListener('DOMContentLoaded', initDashboard);
 </script>
+
+<!-- DIESES SKRIPT LÄDT DIE FUNKTION "loadGames" FÜR DIE SPIELPLAN-BOX -->
 <script src="/static/game_planning.js"></script>
+
+<!-- 
+  ENTFERNT: 
+  <script src="/static/player_dashboard.js"></script> 
+  (Diese Zeile war der Fehler)
+-->

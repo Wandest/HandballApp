@@ -1,5 +1,6 @@
-# DATEI: backend/database.py (FINAL KORRIGIERT: Behebt Primärschlüssel- und Mapper-Fehler)
+# DATEI: backend/database.py
 # +++ NEU: ERWEITERT UM KALENDER- & ANWESENHEITSMODELLE (PHASE 10/12) +++
+# +++ NEU: ERWEITERT UM 'default_status' FÜR EVENTS +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -266,6 +267,10 @@ class TeamEvent(Base):
     
     location = Column(String, nullable=True)
     description = Column(Text, nullable=True)
+    
+    # +++ NEUE SPALTE (PHASE 10/12) +++
+    # Legt fest, welchen Status Spieler standardmäßig haben (z.B. "Zugesagt" oder "Keine Antwort")
+    default_status = Column(Enum(AttendanceStatus), default=AttendanceStatus.NOT_RESPONDED)
     
     team = relationship("Team", back_populates="events")
     creator = relationship("Trainer", back_populates="created_events", foreign_keys=[created_by_trainer_id])
