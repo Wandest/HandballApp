@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ title }}</title>
     <style>
+        /* ... (Alle deine CSS-Stile bleiben unverändert) ... */
         body {
             font-family: system-ui, sans-serif;
             background: linear-gradient(120deg, #1e3c72, #2a5298);
@@ -130,7 +131,14 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
-        .analysis-grid, .analysis-grid-1-col { /* NEU: 1-col */
+        /* +++ NEUES GRID FÜR KALENDER +++ */
+        .calendar-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr; /* 1/3 für Erstellung, 2/3 für Liste */
+            gap: 20px;
+        }
+        
+        .analysis-grid, .analysis-grid-1-col {
              display: grid;
             grid-template-columns: 1fr; 
             gap: 20px;
@@ -159,7 +167,7 @@
         .success { color: #38E838; }
         .error { color: #FF6666; }
         
-        input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"], select {
+        input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"], select, textarea {
           width: 100%;
           padding: 10px;
           margin-bottom: 10px;
@@ -170,6 +178,12 @@
           color: #333;
           font-size: 1em;
         }
+        /* Korrektur für Textarea */
+        textarea {
+            font-family: system-ui, sans-serif;
+            resize: vertical;
+        }
+        
         label {
             display: block;
             margin-bottom: 5px;
@@ -577,20 +591,40 @@
     <div class="sidebar">
         <h2>HandballApp</h2>
         
-        <a id="nav-dashboard" href="/dashboard" class="nav-link">🏠 Dashboard</a>
-        <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
-        <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
-        <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
-        <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
+        <!-- +++ KORRIGIERTE LOGIK: Dynamische Sidebar +++ -->
+        {% if user_type == "trainer" %}
+            <!-- Links für Trainer -->
+            <a id="nav-dashboard" href="/dashboard" class="nav-link">🏠 Dashboard</a>
+            <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
+            <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
+            <!-- +++ NEUER LINK (PHASE 12) +++ -->
+            <a id="nav-calendar" href="/calendar" class="nav-link">🗓️ Kalender</a>
+            
+            <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
+            <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
+        
+        {% elif user_type == "player" %}
+            <!-- Links für Spieler -->
+            <!-- HINWEIS: /dashboard leitet Spieler automatisch zu /player-dashboard um,
+                 aber wir linken direkt zur korrekten Seite für Klarheit -->
+            <a id="nav-player-dashboard" href="/player-dashboard" class="nav-link">🏠 Mein Portal</a>
+            <!-- Zukünftige Spieler-Links kommen hierher (z.B. Kalender, Wellness) -->
+            
+        {% endif %}
+        <!-- +++ ENDE KORRIGIERTE LOGIK +++ -->
 
         <div style="flex-grow: 1;"></div> 
 
         <button onclick="logout()" class="btn-logout">Logout</button>
-        <p style="text-align: center; font-size: 0.8em; opacity: 0.7; margin-top: 15px;">Angemeldet als: {{ trainer_name }}</p>
+        
+        <!-- +++ KORREKTUR: {{ display_name }} statt {{ trainer_name }} +++ -->
+        <p style="text-align: center; font-size: 0.8em; opacity: 0.7; margin-top: 15px;">Angemeldet als: {{ display_name }}</p>
     </div>
 
     <div class="main-content">
         
+        <!-- +++ KORREKTUR: Banner nur für Trainer anzeigen +++ -->
+        {% if user_type == "trainer" %}
         <div id="verification-banner" class="verification-banner">
             <span>
                 ⚠️ Dein Konto ist nicht verifiziert. Bitte überprüfe dein E-Mail-Postfach (ggf. Spam).
@@ -599,6 +633,7 @@
                 Refresh
             </button>
         </div>
+        {% endif %}
 
         <div class="header-bar">
             <h1>{{ title }}</h1>
@@ -617,14 +652,18 @@
     <script>
         // --- Globale Jinja2 Variablen in JS / Local Storage speichern ---
         
-        // Status wird für alle Seiten benötigt, auch nach einem Reload
-        const isVerified = {{ is_verified | tojson }};
-        localStorage.setItem('is_verified', isVerified); 
-        
-        // window.showToast ist hier dank der neuen Ladereihenfolge verfügbar
-        if (!isVerified) {
-            document.getElementById('verification-banner').classList.add('visible');
-        }
+        // +++ KORREKTUR: Nur für Trainer relevant +++
+        {% if user_type == "trainer" %}
+            const isVerified = {{ is_verified | tojson }};
+            localStorage.setItem('is_verified', isVerified); 
+            
+            if (!isVerified) {
+                document.getElementById('verification-banner').classList.add('visible');
+            }
+        {% else %}
+            // Spieler sind per Definition verifiziert (is_active = true)
+            localStorage.setItem('is_verified', 'true'); 
+        {% endif %}
     </script>
     
     </body>

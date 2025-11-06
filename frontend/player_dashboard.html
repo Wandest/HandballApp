@@ -1,17 +1,167 @@
-<div class="dashboard-grid">
-    <div class="card" style="grid-column: span 2;">
+<style>
+    /* Kopiere die notwendigen Stile aus season_analysis.html
+     für das Video-Schnitt-Center und die Statistik-Tabellen.
+    */
+    .stats-table tfoot tr {
+        background-color: rgba(0,0,0,0.3); 
+        font-weight: bold; 
+        border-top: 2px solid #ffcc00;
+    }
+    
+    .video-cutter-layout {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr; /* 2 Spalten: Filter & Video */
+        gap: 20px;
+        margin-top: 15px;
+    }
+    .cutter-controls .form-section {
+        margin-bottom: 15px;
+    }
+    .cutter-controls label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #ffcc00;
+    }
+    .cutter-controls select {
+        width: 100%;
+        padding: 10px;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        color: #333;
+        font-size: 1em;
+    }
+    #cutter-playlist-container {
+        max-height: 450px;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.1);
+    }
+    .playlist-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: background-color 0.15s;
+    }
+    .playlist-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .playlist-item.active {
+        background-color: #ffcc00;
+        color: #1e3c72;
+        font-weight: bold;
+    }
+    .playlist-item .time {
+        font-weight: bold;
+        color: #38E838;
+        margin-right: 10px;
+    }
+    .playlist-item .opponent {
+        font-size: 0.9em;
+        opacity: 0.8;
+        display: block;
+        margin-top: 4px;
+    }
+    
+    #cutter-player-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        height: 0;
+        overflow: hidden;
+        background: #000;
+        border-radius: 5px;
+    }
+    #cutter-youtube-player {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    #cutter-video-title {
+        margin-top: 10px;
+        margin-bottom: 0;
+        text-align: center;
+        color: #fff;
+        opacity: 0.9;
+    }
+</style>
+
+<div class="analysis-grid-1-col">
+
+    <div class="card">
         <div class="card-content">
-            <h2>Willkommen im Spieler Portal!</h2>
-            <p style="font-size: 1.1em; color: #38E838;">
-                Dein Trainer-Team arbeitet daran, dein individuelles Portal freizuschalten.
+            <h2>📊 Deine Saison-Statistik (Aggregiert)</h2>
+            <p style="opacity: 0.8; font-size: 0.9em;">
+                Dies ist eine Zusammenfassung deiner persönlichen Leistung in allen Saisonspielen.
             </p>
-            <p style="opacity: 0.8;">
-                **Aktuell verfügbare Funktionen:** Du bist erfolgreich angemeldet und kannst dich abmelden.
-                Die vollständigen Funktionen (Kalender, individuelle Stats, Wellness-Log) werden in Phase 10 implementiert.
+            
+            <div id="stats-container-wrapper">
+                <h3 style="margin-top: 20px;">Feldspieler-Statistik</h3>
+                <div class="stats-table-container" id="stats-table-container-field-season">
+                    <p style="opacity: 0.6; text-align: center;">Lade deine Feld-Statistik...</p>
+                </div>
+                
+                <h3 style="margin-top: 20px;">Torwart-Statistik</h3>
+                <div class="stats-table-container" id="stats-table-container-goalie-season">
+                    <p style="opacity: 0.6; text-align: center;">Lade deine Torwart-Statistik...</p>
+                </div>
+        
+                <h3 style="margin-top: 20px;">Team-Aktionen Statistik</h3>
+                <div class="stats-table-container" id="stats-table-container-custom-season">
+                    <p style.opacity: 0.6; text-align: center;>Lade deine Team-Aktionen...</p>
+                </div>
+            </div>
+            
+            <div id="player-stats-message" class="message"></div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-content">
+            <h2>🎬 Deine Video-Szenen (Saison)</h2>
+            <p style="opacity: 0.8; font-size: 0.9em;">
+                Filtere deine Aktionen aus allen Saisonspielen. Klicke auf einen Eintrag, um die Szene abzuspielen.
             </p>
-            <button onclick="logout()" class="btn btn-danger" style="width: auto; margin-top: 20px;">
-                Sicher abmelden
-            </button>
+            
+            <div class="video-cutter-layout">
+                <div class="cutter-controls">
+                    <div class="form-section active">
+                        <label for="cutter-action-select">Aktion auswählen:</label>
+                        <select id="cutter-action-select">
+                            <option value="all" selected>Alle Aktionen</option>
+                        </select>
+                    </div>
+                    <div class="form-section active">
+                        <label for="cutter-game-select">Spiel auswählen:</label>
+                        <select id="cutter-game-select">
+                            <option value="all" selected>Alle Spiele</option>
+                        </select>
+                    </div>
+                    
+                    <h3 style="margin-top: 20px; margin-bottom: 10px;">Deine Schnitt-Liste (Playlist)</h3>
+                    <div id="cutter-playlist-container">
+                        <p style="opacity: 0.6; text-align: center; padding: 20px;">
+                            Lade deine Video-Clips...
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="cutter-video">
+                    <div id="cutter-player-container">
+                        <div id="cutter-youtube-player" style="display: flex; align-items: center; justify-content: center; color: #aaa;">
+                            Video-Player
+                        </div>
+                    </div>
+                    <h4 id="cutter-video-title">(Kein Video geladen)</h4>
+                </div>
+            </div>
+            
         </div>
     </div>
 </div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="/static/player_dashboard.js"></script>

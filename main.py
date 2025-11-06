@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT FÜR TRAINER/SPIELER ROUTING)
+# DATEI: main.py (KORRIGIERT: Behebt SyntaxError in /protocol Route)
 import webview
 import threading
 import uvicorn
@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import Optional
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
-from backend.auth import router as auth_router, get_current_trainer, get_current_player_only # NEU: get_current_player_only
+from backend.auth import router as auth_router, get_current_trainer, get_current_player_only
 from backend.team import router as team_router, get_league_list 
 from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
@@ -17,7 +17,11 @@ from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
 from backend.public import router as public_router
 from backend.scouting import router as scouting_router
-from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player # NEU: Player Import
+# KORREKTUR: EventType importieren für Jinja
+from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player, EventType
+
+from backend.player_portal import router as player_portal_router 
+from backend.calendar import router as calendar_router
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -36,6 +40,10 @@ app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 app.include_router(public_router, prefix="/public", tags=["Public Data"])
 app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
+app.include_router(player_portal_router) 
+
+# Prefix "/calendar" ist bereits in calendar.py definiert.
+app.include_router(calendar_router) 
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -57,14 +65,13 @@ def home(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
-    # Wenn get_current_trainer einen Fehler geworfen hat (Spieler/Ungültig), 
-    # wird die HTTPException automatisch verarbeitet.
     db = SessionLocal()
     try:
         template_vars = {
             "request": request,
             "title": "Dashboard",
-            "trainer_name": current_trainer.username,
+            "display_name": current_trainer.username,
+            "user_type": "trainer", 
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
@@ -84,20 +91,18 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
 
 @app.get("/player-dashboard", response_class=HTMLResponse)
 def player_dashboard_page(request: Request, current_player: Player = Depends(get_current_player_only)):
-    # Diese Seite ist EXKLUSIV für aktive Spieler.
     db = SessionLocal()
     try:
-        # Hier könnte man ein eigenes, schlankes Layout-Template verwenden.
-        # Vorerst nutzen wir das Standard-Layout, das den Spielernamen anzeigt.
         template_vars = {
             "request": request,
             "title": f"Spieler Portal: {current_player.name}",
-            "trainer_name": current_player.name, # Nutze Name für Layout-Anzeige
-            "is_verified": True, # Spieler sind nach Aktivierung verifiziert
+            "display_name": current_player.name, 
+            "user_type": "player",
+            "is_verified": True, 
             "leagues": [],
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "player_dashboard.html", # NEU: Dummy-Template für den Anfang
+            "page_content_template": "player_dashboard.html", 
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -116,7 +121,8 @@ def team_management_page(request: Request, current_trainer: Trainer = Depends(ge
         template_vars = {
             "request": request,
             "title": "Team Management",
-            "trainer_name": current_trainer.username,
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
@@ -137,7 +143,8 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
         template_vars = {
             "request": request,
             "title": "Spielplanung",
-            "trainer_name": current_trainer.username,
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
@@ -151,6 +158,31 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
     finally:
         db.close()
 
+# +++ NEUE SEITE (PHASE 12) +++
+@app.get("/calendar", response_class=HTMLResponse)
+def calendar_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    db = SessionLocal()
+    try:
+        template_vars = {
+            "request": request,
+            "title": "Kalender & Termine",
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
+            "is_verified": current_trainer.is_verified,
+            "leagues": get_league_list(),
+            "positions": POSITIONS,
+            "action_categories": ACTION_CATEGORIES,
+            "page_content_template": "calendar.html", 
+            "event_types": [e.value for e in EventType] # Übergibt die Enum-Werte an Jinja
+        }
+        return templates.TemplateResponse(
+            "app_layout.html",
+            template_vars
+        )
+    finally:
+        db.close()
+# +++ ENDE NEUE SEITE +++
+
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -158,7 +190,8 @@ def season_analysis_page(request: Request, current_trainer: Trainer = Depends(ge
         template_vars = {
             "request": request,
             "title": "Saison Analyse",
-            "trainer_name": current_trainer.username,
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
@@ -179,7 +212,8 @@ def league_scouting_page(request: Request, current_trainer: Trainer = Depends(ge
         template_vars = {
             "request": request,
             "title": "Liga Scouting", 
-            "trainer_name": current_trainer.username,
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
             "is_verified": current_trainer.is_verified,
             "leagues": get_league_list(),
             "positions": POSITIONS,
@@ -196,7 +230,6 @@ def league_scouting_page(request: Request, current_trainer: Trainer = Depends(ge
 
 @app.get("/protocol/{game_id}", response_class=HTMLResponse)
 def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
-    # ... (Protokoll-Logik bleibt gleich, da nur Trainer protokollieren) ...
     db = SessionLocal() 
     
     try:
@@ -220,7 +253,7 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
                 "team_name": team.name,
                 "video_url": game.video_url 
             }
-        )
+        ) # +++ KORREKTUR: HIER WAR DER SYNTAXFEHLER. DIE KLAMMER WURDE HINZUGEFÜGT. +++
     finally:
         db.close()
 

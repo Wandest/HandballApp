@@ -1,4 +1,5 @@
 # DATEI: backend/database.py (FINAL KORRIGIERT: Behebt Primärschlüssel- und Mapper-Fehler)
+# +++ NEU: ERWEITERT UM KALENDER- & ANWESENHEITSMODELLE (PHASE 10/12) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -23,6 +24,20 @@ class UserRole(enum.Enum):
     MAIN_COACH = "MAIN_COACH"
     ASSISTANT_COACH = "ASSISTANT_COACH"
     TEAM_ADMIN = "TEAM_ADMIN"
+
+# +++ NEUE ENUMS FÜR PHASE 12 +++
+class EventType(enum.Enum):
+    TRAINING = "Training"
+    GAME = "Spiel"
+    OTHER = "Sonstiges"
+
+class AttendanceStatus(enum.Enum):
+    ATTENDING = "Zugesagt"
+    DECLINED = "Abgesagt"
+    TENTATIVE = "Vielleicht"
+    NOT_RESPONDED = "Keine Antwort"
+# +++ ENDE NEUE ENUMS +++
+
 
 # ==================================================
 # Assoziationstabelle (Trainer : Team)
@@ -56,6 +71,9 @@ class Trainer(Base):
     )
 
     scouting_reports = relationship("ScoutingReport", back_populates="trainer", cascade="all, delete-orphan")
+    
+    # +++ NEU: Beziehung zu erstellten Events (Phase 12) +++
+    created_events = relationship("TeamEvent", back_populates="creator", foreign_keys="[TeamEvent.created_by_trainer_id]")
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
@@ -77,6 +95,9 @@ class Team(Base):
     games = relationship("Game", back_populates="team", cascade="all, delete-orphan") 
     custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
     scouting_reports = relationship("ScoutingReport", back_populates="team", cascade="all, delete-orphan")
+    
+    # +++ NEU: Beziehung zu Events (Phase 12) +++
+    events = relationship("TeamEvent", back_populates="team", cascade="all, delete-orphan")
 
 
 # --- Verknüpfungstabelle (Spieler:Spiel) ---
@@ -94,7 +115,6 @@ game_participations_table = Table(
 # ---------------------------------
 class Player(Base):
     __tablename__ = "players"
-    # KORREKTUR: Primärschlüssel MUSS vorhanden sein
     id = Column(Integer, primary_key=True, index=True) 
     
     name = Column(String)
@@ -110,7 +130,6 @@ class Player(Base):
     
     team = relationship("Team", back_populates="players")
     
-    # KORREKTUR: Eindeutige Namen für Action-Relationen
     actions_as_field_player = relationship( 
         "Action", 
         foreign_keys="[Action.player_id]", 
@@ -129,6 +148,9 @@ class Player(Base):
         secondary=game_participations_table,
         back_populates="participating_players"
     )
+    
+    # +++ NEU: Beziehung zu Anwesenheiten (Phase 10) +++
+    event_attendances = relationship("Attendance", back_populates="player", cascade="all, delete-orphan")
 
 # ---------------------------------
 # 4. Game (Spiel) Modell
@@ -170,13 +192,11 @@ class Action(Base):
     
     video_timestamp = Column(String, nullable=True) # (PHASE 8)
     
-    # NEU (PHASE 10.5): Zeitstempel vom Server für Spielzeit-Berechnung
     server_timestamp = Column(DateTime, default=datetime.utcnow) 
 
     player_id = Column(Integer, ForeignKey("players.id"), nullable=True) 
     active_goalie_id = Column(Integer, ForeignKey("players.id"), nullable=True)
     
-    # Mapped auf die korrigierten Namen in Player
     player = relationship(
         "Player", 
         foreign_keys=[player_id], 
@@ -225,6 +245,50 @@ class ScoutingReport(Base):
     game = relationship("Game", back_populates="scouting_reports")
     team = relationship("Team", back_populates="scouting_reports")
     trainer = relationship("Trainer", back_populates="scouting_reports")
+
+
+# +++ NEUES MODELL (PHASE 12) +++
+# ---------------------------------
+# 8. TeamEvent (Kalender-Termin) Modell
+# ---------------------------------
+class TeamEvent(Base):
+    __tablename__ = "team_events"
+    id = Column(Integer, primary_key=True, index=True)
+    
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    created_by_trainer_id = Column(Integer, ForeignKey("trainers.id"))
+    
+    title = Column(String, index=True)
+    event_type = Column(Enum(EventType), default=EventType.TRAINING)
+    
+    start_time = Column(DateTime, default=datetime.utcnow)
+    end_time = Column(DateTime, nullable=True)
+    
+    location = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    
+    team = relationship("Team", back_populates="events")
+    creator = relationship("Trainer", back_populates="created_events", foreign_keys=[created_by_trainer_id])
+    
+    # Beziehung zur Anwesenheits-Tabelle
+    attendances = relationship("Attendance", back_populates="event", cascade="all, delete-orphan")
+
+
+# +++ NEUES MODELL (PHASE 10/12) +++
+# ---------------------------------
+# 9. Attendance (Anwesenheit) Modell
+# ---------------------------------
+class Attendance(Base):
+    __tablename__ = "attendances"
+    event_id = Column(Integer, ForeignKey("team_events.id"), primary_key=True)
+    player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
+    
+    status = Column(Enum(AttendanceStatus), default=AttendanceStatus.NOT_RESPONDED)
+    reason = Column(String, nullable=True) # z.B. "Krank", "Urlaub"
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    event = relationship("TeamEvent", back_populates="attendances")
+    player = relationship("Player", back_populates="event_attendances")
 
 
 # Initialisierungsfunktion

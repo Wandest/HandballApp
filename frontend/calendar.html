@@ -1,0 +1,176 @@
+<!-- 
+  DATEI: frontend/calendar.html
+  KORREKTUR: Dies ist das fehlende HTML-Template. 
+  Dein Server (main.py) lädt diese Datei in das Hauptlayout.
+-->
+<style>
+    /* Spezifische Stile für die Kalenderseite */
+    .calendar-layout {
+        display: grid;
+        grid-template-columns: 1fr 2fr; /* 1/3 für Erstellung, 2/3 für Liste */
+        gap: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .calendar-layout {
+            grid-template-columns: 1fr; /* Stapeln auf Mobilgeräten */
+        }
+    }
+
+    #event-list-container {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .event-item {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 5px solid #607d8b; /* Standard-Farbe (Sonstiges) */
+    }
+    
+    .event-item.event-type-Training { border-left-color: #00bcd4; }
+    .event-item.event-type-Spiel { border-left-color: #38E838; }
+    .event-item.event-type-Sonstiges { border-left-color: #607d8b; }
+
+    .event-info h4 {
+        margin: 0 0 5px 0;
+        color: #fff;
+    }
+    .event-info p {
+        margin: 0;
+        font-size: 0.9em;
+        opacity: 0.8;
+    }
+    .event-actions .btn {
+        margin-top: 0;
+        margin-left: 10px;
+    }
+    
+    /* Stile für Anwesenheits-Modal */
+    #attendance-modal .modal-content {
+        max-width: 600px;
+    }
+    #attendance-modal-stats {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 20px;
+        font-size: 1.1em;
+    }
+    #attendance-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.1);
+    }
+    .attendance-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .attendance-item:last-child {
+        border-bottom: none;
+    }
+    .attendance-reason {
+        font-size: 0.9em;
+        opacity: 0.7;
+        margin-left: 5px;
+    }
+    
+    /* Status-Farben */
+    .attendance-status-ATTENDING { color: #38E838; font-weight: bold; }
+    .attendance-status-DECLINED { color: #f44336; font-weight: bold; }
+    .attendance-status-TENTATIVE { color: #ffcc00; font-weight: bold; }
+    .attendance-status-NOT_RESPONDED { color: #9e9e9e; opacity: 0.8; }
+    
+</style>
+
+<div class="calendar-layout">
+    <div class="card">
+        <div class="card-content">
+            <h2>Termin erstellen</h2>
+            <h3><span id="calendar-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
+            
+            <form id="create-event-form">
+                <div class="form-section active">
+                    <label for="event-title">Titel:</label>
+                    <input type="text" id="event-title" placeholder="z.B. Abschlusstraining" required>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="event-type">Termin-Typ:</label>
+                    <select id="event-type" required>
+                        <!-- 
+                          Diese Werte kommen aus der Jinja2-Variable 'event_types',
+                          die von main.py übergeben wird.
+                        -->
+                        {% for type in event_types %}
+                            <option value="{{ type }}">{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="event-start-time">Beginn:</label>
+                    <input type="datetime-local" id="event-start-time" required>
+                </div>
+                
+                <div class="form-section active">
+                    <label for="event-end-time">Ende (Optional):</label>
+                    <input type="datetime-local" id="event-end-time">
+                </div>
+                
+                <div class="form-section active">
+                    <label for="event-location">Ort (Optional):</label>
+                    <input type="text" id="event-location" placeholder="z.B. Halle am Stadion">
+                </div>
+                
+                <div class="form-section active">
+                    <label for="event-description">Beschreibung (Optional):</label>
+                    <textarea id="event-description" rows="4" placeholder="z.B. Treffpunkt 18:45 in der Kabine..."></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full-width" id="add-event-button" disabled>
+                    Termin erstellen
+                </button>
+            </form>
+            <div id="event-message" class="message"></div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-content">
+            <h2>Kalender / Terminliste</h2>
+            <div id="event-list-container">
+                <p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal für Anwesenheit -->
+<div id="attendance-modal" class="modal">
+    <div class="modal-content card">
+        <span class="close-btn" onclick="closeAttendanceModal()">&times;</span>
+        <div class="card-content">
+            <h3 id="attendance-modal-title">Anwesenheit</h3>
+            <div id="attendance-modal-stats"></div>
+            <div id="attendance-list">
+                <!-- Inhalt wird per JS geladen -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  Diese Seite lädt die KORRIGIERTE calendar.js-Datei.
+  Der Fehler war in der JS-Datei, nicht hier.
+-->
+<script src="/static/calendar.js"></script>
