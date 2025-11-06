@@ -1,7 +1,5 @@
 # DATEI: backend/time_tracking.py
-# NEUE DATEI ZUM ENTSCHLACKEN (auf Wunsch des Benutzers)
-# Enthält die gesamte Logik zur Berechnung der Spielzeit (Time on Court)
-# Löst den "H2 00:00"-Bug durch eine "Halftime-Boundary"-Methode
+# NEUE DATEI: Entschlackt und stellt die Kernfunktionen zur Verfügung.
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, and_, distinct
@@ -24,12 +22,10 @@ class Interval:
     def __init__(self, start: datetime, end: datetime):
         self.start = start
         self.end = end
-        # WICHTIG: Kein 'half'-Tag mehr, da dies den Bug verursacht hat
 
 def get_halftime_boundary(db: Session, game_id: int) -> Optional[datetime]:
     """
     Findet den genauen Zeitstempel der ersten Aktion in H2.
-    Dies dient als "Trennlinie" (Boundary).
     """
     first_h2_action = db.query(Action.server_timestamp).filter(
         Action.game_id == game_id,
@@ -43,7 +39,7 @@ def get_clock_intervals(db: Session, game_id: int) -> List[Interval]:
     Ermittelt ALLE Zeit-Intervalle, in denen die Spieluhr lief.
     """
     clock_intervals = []
-    clock_action_types = ['GAME_START', 'GAME_PAUSE']
+    clock_action_types = ['GAME_START', 'GAME_PAUSE', 'GAME_RESUME']
     
     query = db.query(Action.action_type, Action.server_timestamp).filter(
         Action.game_id == game_id,
@@ -55,7 +51,8 @@ def get_clock_intervals(db: Session, game_id: int) -> List[Interval]:
     start_time = None
     for action_type, timestamp in clock_actions:
         if timestamp is None: continue
-        if action_type == 'GAME_START':
+        
+        if action_type == 'GAME_START' or action_type == 'GAME_RESUME':
             if start_time is None:
                 start_time = timestamp
         elif action_type == 'GAME_PAUSE':
@@ -105,70 +102,50 @@ def get_player_intervals(db: Session, game_id: int) -> Dict[int, List[Interval]]
         
     return player_intervals_map
 
-def calculate_all_player_times(
-    db: Session, 
-    game_id: int, 
-    player_ids: List[int],
+def calculate_time_on_court(
+    all_player_intervals: Dict[int, List[Interval]],
+    clock_intervals: List[Interval],
+    halftime_boundary: Optional[datetime],
     half: str
 ) -> Dict[int, int]:
     """
-    Dies ist die KERNFUNKTION, die von action.py aufgerufen wird.
-    Sie berechnet die Zeit für alle Spieler und respektiert den H1/H2-Filter.
+    Berechnet die Spielzeit für jeden Spieler basierend auf Takt-Intervallen und dem H1/H2-Filter.
+    Wird von action.py und stats_service.py verwendet.
     """
+    player_times_seconds: Dict[int, int] = {}
     
-    # 1. Lade alle Intervalle für das gesamte Spiel
-    clock_intervals = get_clock_intervals(db, game_id)
-    all_player_intervals = get_player_intervals(db, game_id)
-    
-    # 2. Finde die H1/H2-Trennlinie
-    halftime_boundary = get_halftime_boundary(db, game_id)
-    
-    # 3. Definiere das Zeitfenster (Boundary) für die Berechnung
-    game_start_time = clock_intervals[0].start if clock_intervals else datetime.utcnow()
-    game_end_time = datetime.utcnow()
+    if not clock_intervals:
+        return {player_id: 0 for player_id in all_player_intervals.keys()}
+        
+    game_start_time = clock_intervals[0].start
+    game_end_time = datetime.utcnow() 
     
     boundary: Optional[tuple[datetime, datetime]] = None
     
     if half == 'H1':
-        # H1 ist vom Spielstart bis zur H2-Trennlinie (oder bis jetzt, falls H2 nie gestartet wurde)
         boundary_end = halftime_boundary if halftime_boundary else game_end_time
         boundary = (game_start_time, boundary_end)
     elif half == 'H2':
-        # H2 ist von der Trennlinie bis jetzt
         if halftime_boundary:
             boundary = (halftime_boundary, game_end_time)
         else:
-            # Wenn H2 nie gestartet wurde, ist die Zeit für H2 = 0
-            return {player_id: 0 for player_id in player_ids}
-    # else: 'ALL' -> boundary bleibt None (keine Einschränkung)
-
+            return {player_id: 0 for player_id in all_player_intervals.keys()}
     
-    # 4. Berechne die Zeit für jeden Spieler
-    player_times_seconds: Dict[int, int] = {}
-    
-    for player_id in player_ids:
+    for player_id, player_intervals in all_player_intervals.items():
         total_seconds = 0
-        player_intervals = all_player_intervals.get(player_id, [])
         
-        if not clock_intervals or not player_intervals:
-            player_times_seconds[player_id] = 0
-            continue
-
         for p_interval in player_intervals:
             for c_interval in clock_intervals:
                 
-                # Finde die Überschneidung von Spieler-auf-Feld und Uhr-läuft
                 overlap_start = max(p_interval.start, c_interval.start)
                 overlap_end = min(p_interval.end, c_interval.end)
                 
                 if overlap_start < overlap_end:
                     
-                    # JETZT: Wende den H1/H2-Filter (boundary) an
                     if boundary:
                         final_start = max(overlap_start, boundary[0])
                         final_end = min(overlap_end, boundary[1])
                     else:
-                        # (half == 'ALL')
                         final_start = overlap_start
                         final_end = overlap_end
                         
@@ -179,3 +156,20 @@ def calculate_all_player_times(
         player_times_seconds[player_id] = int(total_seconds)
             
     return player_times_seconds
+
+def calculate_all_player_times(
+    db: Session, 
+    game_id: int, 
+    player_ids: List[int],
+    half: str
+) -> Dict[int, int]:
+    """
+    Führt den gesamten Ablauf für ein EINZELNES Spiel aus (für Live-Statistiken).
+    """
+    clock_intervals = get_clock_intervals(db, game_id)
+    all_player_intervals = get_player_intervals(db, game_id)
+    halftime_boundary = get_halftime_boundary(db, game_id)
+    
+    results = calculate_time_on_court(all_player_intervals, clock_intervals, halftime_boundary, half)
+    
+    return {pid: results.get(pid, 0) for pid in player_ids}

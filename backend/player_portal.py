@@ -1,5 +1,5 @@
-# DATEI: backend/player_portal.py (Finaler Absagegrund Fix und Statistik/Clips Routen)
-# +++ NEU: Implementierung von /portal/stats und /portal/clips +++
+# DATEI: backend/player_portal.py (Finaler Absagegrund Fix und Statistik/Clips Implementierung)
+# +++ ENTSCHLACKT: Statistik-Logik in stats_service.py ausgelagert. +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -11,17 +11,14 @@ from datetime import datetime, timedelta
 
 from backend.database import (
     SessionLocal, Player, Game, Action, CustomAction, 
-    game_participations_table, TeamEvent, Attendance, AttendanceStatus
+    game_participations_table, TeamEvent, Attendance, AttendanceStatus, EventType
 )
 from backend.auth import get_current_player_only
 from backend.action import PlayerStats, ActionPlaylistResponse
-from backend.time_tracking import (
-    calculate_all_player_times, 
-    format_seconds,
-    # HIER FEHLTEN DIE IMPORTE:
-    get_clock_intervals, 
-    get_player_intervals 
-)
+from backend.time_tracking import format_seconds
+# NEU: Import des Statistik-Service
+from backend.stats_service import get_season_stats_for_team
+
 
 router = APIRouter(
     prefix="/portal",
@@ -38,7 +35,7 @@ def get_db():
         db.close()
 
 # ==================================================
-# Pydantic Modelle 
+# Pydantic Modelle (Unverändert)
 # ==================================================
 
 class PlayerEventResponse(BaseModel):
@@ -59,260 +56,116 @@ class PlayerEventResponse(BaseModel):
         from_attributes = True
 
 class PlayerAttendanceUpdate(BaseModel):
-    # Status muss der ENUM NAME sein (z.B. 'ATTENDING', 'DECLINED')
     status: str 
     reason: Optional[str] = None
 
+
 # ==================================================
-# NEUE ENDPUNKTE: Spieler-Statistiken (Phase 10)
+# Endpunkte: Spieler-Statistiken und Clips (NEU)
 # ==================================================
 
+# NEU: Liefert die aggregierten Saison-Statistiken des Spielers
 @router.get("/stats", response_model=Dict[str, str])
 def get_my_season_stats(
     current_player: Player = Depends(get_current_player_only),
     db: Session = Depends(get_db)
 ):
-    """
-    Berechnet und liefert die Saison-Statistik NUR für den aktuellen Spieler,
-    getrennt nach Feldspieler- und Torwart-Sektion.
-    """
-    player_id = current_player.id
     team_id = current_player.team_id
+    player_id = current_player.id
     
-    # --- 1. Datenbasis laden (entspricht Logik aus action.py::get_season_stats, aber gefiltert) ---
-    saison_games = db.query(Game).filter(
-        Game.team_id == team_id,
-        Game.game_category == 'Saison'
-    ).all()
-    saison_game_ids = [g.id for g in saison_games]
+    # RUFT JETZT DEN SERVICE AUF
+    all_team_stats = get_season_stats_for_team(db, team_id)
+    my_stats = next((s for s in all_team_stats if s.player_id == player_id), None)
 
-    if not saison_game_ids:
-         return {"field_stats": "", "goalie_stats": "", "custom_stats": ""}
-
-    player_ids = [player_id] # Nur der aktuelle Spieler
-    custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team_id).all()
-    custom_action_names = [ca.name for ca in custom_actions]
-
-    action_subquery = db.query(Action).filter(Action.game_id.in_(saison_game_ids)).subquery()
-
-    # Case Statements für die Aktionen
-    case_statements = [
-        func.count(case((action_subquery.c.action_type == 'Goal', 1), else_=None)).label('goals'),
-        func.count(case((action_subquery.c.action_type == 'Miss', 1), else_=None)).label('misses'),
-        func.count(case((action_subquery.c.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
-        func.count(case((action_subquery.c.action_type == 'Fehlpass', 1), else_=None)).label('fehlpaesse'),
-        func.count(case((action_subquery.c.action_type == 'Goal_7m', 1), else_=None)).label('seven_meter_goals'),
-        func.count(case((action_subquery.c.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
-        func.count(case((action_subquery.c.action_type == 'Save', 1), else_=None)).label('saves'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
-        func.count(case(
-            (and_(action_subquery.c.action_type == 'OppGoal', action_subquery.c.active_goalie_id == Player.id), 1),
-            else_=None
-        )).label('opponent_goals_received'),
-    ]
-    
-    # Custom Action Statements
-    safe_custom_labels = {}
-    for name in custom_action_names:
-        safe_label = f"custom_{re.sub(r'[^A-Za-z09_]', '_', name)}"
-        safe_custom_labels[name] = safe_label
-        case_statements.append(
-            func.count(case((action_subquery.c.action_type == name, 1), else_=None)).label(safe_label)
-        )
-
-    # Spiele teilgenommen (Game Participation)
-    games_played_subquery = (
-        db.query(
-            game_participations_table.c.player_id,
-            func.count(distinct(game_participations_table.c.game_id)).label("games_played"),
-        )
-        .join(Game, Game.id == game_participations_table.c.game_id)
-        .filter(Game.game_category == 'Saison', Game.team_id == team_id, game_participations_table.c.player_id == player_id)
-        .group_by(game_participations_table.c.player_id)
-        .subquery()
-    )
-    
-    stats_query = (
-        db.query(
-            Player.id, Player.name, Player.number, Player.position,
-            func.coalesce(games_played_subquery.c.games_played, 0).label("games_played"),
-            *case_statements
-        )
-        .select_from(Player)
-        .outerjoin(action_subquery, 
-            or_(
-                (action_subquery.c.player_id == Player.id), 
-                (action_subquery.c.active_goalie_id == Player.id)
-            )
-        )
-        .outerjoin(games_played_subquery, games_played_subquery.c.player_id == Player.id)
-        .filter(Player.id == player_id) # NUR der aktuelle Spieler
-        .group_by(Player.id, Player.name, Player.number, Player.position, games_played_subquery.c.games_played)
-    )
-    
-    stats_result = stats_query.first()
-    
-    if not stats_result:
+    if not my_stats:
         return {"field_stats": "", "goalie_stats": "", "custom_stats": ""}
 
-    # --- 2. Zeitberechnung (komplex, daher manuell aggregiert) ---
-    # Die Funktionen müssen importiert werden, da sie nicht intern in dieser Datei sind
-    all_clock_intervals_map = {game.id: get_clock_intervals(db, game.id) for game in saison_games} 
-    all_player_intervals_map = {game.id: get_player_intervals(db, game.id) for game in saison_games} 
+    # 1. Erstelle die HTML-Strings (Basierend auf der Position)
     
-    total_time_on_court_seconds = 0
-    for game in saison_games:
-        # Wir müssen die calculate_all_player_times-Funktion für jedes Spiel aufrufen, um die
-        # Zeit zu berechnen.
-        player_time_for_game = calculate_all_player_times(db, game.id, [player_id], 'ALL').get(player_id, 0)
-        total_time_on_court_seconds += player_time_for_game
-
-    # --- 3. Pydantic Modell erstellen und HTML rendern ---
-    row_data = stats_result._asdict()
-    custom_counts_dict = {name: row_data.get(safe_label, 0) for name, safe_label in safe_custom_labels.items()}
-    
-    player_stats_data = PlayerStats(
-        player_id=player_id, 
-        player_name=row_data.get('name'),
-        player_number=row_data.get('number'), 
-        position=row_data.get('position'),
-        games_played=row_data.get('games_played', 0), 
-        goals=row_data.get('goals', 0),
-        misses=row_data.get('misses', 0),
-        tech_errors=row_data.get('tech_errors', 0),
-        fehlpaesse=row_data.get('fehlpaesse', 0), 
-        seven_meter_goals=row_data.get('seven_meter_goals', 0),
-        seven_meter_misses=row_data.get('seven_meter_misses', 0),
-        seven_meter_caused=row_data.get('seven_meter_caused', 0),
-        seven_meter_saves=row_data.get('seven_meter_saves', 0),
-        seven_meter_received=row_data.get('seven_meter_received', 0),
-        saves=row_data.get('saves', 0),
-        opponent_goals_received=row_data.get('opponent_goals_received', 0),
-        custom_counts=custom_counts_dict,
-        time_on_court_seconds=total_time_on_court_seconds, 
-        time_on_court_display=format_seconds(total_time_on_court_seconds)
-    )
-
-    is_goalie = player_stats_data.position == 'Torwart'
-
-    # --- 4. HTML-Generierung (nur die benötigte Sektion) ---
-    field_html = ""
-    goalie_html = ""
-    
-    # A. Feldspieler-Tabelle
-    if not is_goalie and player_stats_data.games_played > 0:
-        total_goals = player_stats_data.goals + player_stats_data.seven_meter_goals
-        total_shots = total_goals + player_stats_data.misses + player_stats_data.seven_meter_misses
-        # WICHTIG: Die JavaScript-Funktion .toFixed(0) ist in Python nicht verfügbar. Wir nutzen Python-String-Formatierung.
-        shot_quote = f"{round((total_goals / total_shots) * 100)}%" if total_shots > 0 else '—'
-        seven_meter_attempts = player_stats_data.seven_meter_goals + player_stats_data.seven_meter_misses
-        tore_pro_spiel = f"{total_goals / player_stats_data.games_played:.1f}" if player_stats_data.games_played > 0 else '0.0'
+    def create_field_html(stats: PlayerStats):
+        if stats.position == 'Torwart': return ""
+        if stats.games_played == 0: return ""
         
-        field_html = f"""
+        total_shots = stats.goals + stats.misses + stats.seven_meter_goals + stats.seven_meter_misses
+        quote = f"{((stats.goals + stats.seven_meter_goals) / total_shots * 100):.0f}%" if total_shots > 0 else '—'
+        total_goals = stats.goals + stats.seven_meter_goals
+        
+        return f"""
             <table class="stats-table">
-                <thead><tr>
-                    <th>Spiele</th>
-                    <th>Zeit (M:S)</th>
-                    <th>Tore ges.</th>
-                    <th>Fehlwürfe</th>
-                    <th>Quote</th>
-                    <th>Tore/Spiel</th>
-                    <th>7m G/A</th>
-                    <th>Tech. Fehler</th>
-                    <th>Fehlpässe</th>
-                    <th>7m Ver.</th>
-                </tr></thead>
+                <thead><tr><th>Wert</th><th>Total</th><th>Quote</th></tr></thead>
                 <tbody>
-                    <tr>
-                        <td>{player_stats_data.games_played}</td>
-                        <td>{player_stats_data.time_on_court_display}</td>
-                        <td>{total_goals}</td>
-                        <td>{player_stats_data.misses + player_stats_data.seven_meter_misses}</td>
-                        <td>{shot_quote}</td>
-                        <td>{tore_pro_spiel}</td>
-                        <td>{player_stats_data.seven_meter_goals}/{seven_meter_attempts}</td>
-                        <td>{player_stats_data.tech_errors}</td>
-                        <td>{player_stats_data.fehlpaesse}</td>
-                        <td>{player_stats_data.seven_meter_caused}</td>
-                    </tr>
+                    <tr><td>Spiele</td><td>{stats.games_played}</td><td>-</td></tr>
+                    <tr><td>Spielzeit</td><td>{stats.time_on_court_display}</td><td>-</td></tr>
+                    <tr><td>Tore gesamt</td><td>{total_goals}</td><td>{quote}</td></tr>
+                    <tr><td>Fehlwürfe</td><td>{stats.misses + stats.seven_meter_misses}</td><td>-</td></tr>
+                    <tr><td>Tech. Fehler</td><td>{stats.tech_errors}</td><td>-</td></tr>
+                    <tr><td>Fehlpässe</td><td>{stats.fehlpaesse}</td><td>-</td></tr>
                 </tbody>
             </table>
         """
         
-    # B. Torwart-Tabelle
-    if is_goalie and player_stats_data.games_played > 0:
-        total_shots_on_goal = player_stats_data.saves + player_stats_data.opponent_goals_received
-        save_quote = f"{round((player_stats_data.saves / total_shots_on_goal) * 100)}%" if total_shots_on_goal > 0 else '—'
-        seven_meter_total = player_stats_data.seven_meter_saves + player_stats_data.seven_meter_received
-        seven_meter_quote = f"{round((player_stats_data.seven_meter_saves / seven_meter_total) * 100)}%" if seven_meter_total > 0 else '—'
+    def create_goalie_html(stats: PlayerStats):
+        if stats.position != 'Torwart': return ""
+        if stats.games_played == 0: return ""
         
-        goalie_html = f"""
+        total_saves = stats.saves + stats.seven_meter_saves
+        total_goals_received = stats.opponent_goals_received + stats.seven_meter_received
+        total_shots_on_goal = total_saves + total_goals_received
+        save_quote = f"{(total_saves / total_shots_on_goal * 100):.0f}%" if total_shots_on_goal > 0 else '—'
+        
+        seven_meter_total = stats.seven_meter_saves + stats.seven_meter_received
+        seven_meter_quote = f"{(stats.seven_meter_saves / seven_meter_total * 100):.0f}%" if seven_meter_total > 0 else '—'
+        
+        return f"""
             <table class="stats-table">
-                <thead><tr>
-                    <th>Spiele</th>
-                    <th>Zeit (M:S)</th>
-                    <th>Paraden ges.</th>
-                    <th>Gegentore</th>
-                    <th>Paraden Quote</th>
-                    <th>7m P/G</th>
-                </tr></thead>
+                <thead><tr><th>Wert</th><th>Total</th><th>Quote</th></tr></thead>
                 <tbody>
-                    <tr>
-                        <td>{player_stats_data.games_played}</td>
-                        <td>{player_stats_data.time_on_court_display}</td>
-                        <td>{player_stats_data.saves}</td>
-                        <td>{player_stats_data.opponent_goals_received}</td>
-                        <td>{save_quote}</td>
-                        <td>{player_stats_data.seven_meter_saves} / {seven_meter_total} ({seven_meter_quote})</td>
-                    </tr>
+                    <tr><td>Spiele</td><td>{stats.games_played}</td><td>-</td></tr>
+                    <tr><td>Spielzeit</td><td>{stats.time_on_court_display}</td><td>-</td></tr>
+                    <tr><td>Paraden gesamt</td><td>{total_saves}</td><td>{save_quote}</td></tr>
+                    <tr><td>Gegentore</td><td>{total_goals_received}</td><td>-</td></tr>
+                    <tr><td>7m gehalten</td><td>{stats.seven_meter_saves} / {seven_meter_total}</td><td>{seven_meter_quote}</td></tr>
                 </tbody>
             </table>
         """
-    
-    # C. Custom-Aktionen-Tabelle
-    custom_html = ""
-    if player_stats_data.custom_counts and len(player_stats_data.custom_counts) > 0:
-        # Nur Aktionen anzeigen, die > 0 sind
-        filtered_custom_counts = {k: v for k, v in player_stats_data.custom_counts.items() if v > 0}
-        if filtered_custom_counts:
-            custom_html = '<table class="stats-table"><thead><tr><th>Aktion</th><th>Anzahl</th></tr></thead><tbody>'
-            for action_name, count in filtered_custom_counts.items():
-                custom_html += f'<tr><td>{action_name}</td><td>{count}</td></tr>'
-            custom_html += '</tbody></table>'
-
+        
+    def create_custom_html(stats: PlayerStats):
+        # Zeige Custom Stats für jeden (Feld und TW)
+        if not stats.custom_counts or all(v == 0 for v in stats.custom_counts.values()): return ""
+        
+        html = '<table class="stats-table"><thead><tr><th>Aktion</th><th>Anzahl</th></tr></thead><tbody>'
+        for action_name, count in stats.custom_counts.items():
+            if count > 0:
+                 html += f'<tr><td>{action_name}</td><td>{count}</td></tr>'
+        html += '</tbody></table>'
+        return html
 
     return {
-        "field_stats": field_html,
-        "goalie_stats": goalie_html,
-        "custom_stats": custom_html,
+        "field_stats": create_field_html(my_stats),
+        "goalie_stats": create_goalie_html(my_stats),
+        "custom_stats": create_custom_html(my_stats)
     }
 
-
+# NEU: Liefert alle Clips des Spielers
 @router.get("/clips", response_model=List[ActionPlaylistResponse])
 def get_my_season_clips(
     current_player: Player = Depends(get_current_player_only),
     db: Session = Depends(get_db)
 ):
-    """
-    Listet alle Aktionen mit Video-Timestamp für den aktuellen Spieler in Saisonspielen auf.
-    """
     team_id = current_player.team_id
     player_id = current_player.id
 
-    saison_game_ids = [g.id for g in db.query(Game).filter(
+    saison_games = db.query(Game).filter(
         Game.team_id == team_id,
         Game.game_category == 'Saison',
         Game.video_url.isnot(None)
-    ).all()]
+    ).all()
+    saison_game_ids = [g.id for g in saison_games]
     
     if not saison_game_ids:
         return []
 
-    # Suche nach allen Aktionen, die der Spieler als Feldspieler ODER als Torwart
-    # (falls es eine Torwart-Aktion ist) durchgeführt hat.
-    # WICHTIG: Die Aktionen 'OppGoal' und 'OppMiss' haben KEINE player_id
+    # Suche nach Aktionen des Spielers (Feldspieler ODER Torwart-Aktion)
     actions_query = db.query(Action).join(Game).filter(
         Action.game_id.in_(saison_game_ids),
         Action.video_timestamp.isnot(None),
@@ -326,16 +179,11 @@ def get_my_season_clips(
     
     response_list = []
     
-    # Da wir den Spieler bereits kennen, brauchen wir nur die Spieldaten
-    game_map = {g.id: g for g in db.query(Game).filter(Game.id.in_(saison_game_ids)).all()}
+    game_map = {g.id: g for g in saison_games}
     
     for action in actions:
         game = game_map.get(action.game_id)
         if not game: continue
-        
-        # Sicherstellen, dass nur Aktionen, die dem Spieler zugeschrieben werden, geladen werden
-        if action.player_id != player_id and action.active_goalie_id != player_id:
-             continue
         
         response_list.append(ActionPlaylistResponse(
             id=action.id, 
@@ -351,8 +199,9 @@ def get_my_season_clips(
         
     return response_list
 
+
 # ==================================================
-# Endpunkte: Spieler-Kalender (unverändert)
+# Endpunkte: Spieler-Kalender (Unverändert)
 # ==================================================
 
 @router.get("/calendar/list", response_model=List[PlayerEventResponse])
@@ -411,14 +260,13 @@ def respond_to_event(
 ):
     """
     Ermöglicht dem Spieler, seinen Status zu aktualisieren.
-    FIX: Korrigiert die Zuweisung des 'reason' Feldes.
     """
     
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
 
-    # 1. Frist prüfen (Logik von vorher beibehalten)
+    # 1. Frist prüfen
     if event.response_deadline_hours is not None and event.response_deadline_hours > 0:
         deadline = event.start_time - timedelta(hours=event.response_deadline_hours)
         if datetime.utcnow() > deadline:
@@ -440,19 +288,17 @@ def respond_to_event(
     ).first()
     
     if not attendance:
-        # Sollte nicht passieren, da der Trainer den Eintrag beim Erstellen erzeugt
+        # Dies sollte nicht passieren, da die Attendance bei Event-Erstellung angelegt wird
         raise HTTPException(status_code=404, detail="Anwesenheits-Eintrag nicht gefunden.")
         
     # 3. Aktualisiere Status und Grund
     attendance.status = new_status
     
     if new_status in [AttendanceStatus.DECLINED, AttendanceStatus.TENTATIVE]:
-        # Der Grund muss mitgesendet werden, wenn der Status Absage/Vielleicht ist
         if not update_data.reason:
              raise HTTPException(status_code=400, detail="Ein Grund ist für Absage/Vielleicht erforderlich.")
         attendance.reason = update_data.reason
     else:
-        # Wenn der Status Zusage oder Keine Antwort ist, muss der Grund NULL sein.
         attendance.reason = None
         
     attendance.updated_at = datetime.utcnow()

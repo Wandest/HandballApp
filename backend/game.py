@@ -1,15 +1,17 @@
 # DATEI: backend/game.py
 # +++ ERWEITERT: Automatische Erstellung von TeamEvent beim Spiel-Anlegen +++
+# +++ FIX: Importiert 'distinct' von sqlalchemy, um NameError zu beheben. +++
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional, Any 
-from datetime import datetime, timedelta # Hinzugefügt für das Event-Datum
+from datetime import datetime, timedelta 
+from sqlalchemy import distinct # FIX: 'distinct' MUSS importiert werden
 
 from backend.database import (
     SessionLocal, Trainer, Team, Game, Player, 
-    UserRole, TeamEvent, EventType, AttendanceStatus, TeamSettings # NEU: TeamEvent, EventType, AttendanceStatus, TeamSettings
+    UserRole, TeamEvent, EventType, AttendanceStatus, TeamSettings
 ) 
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 from backend.player import PlayerResponse
@@ -66,19 +68,18 @@ def create_game(
     current_trainer: Trainer = Depends(get_current_trainer), 
     db: Session = Depends(get_db)
 ):
-    # Berechtigung prüfen: Jeder Trainer im Team darf Spiele hinzufügen
     check_team_auth_and_get_role(db, current_trainer.id, game_data.team_id)
 
     valid_categories = ["Saison", "Testspiel", "Turnier"]
     if game_data.game_category not in valid_categories:
         raise HTTPException(status_code=400, detail="Ungültige Spielkategorie.")
     
-    # 1. Spiel erstellen (wie bisher)
+    # 1. Spiel erstellen
     tournament_name_to_save = game_data.tournament_name if game_data.game_category == "Turnier" else None
     
     new_game = Game(
         opponent=game_data.opponent,
-        date=game_data.date, # Hier liegt das Datum als String vor
+        date=game_data.date,
         team_id=game_data.team_id,
         game_category=game_data.game_category,
         tournament_name=tournament_name_to_save,
@@ -89,17 +90,16 @@ def create_game(
     
     # 2. Kalender Event automatisch erstellen
     
-    # Event-Typ aus der Kategorie ableiten
     if game_data.game_category == "Saison":
         event_type = EventType.GAME
     elif game_data.game_category == "Testspiel":
-        event_type = EventType.OTHER # Wir nutzen OTHER, um es von Liga-Spielen zu trennen
+        event_type = EventType.OTHER 
     else: # Turnier
         event_type = EventType.GAME
         
     # Standard-Deadlines laden
     settings = db.query(TeamSettings).filter(TeamSettings.team_id == game_data.team_id).first()
-    deadline_hours = 24 # Standard-Fallback
+    deadline_hours = 24 
     
     if settings:
         if game_data.game_category == "Saison":
@@ -109,12 +109,9 @@ def create_game(
         elif game_data.game_category == "Turnier":
             deadline_hours = settings.tournament_deadline_hours
 
-    # Datum/Zeit konvertieren (Angenommen game_data.date ist yyyy-mm-ddTTHH:MM oder yyyy-mm-dd)
     try:
-        # Versuch als vollständiges datetime (wenn aus <input type="datetime-local">)
         start_time = datetime.strptime(game_data.date, '%Y-%m-%dT%H:%M')
     except ValueError:
-        # Fallback auf reines Datum (wenn aus <input type="date">)
         start_time = datetime.strptime(game_data.date, '%Y-%m-%d')
         
     new_event = TeamEvent(
@@ -123,20 +120,17 @@ def create_game(
         title=f"Spiel vs. {game_data.opponent}",
         event_type=event_type,
         start_time=start_time,
-        end_time=start_time + timedelta(hours=2), # Default 2 Stunden Dauer
-        location=None, # Muss manuell hinzugefügt werden
+        end_time=start_time + timedelta(hours=2), 
+        location=None, 
         description=f"Automatischer Kalender-Eintrag für: {game_data.game_category} gegen {game_data.opponent}",
-        default_status=AttendanceStatus.ATTENDING, # Gehe von Zusage aus
+        default_status=AttendanceStatus.ATTENDING, 
         response_deadline_hours=deadline_hours
     )
     db.add(new_event)
     db.flush()
     
-    # Events brauchen Attendance-Einträge für alle Spieler
-    # WICHTIG: Muss hier zur Laufzeit importiert werden, um zirkuläre Abhängigkeiten zu vermeiden
     from backend.calendar import create_default_attendances 
-    create_default_attendances(db, new_event.id, game_data.team_id, new_event.default_status)
-
+    create_default_attendances(db, new_event.id, game_data.team_id, new_event.default_status.name) # ACHTUNG: Sende ENUM Name
 
     db.commit()
     db.refresh(new_game)
@@ -153,7 +147,6 @@ def delete_game(
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
         
-    # Berechtigungsprüfung: Nur MAIN_COACH oder TEAM_ADMIN darf Spiele löschen
     check_team_auth_and_get_role(
         db, 
         current_trainer.id, 
@@ -173,7 +166,6 @@ def list_games(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # Berechtigung prüfen: Jeder Trainer im Team darf die Liste sehen
     check_team_auth_and_get_role(db, current_trainer.id, team_id)
     
     games = db.query(Game).filter(
@@ -193,7 +185,6 @@ def update_game_video_url(
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
     
-    # Berechtigung prüfen: Jeder Trainer im Team darf Video-URLs bearbeiten
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
         
     try:
@@ -232,7 +223,6 @@ def archive_season(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # Berechtigungsprüfung: Nur MAIN_COACH oder TEAM_ADMIN darf archivieren
     check_team_auth_and_get_role(
         db, 
         current_trainer.id, 
@@ -273,7 +263,6 @@ def get_game_roster(
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
 
-    # Berechtigung prüfen: Jeder Trainer im Team darf den Roster sehen
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
     
     return game.participating_players
@@ -291,12 +280,11 @@ def update_game_roster(
     if not game:
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
 
-    # Berechtigung prüfen: Jeder Trainer im Team darf Roster bearbeiten
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
     
     players_to_participate = db.query(Player).filter(
         Player.id.in_(roster_data.player_ids),
-        Player.team_id == game.team_id # Sicherheitscheck
+        Player.team_id == game.team_id 
     ).all()
     
     game.participating_players = players_to_participate

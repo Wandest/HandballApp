@@ -1,5 +1,5 @@
 # DATEI: backend/action.py
-# +++ GEMINI KORREKTUR: "Entschlackt" - Zeitberechnung in time_tracking.py ausgelagert +++
+# +++ ENTSCHLACKT: Saisonstatistik-Logik in stats_service.py ausgelagert. +++
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -13,17 +13,16 @@ from datetime import datetime, timedelta
 from backend.database import SessionLocal, Trainer, Player, Game, Team, Action, CustomAction, UserRole, game_participations_table
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
-# NEU: Import der ausgelagerten Zeit-Logik
-from backend.time_tracking import (
-    calculate_all_player_times, 
-    format_seconds,
-    # (Andere Funktionen werden nur intern in time_tracking.py benötigt)
-)
+# NEU: Import des Statistik-Service
+from backend.stats_service import get_season_stats_for_team
+
+# Importe, die lokal benötigt werden (Time Tracking wird nur für Einzelspiel-Statistiken benötigt)
+from backend.time_tracking import calculate_all_player_times, format_seconds
 
 router = APIRouter()
 
 # ==================================================
-# Pydantic Modelle 
+# Pydantic Modelle (ACHTUNG: PlayerStats muss hier bleiben!)
 # ==================================================
 class ActionCreate(BaseModel):
     action_type: str 
@@ -54,6 +53,7 @@ class ActionResponse(BaseModel):
 class ActionTimestampUpdate(BaseModel):
     video_timestamp: str
 
+# DIESE KLASSE MUSS HIER BLEIBEN, solange wir database.py nicht anfassen können.
 class PlayerStats(BaseModel):
     player_id: int
     player_name: str
@@ -133,7 +133,6 @@ def apply_half_filter(query, half: str):
 
 @router.post("/add", response_model=ActionResponse)
 def log_action(
-    # ... (Code unverändert) ...
     action_data: ActionCreate,
     current_trainer: Trainer = Depends(get_current_trainer), 
     db: Session = Depends(get_db)
@@ -172,7 +171,6 @@ def log_action(
 
 @router.get("/list/{game_id}", response_model=List[ActionResponse])
 def list_actions(
-    # ... (Code unverändert) ...
     game_id: int,
     half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']), 
     current_trainer: Trainer = Depends(get_current_trainer),
@@ -183,7 +181,7 @@ def list_actions(
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
     actions_query = db.query(Action).filter(Action.game_id == game_id)
     actions_query = apply_half_filter(actions_query, half) 
-    actions_data = actions_query.order_by(Action.id.asc()).all()
+    actions_data = actions_query.order_by(Action.server_timestamp.asc()).all()
     response_list = []
     team_players = {p.id: p for p in db.query(Player).filter(Player.team_id == game.team_id).all()}
     for action in actions_data:
@@ -201,10 +199,6 @@ def list_actions(
             server_timestamp=action.server_timestamp
         ))
     return response_list
-
-# ==================================================
-# LIVE-STATISTIK ENDPUNKTE
-# ==================================================
 
 @router.get("/stats/game/{game_id}", response_model=List[PlayerStats])
 def get_game_stats(
@@ -277,7 +271,7 @@ def get_game_stats(
     stats_results = stats_query.all()
     final_stats = []
     
-    # *** KORREKTUR: Ruft die ausgelagerte, neue Zeit-Logik auf ***
+    # *** Ruft die ausgelagerte, neue Zeit-Logik auf ***
     player_times_seconds = calculate_all_player_times(db, game_id, player_ids, half)
     # *** ENDE KORREKTUR ***
     
@@ -317,7 +311,6 @@ def get_game_stats(
 
 @router.get("/stats/opponent/{game_id}", response_model=OpponentStats)
 def get_opponent_game_stats(
-    # ... (Code unverändert) ...
     game_id: int,
     half: Optional[str] = Query('ALL', enum=['H1', 'H2', 'ALL']),
     current_trainer: Trainer = Depends(get_current_trainer),
@@ -348,7 +341,6 @@ def get_opponent_game_stats(
 
 @router.get("/list/season/{team_id}", response_model=List[ActionPlaylistResponse])
 def list_season_actions(
-    # ... (Code unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -389,7 +381,6 @@ def list_season_actions(
 
 @router.get("/shots/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_shot_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(
@@ -427,7 +418,6 @@ def get_season_shot_charts(team_id: int, db: Session = Depends(get_db)):
 
 @router.get("/shots/errors/season/{team_id}", response_model=List[ShotDataResponse])
 def get_season_error_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(
@@ -462,12 +452,11 @@ def get_season_error_charts(team_id: int, db: Session = Depends(get_db)):
         player_name=player_map[pid].name,
         player_number=player_map[pid].number,
         shots=errors
-    ) for pid, errors in player_errors.items()]
+    ) for pid, shots in player_errors.items()]
 
 
 @router.get("/shots/opponent/season/{team_id}", response_model=List[ShotData])
 def get_season_opponent_shot_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Code unverändert) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(
@@ -495,6 +484,7 @@ def get_season_opponent_shot_charts(team_id: int, db: Session = Depends(get_db))
     ) for shot in shots_query]
     
 
+# WICHTIG: Diese Route wird nun den Statistik-Service verwenden.
 @router.get("/stats/season/{team_id}", response_model=List[PlayerStats])
 def get_season_stats(
     team_id: int,
@@ -503,140 +493,13 @@ def get_season_stats(
 ):
     check_team_auth_and_get_role(db, current_trainer.id, team_id)
 
-    saison_games = db.query(Game).filter(
-        Game.team_id == team_id,
-        Game.game_category == 'Saison'
-    ).all()
-    saison_game_ids = [g.id for g in saison_games]
-    
-    if not saison_game_ids:
-        return []
-
-    team_players = db.query(Player).filter(Player.team_id == team_id).all()
-    player_ids = [p.id for p in team_players]
-    
-    if not player_ids:
-        return []
-        
-    custom_actions = db.query(CustomAction).filter(CustomAction.team_id == team_id).all()
-    custom_action_names = [ca.name for ca in custom_actions]
-
-    action_subquery = db.query(Action).filter(Action.game_id.in_(saison_game_ids)).subquery()
-
-    case_statements = [
-        func.count(case((action_subquery.c.action_type == 'Goal', 1), else_=None)).label('goals'),
-        func.count(case((action_subquery.c.action_type == 'Miss', 1), else_=None)).label('misses'),
-        # ... (restliche case statements bleiben gleich) ...
-        func.count(case((action_subquery.c.action_type == 'TechError', 1), else_=None)).label('tech_errors'),
-        func.count(case((action_subquery.c.action_type == 'Fehlpass', 1), else_=None)).label('fehlpaesse'),
-        func.count(case((action_subquery.c.action_type == 'Goal_7m', 1), else_=None)).label('seven_meter_goals'),
-        func.count(case((action_subquery.c.action_type == 'Miss_7m', 1), else_=None)).label('seven_meter_misses'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_CAUSED', 1), else_=None)).label('seven_meter_caused'),
-        func.count(case((action_subquery.c.action_type == 'Save', 1), else_=None)).label('saves'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_SAVE', 1), else_=None)).label('seven_meter_saves'),
-        func.count(case((action_subquery.c.action_type == 'SEVEN_METER_RECEIVED', 1), else_=None)).label('seven_meter_received'),
-        func.count(case(
-            (and_(action_subquery.c.action_type == 'OppGoal', action_subquery.c.active_goalie_id == Player.id), 1),
-            else_=None
-        )).label('opponent_goals_received'),
-    ]
-    
-    safe_custom_labels = {}
-    for name in custom_action_names:
-        safe_label = f"custom_{re.sub(r'[^A-Za-z09_]', '_', name)}"
-        safe_custom_labels[name] = safe_label
-        case_statements.append(
-            func.count(case((action_subquery.c.action_type == name, 1), else_=None)).label(safe_label)
-        )
-
-    games_played_subquery = (
-        db.query(
-            game_participations_table.c.player_id,
-            func.count(distinct(game_participations_table.c.game_id)).label("games_played"),
-        )
-        .join(Game, Game.id == game_participations_table.c.game_id)
-        .filter(Game.game_category == 'Saison', Game.team_id == team_id)
-        .group_by(game_participations_table.c.player_id)
-        .subquery()
-    )
-    
-    stats_query = (
-        db.query(
-            Player.id, Player.name, Player.number, Player.position,
-            func.coalesce(games_played_subquery.c.games_played, 0).label("games_played"),
-            *case_statements
-        )
-        .select_from(Player)
-        .outerjoin(action_subquery, 
-            or_(
-                (action_subquery.c.player_id == Player.id), 
-                (action_subquery.c.active_goalie_id == Player.id)
-            )
-        )
-        .outerjoin(games_played_subquery, games_played_subquery.c.player_id == Player.id)
-        .filter(Player.team_id == team_id) 
-        .group_by(Player.id, Player.name, Player.number, Player.position, games_played_subquery.c.games_played)
-        .order_by(Player.number.asc())
-    )
-    
-    stats_results = stats_query.all()
-    final_stats = []
-    
-    # *** KORREKTUR: Effizientere Zeitberechnung für Saison ***
-    # Lädt *alle* Intervalle für *alle* Saisonspiele *einmal*
-    all_clock_intervals_map = {game.id: get_clock_intervals(db, game.id) for game in saison_games}
-    all_player_intervals_map = {game.id: get_player_intervals(db, game.id) for game in saison_games}
-    all_halftime_boundaries_map = {game.id: get_halftime_boundary(db, game.id) for game in saison_games}
-    # *** ENDE KORREKTUR ***
-    
-    for row in stats_results:
-        row_data = row._asdict()
-        player_id = row_data.get('id')
-        
-        total_time_on_court_seconds = 0
-        
-        for game in saison_games:
-            clock_intervals = all_clock_intervals_map.get(game.id, [])
-            player_intervals_for_game = all_player_intervals_map.get(game.id, {})
-            player_intervals = player_intervals_for_game.get(player_id, [])
-            halftime_boundary = all_halftime_boundaries_map.get(game.id)
-            
-            # Berechnet die Zeit für 'ALL' (H1 + H2) für dieses eine Spiel
-            time_for_game = calculate_time_on_court(player_intervals_for_game, clock_intervals, halftime_boundary, 'ALL').get(player_id, 0)
-            total_time_on_court_seconds += time_for_game
-        
-        time_on_court_display = format_seconds(total_time_on_court_seconds)
-
-        custom_counts_dict = {name: row_data.get(safe_label, 0) for name, safe_label in safe_custom_labels.items()}
-        
-        final_stats.append(PlayerStats(
-            player_id=player_id, 
-            player_name=row_data.get('name'),
-            player_number=row_data.get('number'), 
-            position=row_data.get('position'),
-            games_played=row_data.get('games_played', 0), 
-            goals=row_data.get('goals', 0),
-            misses=row_data.get('misses', 0),
-            tech_errors=row_data.get('tech_errors', 0),
-            fehlpaesse=row_data.get('fehlpaesse', 0), 
-            seven_meter_goals=row_data.get('seven_meter_goals', 0),
-            seven_meter_misses=row_data.get('seven_meter_misses', 0),
-            seven_meter_caused=row_data.get('seven_meter_caused', 0),
-            seven_meter_saves=row_data.get('seven_meter_saves', 0),
-            seven_meter_received=row_data.get('seven_meter_received', 0),
-            saves=row_data.get('saves', 0),
-            opponent_goals_received=row_data.get('opponent_goals_received', 0),
-            custom_counts=custom_counts_dict,
-            time_on_court_seconds=total_time_on_court_seconds, 
-            time_on_court_display=time_on_court_display
-        ))
-        
-    return final_stats
+    # RUFT JETZT DEN SERVICE AUF
+    # Da get_season_stats_for_team List[Any] zurückgibt, muss es von FastAPI in List[PlayerStats] umgewandelt werden.
+    return get_season_stats_for_team(db, team_id)
 
 
 @router.get("/stats/opponent/season/{team_id}", response_model=OpponentStats)
 def get_season_opponent_stats(
-    # ... (Code unverändert) ...
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -662,7 +525,6 @@ def get_season_opponent_stats(
 
 @router.delete("/delete/{action_id}")
 def delete_action(
-    # ... (Code unverändert) ...
     action_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
@@ -682,7 +544,6 @@ def delete_action(
 
 @router.put("/update-timestamp/{action_id}", response_model=ActionResponse)
 def update_action_timestamp(
-    # ... (Code unverändert) ...
     action_id: int,
     timestamp_data: ActionTimestampUpdate,
     current_trainer: Trainer = Depends(get_current_trainer), 
