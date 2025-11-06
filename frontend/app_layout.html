@@ -591,39 +591,34 @@
     <div class="sidebar">
         <h2>HandballApp</h2>
         
-        <!-- +++ KORRIGIERTE LOGIK: Dynamische Sidebar +++ -->
         {% if user_type == "trainer" %}
-            <!-- Links für Trainer -->
-            <a id="nav-dashboard" href="/dashboard" class="nav-link">🏠 Dashboard</a>
+             <a id="nav-dashboard" href="/dashboard" class="nav-link">🏠 Dashboard</a>
+        {% elif user_type == "player" %}
+             <a id="nav-player-dashboard" href="/player-dashboard" class="nav-link">🏠 Mein Portal</a>
+        {% endif %}
+
+        <!-- KORREKTUR: Navigationsstruktur für Spieler getrennt -->
+        {% if user_type == "trainer" %}
+            <a id="nav-calendar" href="/calendar" class="nav-link">🗓️ Kalender</a>
             <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
             <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
-            <!-- +++ NEUER LINK (PHASE 12) +++ -->
-            <a id="nav-calendar" href="/calendar" class="nav-link">🗓️ Kalender</a>
             
             <a id="nav-analysis" href="/season-analysis" class="nav-link">📊 Saison Analyse</a>
             <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
         
         {% elif user_type == "player" %}
-            <!-- Links für Spieler -->
-            <!-- HINWEIS: /dashboard leitet Spieler automatisch zu /player-dashboard um,
-                 aber wir linken direkt zur korrekten Seite für Klarheit -->
-            <a id="nav-player-dashboard" href="/player-dashboard" class="nav-link">🏠 Mein Portal</a>
-            <!-- Zukünftige Spieler-Links kommen hierher (z.B. Kalender, Wellness) -->
-            
+            <!-- NEU: Separater Link für alle Termine -->
+            <a id="nav-calendar" href="/player-calendar" class="nav-link">🗓️ Alle Termine</a>
         {% endif %}
-        <!-- +++ ENDE KORRIGIERTE LOGIK +++ -->
-
         <div style="flex-grow: 1;"></div> 
 
         <button onclick="logout()" class="btn-logout">Logout</button>
         
-        <!-- +++ KORREKTUR: {{ display_name }} statt {{ trainer_name }} +++ -->
         <p style="text-align: center; font-size: 0.8em; opacity: 0.7; margin-top: 15px;">Angemeldet als: {{ display_name }}</p>
     </div>
 
     <div class="main-content">
         
-        <!-- +++ KORREKTUR: Banner nur für Trainer anzeigen +++ -->
         {% if user_type == "trainer" %}
         <div id="verification-banner" class="verification-banner">
             <span>
@@ -652,7 +647,6 @@
     <script>
         // --- Globale Jinja2 Variablen in JS / Local Storage speichern ---
         
-        // +++ KORREKTUR: Nur für Trainer relevant +++
         {% if user_type == "trainer" %}
             const isVerified = {{ is_verified | tojson }};
             localStorage.setItem('is_verified', isVerified); 
@@ -664,6 +658,33 @@
             // Spieler sind per Definition verifiziert (is_active = true)
             localStorage.setItem('is_verified', 'true'); 
         {% endif %}
+        
+        // Fügt user_type zum Local Storage hinzu, um JS-Logik zu steuern
+        localStorage.setItem('logged_in_user_type', '{{ user_type }}');
+        
+        // KORREKTUR: Navigations-Active-State setzen, damit der richtige Link blau wird
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.sidebar a.nav-link');
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                
+                // Exakte Übereinstimmung für die Aktivierung (z.B. /dashboard, /player-dashboard)
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Sonderfall: Wenn man auf der Protokoll-Seite ist, den Game Planning Link als aktiv markieren (falls vorhanden)
+            if (currentPath.startsWith('/protocol/')) {
+                 const planningLink = document.getElementById('nav-planning');
+                 if (planningLink) {
+                      planningLink.classList.add('active');
+                 }
+            }
+        });
+        // --- ENDE KORREKTUR ---
     </script>
     
     </body>

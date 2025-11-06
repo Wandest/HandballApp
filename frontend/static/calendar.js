@@ -1,18 +1,17 @@
 // DATEI: frontend/static/calendar.js
-// +++ AKTUALISIERT: Sendet das neue Feld 'default_status'
-// +++ FIX: Korrigiert Fehlerbehandlung für 'body stream already read'
+// +++ FIX: Korrigiert die DOM-Zuweisungen (IDs) und die Logik zum Senden der Frist +++
+// +++ FIX: Korrigiert die Zähl-Logik im Attendance-Modal (nutzt ENUM NAME) +++
 
 (function() {
     
-    // Globale Variablen
+    // Globale Variablen (müssen im IIFE-Scope deklariert werden)
     var selectedTeamId = localStorage.getItem('selected_team_id');
     var selectedTeamName = localStorage.getItem('selected_team_name');
 
     // DOM-Elemente
     var calendarTeamName, addEventButton, eventMessageDiv, createEventForm;
     var eventTitle, eventType, eventStartTime, eventEndTime, eventLocation, eventDescription;
-    // +++ NEUES DOM-ELEMENT +++
-    var eventDefaultStatus;
+    var defaultStatusSelect, responseDeadlineInput; 
     var eventListContainer;
     var attendanceModal, attendanceModalTitle, attendanceModalStats, attendanceList;
 
@@ -37,83 +36,68 @@
     // ==================================================
 
     async function loadEvents(teamId) {
-        // --- KORREKTUR: Robuste Schutzprüfung (Guard Clause) ---
-        // Verhindert API-Aufrufe mit "null", "undefined" oder leeren Strings
         if (!teamId || teamId === 'null' || teamId === 'undefined') {
             console.warn("loadEvents: Keine gültige team_id ausgewählt. Breche Ladevorgang ab.");
-            if (eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
-            if (addEventButton) addEventButton.disabled = true; // Sicherstellen, dass der Button deaktiviert ist
+            eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
+            if (addEventButton) addEventButton.disabled = true;
             return;
         }
-        // --- ENDE KORREKTUR ---
         
-        if (eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
-        if (addEventButton) addEventButton.disabled = false; // Team ist gültig, Button aktivieren
+        eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
+        if (addEventButton) addEventButton.disabled = false;
         
         try {
             const response = await fetch(`/calendar/list/${teamId}`);
             if (response.status === 401) { window.logout(); return; }
             
-            // --- KORREKTUR: Detailliertere Fehlerbehandlung (Fix für 'body stream already read') ---
             if (!response.ok) {
                 let errorMsg = `Status: ${response.status}`;
                 try {
-                    // Versuche ZUERST, JSON zu lesen
                     const errorData = await response.json();
                     errorMsg = errorData.detail || JSON.stringify(errorData);
                 } catch (e) {
-                    // Wenn JSON fehlschlägt (z.B. bei 500er-Fehler mit HTML-Antwort), lies Text
-                    // WICHTIG: response.text() kann nur aufgerufen werden, wenn response.json() FEHLSCHLÄGT.
-                    // Da wir im catch-Block sind, ist der Stream noch nicht gelesen.
-                    try {
-                        errorMsg = await response.text();
-                        // Optional: HTML kürzen, falls es eine lange Fehlerseite ist
-                        if (errorMsg.includes('<html>')) errorMsg = "Serverfehler (500) - HTML-Antwort erhalten.";
-                    } catch (textError) {
-                        // Fallback, falls alles fehlschlägt
-                        errorMsg = `Status: ${response.status} (Fehlerantwort konnte nicht gelesen werden)`;
-                    }
+                    errorMsg = await response.text() || errorMsg;
                 }
-                // Werfe einen Fehler mit der sauberen Server-Nachricht
                 throw new Error(errorMsg);
             }
-            // --- ENDE KORREKTUR ---
             
             const events = await response.json();
             renderEvents(events);
             
         } catch (error) {
             console.error('Fehler beim Laden der Termine:', error);
-            // Zeigt jetzt die saubere Fehlermeldung statt [object Response]
-            if (eventListContainer) eventListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
+            eventListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
         }
     }
     window.loadEvents = loadEvents;
 
     function renderEvents(events) {
-        if (!eventListContainer) return;
         eventListContainer.innerHTML = '';
         if (events.length === 0) {
             eventListContainer.innerHTML = '<p style="opacity: 0.6;">Keine Termine für dieses Team erstellt.</p>';
             return;
         }
         
-        // Sortiere Events (älteste zuerst, damit man sieht, was als Nächstes ansteht)
+        // Termine nach Startdatum sortieren (aufsteigend)
         events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         
         events.forEach(event => {
             const item = document.createElement('div');
-            // KORREKTUR: event.event_type ist jetzt ein String (z.B. "Training")
             item.className = `event-item event-type-${event.event_type.replace(' ', '-')}`;
             
             const startTime = formatDateTime(event.start_time);
             const endTime = event.end_time ? ` - ${formatDateTime(event.end_time)}` : '';
             const location = event.location ? `<br>Ort: ${event.location}` : '';
+            
+            let deadlineHtml = '';
+            if (event.response_deadline_hours) {
+                 deadlineHtml = `<br><span style="color:#ffcc00; font-size:0.9em;">Frist: ${event.response_deadline_hours}h vorher</span>`;
+            }
 
             item.innerHTML = `
                 <div class="event-info">
                     <h4>${event.title}</h4>
-                    <p>Typ: ${event.event_type}</p>
+                    <p>Typ: ${event.event_type}${deadlineHtml}</p>
                     <p>Zeit: ${startTime}${endTime}${location}</p>
                 </div>
                 <div class="event-actions">
@@ -131,22 +115,48 @@
 
     async function handleCreateEvent(event) {
         event.preventDefault();
-        if (!window.checkVerification() || !selectedTeamId) return;
+        
+        // KORRIGIERTE NULL-PRÜFUNG: Prüft, ob alle Elemente zugewiesen wurden
+        if (!window.checkVerification() || !selectedTeamId || !defaultStatusSelect || !responseDeadlineInput) {
+             eventMessageDiv.textContent = '❌ Fehler: Formular-Elemente fehlen. Team ausgewählt?';
+             eventMessageDiv.className = 'message error';
+             addEventButton.disabled = false;
+             return;
+        }
         
         addEventButton.disabled = true;
         eventMessageDiv.textContent = 'Erstelle Termin...';
         eventMessageDiv.className = 'message';
         
+        // --- KORRIGIERTE LOGIK: Felder auslesen ---
+        const hoursInput = responseDeadlineInput.value;
+        let deadlineHours = null;
+        
+        if (hoursInput !== "") {
+             const parsedHours = parseInt(hoursInput);
+             if (isNaN(parsedHours) || parsedHours < 0) {
+                 eventMessageDiv.textContent = '❌ Fehler: Absagefrist muss eine positive Zahl (Stunden) sein.';
+                 eventMessageDiv.className = 'message error';
+                 addEventButton.disabled = false;
+                 return;
+             }
+             deadlineHours = parsedHours;
+        } else {
+             deadlineHours = null; // Sende null, wenn Feld leer
+        }
+        // --- ENDE KORRIGIERTE LOGIK ---
+        
         const payload = {
             team_id: parseInt(selectedTeamId),
             title: eventTitle.value,
-            event_type: eventType.value, // "Training", "Spiel", "Sonstiges"
-            // +++ NEUES FELD +++
-            default_status: eventDefaultStatus.value, // "ATTENDING", "NOT_RESPONDED", "DECLINED"
+            event_type: eventType.value,
             start_time: eventStartTime.value,
             end_time: eventEndTime.value || null,
             location: eventLocation.value || null,
-            description: eventDescription.value || null
+            description: eventDescription.value || null,
+            
+            default_status: defaultStatusSelect.value, 
+            response_deadline_hours: deadlineHours
         };
 
         try {
@@ -158,13 +168,12 @@
             
             if (response.status === 401) { window.logout(); return; }
             
-            // Fehlerbehandlung für Erstellung
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.detail || 'Fehler beim Erstellen des Termins.');
-            }
+            const data = await response.json();
             
-            // const data = await response.json(); // Nicht nötig, wenn wir nur 'ok' prüfen
+            if (!response.ok) {
+                 const detail = data.detail ? (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join('; ') : data.detail) : 'Unbekannter Fehler beim Erstellen des Termins.';
+                 throw new Error(detail);
+            }
             
             window.showToast('✅ Termin erfolgreich erstellt.', 'success');
             eventMessageDiv.textContent = '✅ Termin erfolgreich erstellt.';
@@ -218,7 +227,6 @@
     window.closeAttendanceModal = closeAttendanceModal;
 
     async function showAttendance(eventId, eventTitleStr) {
-        if (!attendanceModal) return;
         attendanceModal.style.display = 'block';
         attendanceModalTitle.textContent = `Anwesenheit für: ${eventTitleStr}`;
         attendanceList.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Anwesenheitsliste...</p>';
@@ -227,66 +235,56 @@
         try {
             const response = await fetch(`/calendar/attendance/${eventId}`);
             if (response.status === 401) { window.logout(); return; }
-            
-            if (!response.ok) {
-                 // Detaillierte Fehlerbehandlung
-                let errorMsg = `Status: ${response.status}`;
-                try {
-                    const errorData = await response.json();
-                    errorMsg = errorData.detail || JSON.stringify(errorData);
-                } catch (e) {
-                    errorMsg = await response.text() || errorMsg;
-                }
-                throw new Error(errorMsg);
-            }
+            if (!response.ok) throw new Error('Anwesenheit konnte nicht geladen werden.');
             
             const attendanceData = await response.json();
             
-            let attending = 0;
-            let declined = 0;
-            let tentative = 0;
-            let notResponded = 0;
+            // --- FIX: ZÄHLLOGIK mit internen ENUM NAMES ---
+            let counts = { ATTENDING: 0, DECLINED: 0, TENTATIVE: 0, NOT_RESPONDED: 0, TRAINER: 0 };
             
             attendanceList.innerHTML = '';
             
-            if (attendanceData.length === 0) {
-                 attendanceList.innerHTML = '<p style="opacity: 0.6;">Keine Spieler im Team für diesen Termin.</p>';
-                 return;
-            }
-
             attendanceData.forEach(item => {
+                const isPlayer = item.status in counts; // Prüft, ob es ein normaler Status ist
+                
+                if (!isPlayer) {
+                    counts.TRAINER++; // Zählt Trainer und Admins
+                } else {
+                    counts[item.status]++; // Zählt Spielerstatus
+                }
+                
                 const itemEl = document.createElement('div');
                 itemEl.className = 'attendance-item';
                 
-                // +++ KORREKTUR: item.status ist ein String (der Enum-Wert, z.B. "ATTENDING") +++
-                const statusKey = item.status; 
-                const statusValue = statusKey.replace("_", " "); // z.B. "NOT RESPONDED"
-                const statusClass = `attendance-status-${statusKey}`; 
-                // +++ ENDE KORREKTUR +++
-
-                const reasonHtml = item.reason ? `<span class="attendance-reason">(${item.reason})</span>` : '';
+                // Status-Anzeige
+                const statusKey = isPlayer ? item.status : 'TRAINER'; 
+                const statusMap = {
+                    ATTENDING: 'Zugesagt',
+                    DECLINED: 'Abgesagt',
+                    TENTATIVE: 'Vielleicht',
+                    NOT_RESPONDED: 'Keine Antwort',
+                    TRAINER: item.status.replace('_', ' ') // Zeigt die Rolle des Trainers an
+                };
                 
+                const reasonHtml = item.reason ? `<span class="attendance-reason">(${item.reason})</span>` : '';
+                const numberDisplay = item.player_number ? `#${item.player_number}` : '';
+
                 itemEl.innerHTML = `
-                    <span>#${item.player_number || '?'} <strong>${item.player_name}</strong></span>
+                    <span style="${isPlayer ? '' : 'color: #ffcc00;'}">${numberDisplay} <strong>${item.player_name}</strong></span>
                     <span>
-                        <span class="${statusClass}">${statusValue}</span>
+                        <span class="attendance-status-${statusKey}">${statusMap[statusKey] || statusKey}</span>
                         ${reasonHtml}
                     </span>
                 `;
                 attendanceList.appendChild(itemEl);
-                
-                // +++ KORREKTUR: Vergleiche mit dem String-Wert +++
-                if (statusKey === 'ATTENDING') attending++;
-                else if (statusKey === 'DECLINED') declined++;
-                else if (statusKey === 'TENTATIVE') tentative++;
-                else notResponded++;
             });
             
             attendanceModalStats.innerHTML = `
-                <span style="color: #38E838;">Zugesagt: ${attending}</span> | 
-                <span style="color: #f44336;">Abgesagt: ${declined}</span> | 
-                <span style="color: #ffcc00;">Vielleicht: ${tentative}</span> | 
-                <span style="color: #9e9e9e;">Offen: ${notResponded}</span>
+                <span style="color: #38E838;">Zugesagt: ${counts.ATTENDING}</span> | 
+                <span style="color: #f44336;">Abgesagt: ${counts.DECLINED}</span> | 
+                <span style="color: #ffcc00;">Vielleicht: ${counts.TENTATIVE}</span> | 
+                <span style="color: #9e9e9e;">Offen: ${counts.NOT_RESPONDED}</span> |
+                <span style="color: #00bcd4;">Trainer/Admin: ${counts.TRAINER}</span>
             `;
             
         } catch (error) {
@@ -307,8 +305,6 @@
         createEventForm = document.getElementById('create-event-form');
         eventTitle = document.getElementById('event-title');
         eventType = document.getElementById('event-type');
-        // +++ NEUES DOM-ELEMENT +++
-        eventDefaultStatus = document.getElementById('event-default-status');
         eventStartTime = document.getElementById('event-start-time');
         eventEndTime = document.getElementById('event-end-time');
         eventLocation = document.getElementById('event-location');
@@ -318,25 +314,22 @@
         attendanceModalTitle = document.getElementById('attendance-modal-title');
         attendanceModalStats = document.getElementById('attendance-modal-stats');
         attendanceList = document.getElementById('attendance-list');
+        
+        // +++ KORRIGIERTE ZUWEISUNG DER NEUEN ELEMENTE +++
+        defaultStatusSelect = document.getElementById('default-status-select');
+        responseDeadlineInput = document.getElementById('response-deadline-input');
 
         console.log("initCalendar() wird aufgerufen.");
         
-        // Aktualisierten Local Storage abrufen
-        selectedTeamId = localStorage.getItem('selected_team_id');
-        selectedTeamName = localStorage.getItem('selected_team_name');
-        
         // Initialer Ladezustand
-        // --- KORREKTUR: Prüft explizit auf 'null' (String) ---
         if (selectedTeamId && selectedTeamName && selectedTeamId !== 'null' && selectedTeamName !== 'null') {
-            if(calendarTeamName) calendarTeamName.textContent = selectedTeamName;
-            // addEventButton.disabled = false; // Wird jetzt von loadEvents() gesteuert
+            calendarTeamName.textContent = selectedTeamName;
             loadEvents(selectedTeamId);
         } else {
-            if(calendarTeamName) calendarTeamName.textContent = "(Team wählen)";
-            if(addEventButton) addEventButton.disabled = true;
-            if(eventListContainer) eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
+            calendarTeamName.textContent = "(Team wählen)";
+            addEventButton.disabled = true;
+            eventListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
         }
-        // --- ENDE KORREKTUR ---
 
         // Event Listeners
         if(createEventForm) {

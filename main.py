@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT: Behebt SyntaxError in /protocol Route)
+# DATEI: main.py (KORRIGIERT: Fügt /player-calendar Route hinzu)
 import webview
 import threading
 import uvicorn
@@ -86,7 +86,7 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
         db.close()
 
 # ==================================================
-# SPIELER-DASHBOARD (NEU - Geschützt & Spieler-Exklusiv)
+# SPIELER-DASHBOARD (Geschützt & Spieler-Exklusiv)
 # ==================================================
 
 @app.get("/player-dashboard", response_class=HTMLResponse)
@@ -110,6 +110,30 @@ def player_dashboard_page(request: Request, current_player: Player = Depends(get
         )
     finally:
         db.close()
+
+# +++ NEUE ROUTE: SPIELER-KALENDER (Alle Termine) +++
+@app.get("/player-calendar", response_class=HTMLResponse)
+def player_calendar_page(request: Request, current_player: Player = Depends(get_current_player_only)):
+    db = SessionLocal()
+    try:
+        template_vars = {
+            "request": request,
+            "title": "Alle Termine",
+            "display_name": current_player.name, 
+            "user_type": "player",
+            "is_verified": True, 
+            "leagues": [],
+            "positions": POSITIONS,
+            "action_categories": ACTION_CATEGORIES,
+            "page_content_template": "player_calendar.html", 
+        }
+        return templates.TemplateResponse(
+            "app_layout.html", 
+            template_vars
+        )
+    finally:
+        db.close()
+# +++ ENDE NEUE ROUTE +++
 
 
 # --- RESTLICHE TRAINER-EXKLUSIVE ROUTEN (Dependency bleibt get_current_trainer) ---
@@ -158,7 +182,7 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
     finally:
         db.close()
 
-# +++ NEUE SEITE (PHASE 12) +++
+# +++ TRAINER KALENDER SEITE +++
 @app.get("/calendar", response_class=HTMLResponse)
 def calendar_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
