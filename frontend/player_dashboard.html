@@ -89,7 +89,6 @@
     }
     
     /* +++ NEUE STILE FÜR SPIELER-KALENDER +++ */
-    /* Die Tab-Stile sind jetzt unnötig, da nur noch eine Ansicht existiert */
     
     #player-calendar-container {
         max-height: 500px;
@@ -163,7 +162,6 @@
 
 <div class="analysis-grid-1-col">
 
-    <!-- +++ KALENDER (7 TAGE ANSICHT) +++ -->
     <div class="card">
         <div class="card-content">
             <h2>🗓️ Meine Termine (Nächste 7 Tage)</h2>
@@ -177,9 +175,6 @@
             </div>
         </div>
     </div>
-    <!-- +++ ENDE KALENDER +++ -->
-
-    <!-- +++ STATISTIK +++ -->
     <div class="card">
         <div class="card-content">
             <h2>📊 Deine Saison-Statistik (Aggregiert)</h2>
@@ -188,7 +183,6 @@
             </p>
             
             <div id="stats-container-wrapper">
-                <!-- FELDPIELER SEKTION (Standardmäßig versteckt, wird bei Daten sichtbar) -->
                 <div id="field-stats-section" style="display: none;">
                     <h3 id="field-stats-title" style="margin-top: 20px;">Feldspieler-Statistik</h3>
                     <div class="stats-table-container" id="stats-table-container-field-season">
@@ -196,7 +190,6 @@
                     </div>
                 </div>
                 
-                <!-- TORWART SEKTION (Standardmäßig versteckt, wird bei Daten sichtbar) -->
                 <div id="goalie-stats-section" style="display: none;">
                     <h3 id="goalie-stats-title" style="margin-top: 20px;">Torwart-Statistik</h3>
                     <div class="stats-table-container" id="stats-table-container-goalie-season">
@@ -204,7 +197,6 @@
                     </div>
                 </div>
         
-                <!-- TEAM AKTIONEN SEKTION (Standardmäßig versteckt, wird bei Daten sichtbar) -->
                 <div id="custom-stats-section" style="display: none;">
                     <h3 id="custom-stats-title" style="margin-top: 20px;">Team-Aktionen Statistik</h3>
                     <div class="stats-table-container" id="stats-table-container-custom-season">
@@ -216,9 +208,6 @@
             <div id="player-stats-message" class="message"></div>
         </div>
     </div>
-    <!-- +++ ENDE STATISTIK +++ -->
-    
-    <!-- +++ VIDEO +++ -->
     <div class="card">
         <div class="card-content">
             <h2>🎬 Deine Video-Szenen (Saison)</h2>
@@ -261,8 +250,9 @@
             
         </div>
     </div>
-    <!-- +++ ENDE VIDEO +++ -->
-</div>
+    </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="/static/player_dashboard.js"></script>
+<script src="/static/video_cutter.js"></script>
+<script src="/static/player_stats.js"></script>
+<script src="/static/player_calendar.js"></script>

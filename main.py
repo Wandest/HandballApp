@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT: Fügt /player-calendar Route hinzu)
+# DATEI: main.py (KORRIGIERT: Fügt /player-calendar Route hinzu und entfernt redundantes /portal Präfix)
 import webview
 import threading
 import uvicorn
@@ -20,6 +20,7 @@ from backend.scouting import router as scouting_router
 # KORREKTUR: EventType importieren für Jinja
 from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player, EventType
 
+# WICHTIG: player_portal_router hat bereits das Präfix /portal in seiner Definition
 from backend.player_portal import router as player_portal_router 
 from backend.calendar import router as calendar_router
 
@@ -40,6 +41,8 @@ app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 app.include_router(public_router, prefix="/public", tags=["Public Data"])
 app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
+
+# FIX: player_portal_router wird ohne Präfix eingebunden, da er in player_portal.py das Präfix /portal schon hat
 app.include_router(player_portal_router) 
 
 # Prefix "/calendar" ist bereits in calendar.py definiert.
@@ -187,6 +190,9 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
 def calendar_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
     try:
+        # Lade Event-Typen aus der Datenbank-Enum
+        from backend.database import EventType 
+        
         template_vars = {
             "request": request,
             "title": "Kalender & Termine",

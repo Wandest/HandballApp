@@ -31,6 +31,11 @@
     .event-item.event-type-Training { border-left-color: #00bcd4; }
     .event-item.event-type-Spiel { border-left-color: #38E838; }
     .event-item.event-type-Sonstiges { border-left-color: #607d8b; }
+    .event-item.event-type-Abgesagt { 
+        border-left-color: #f44336; 
+        background-color: rgba(255, 102, 102, 0.1); /* Hellroter Hintergrund */
+        opacity: 0.8;
+    }
 
     .event-info h4 {
         margin: 0 0 5px 0;
@@ -275,6 +280,28 @@
                 </button>
             </form>
             <div id="edit-message" class="message"></div>
+        </div>
+    </div>
+</div>
+
+<div id="cancel-event-modal" class="modal">
+    <div class="modal-content card" style="max-width: 500px;">
+        <span class="close-btn" onclick="closeCancelModal()">&times;</span>
+        <div class="card-content">
+            <h3 id="cancel-modal-title" style="color: #f44336;">Termin absagen</h3>
+            <p style="opacity: 0.8;">
+                Soll dieser Termin wirklich abgesagt werden? Alle Spieler-Anwesenheiten werden automatisch auf **Abgesagt** gesetzt.
+            </p>
+            
+            <div class="form-section active">
+                <label for="cancel-reason-input">Grund für die Absage (optional):</label>
+                <input type="text" id="cancel-reason-input" placeholder="z.B. Halle gesperrt, zu wenige Spieler">
+            </div>
+            
+            <button class="btn btn-danger btn-full-width" id="confirm-cancel-button">
+                Absage jetzt bestätigen
+            </button>
+            <div id="cancel-message" class="message"></div>
         </div>
     </div>
 </div>

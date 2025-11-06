@@ -1,4 +1,4 @@
-// DATEI: frontend/static/team_management.js (FINALE KORREKTUR: Kapselung in IIFE)
+// DATEI: frontend/static/team_management.js (FINALE KORREKTUR: Staff Management Logik)
 
 /**
  * Logik für Team, Spieler, Custom Actions und Staff Management.
@@ -11,11 +11,12 @@
     var selectedTeamId = localStorage.getItem('selected_team_id');
     var selectedTeamName = localStorage.getItem('selected_team_name');
 
-    // FIX: Alle diese Variablen sind jetzt im LOKALEN SCOPE dieser Funktion (IIFE)
+    // LOKALE Variablen für Staff Management
     var currentStaff = []; 
     var currentLoggedInTrainerId = null; 
     var currentLoggedInTrainerRole = null; 
     var targetCoachId = null; 
+    var targetCoachUsername = null;
 
     // DOM-Variablen-Stubs 
     var teamListDiv, teamMessageDiv, playerMessageDiv, playerListContainer, kaderTeamName, customActionTeamName, kaderTeamNameForm, customActionTeamNameForm, addPlayerButton, addCustomActionButton, customActionMessageDiv, customActionListContainer, selectedTeamInfoDiv;
@@ -35,6 +36,7 @@
     
     // --- Hilfsfunktion zum Zuweisen der Input-Elemente (muss hier sein) ---
     function assignSettingsElements() {
+        // ... (Zuweisung unverändert) ...
         settingsTeamName = document.getElementById('settings-team-name');
         settingsLoadingIndicator = document.getElementById('settings-loading-indicator');
         settingsFormContent = document.getElementById('settings-form-content');
@@ -47,6 +49,22 @@
         settingTestspiel = document.getElementById('setting-testspiel');
         settingTraining = document.getElementById('setting-training');
         settingOther = document.getElementById('setting-other');
+        
+        // Zuweisung der Staff-Elemente
+        staffTeamName = document.getElementById('staff-team-name');
+        staffListContainer = document.getElementById('staff-list-container');
+        addCoachButton = document.getElementById('add-coach-button');
+        coachMessageDiv = document.getElementById('coach-message');
+        addCoachForm = document.getElementById('add-coach-form');
+        roleChangeModal = document.getElementById('role-change-modal');
+        roleModalCoachName = document.getElementById('role-modal-coach-name');
+        roleSwapSection = document.getElementById('role-swap-section');
+        roleUpdateSection = document.getElementById('role-update-section');
+        swapTargetName = document.getElementById('swap-target-name');
+        updateTargetName = document.getElementById('update-target-name');
+        newRoleSelectSwap = document.getElementById('new-role-select-swap');
+        newRoleSelectUpdate = document.getElementById('new-role-select-update');
+        roleModalMessage = document.getElementById('role-modal-message');
     }
 
 
@@ -58,6 +76,7 @@
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
+        // ... (Update UI Elemente) ...
         document.querySelectorAll('.team-list-item').forEach(item => {
             item.classList.remove('selected');
         });
@@ -69,13 +88,12 @@
         if (selectedTeamInfoDiv) {
             selectedTeamInfoDiv.textContent = `Ausgewählt: ${teamName}`;
         }
-        // Update aller Formulare und Listen
         kaderTeamName.textContent = teamName;
         customActionTeamName.textContent = teamName;
         kaderTeamNameForm.textContent = teamName;
         customActionTeamNameForm.textContent = teamName;
         staffTeamName.textContent = teamName;
-        settingsTeamName.textContent = teamName; // NEU
+        settingsTeamName.textContent = teamName;
         
         addPlayerButton.disabled = false;
         addCustomActionButton.disabled = false;
@@ -83,7 +101,7 @@
         loadPlayers(teamId);
         loadCustomActions(teamId);
         loadStaff(teamId); 
-        loadDeadlines(teamId); // NEU: Lade Fristen
+        loadDeadlines(teamId); 
 
         // Speichern für alle Seiten
         localStorage.setItem('selected_team_id', teamId);
@@ -93,7 +111,7 @@
 
     // --- Teams laden und Toggle ---
     async function loadTeams() {
-        // ... (Unveränderte Logik zum Laden und Rendern der Teams) ...
+        // ... (Team Lade Logik unverändert) ...
         try {
             // Ladeindikator sichtbar machen
             teamListDiv.innerHTML = '<p style="opacity: 0.6;">Lade Mannschaften...</p>';
@@ -111,11 +129,11 @@
                 if(selectedTeamInfoDiv) selectedTeamInfoDiv.textContent = "";
                 kaderTeamName.textContent = "(Team wählen)";
                 staffTeamName.textContent = "(Team wählen)";
-                settingsTeamName.textContent = "(Team wählen)"; // NEU
+                settingsTeamName.textContent = "(Team wählen)";
                 addPlayerButton.disabled = true;
                 playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
                 loadStaff(null);
-                loadDeadlines(null); // NEU
+                loadDeadlines(null);
             }
 
             if (teams.length === 0) {
@@ -172,7 +190,7 @@
     }
     window.loadTeams = loadTeams;
 
-    // ... (toggleTeamPublic Logik unverändert) ...
+    // --- Public Toggle Logik (unverändert) ---
     async function toggleTeamPublic(teamId, teamName, isPublic) {
         if (!window.checkVerification()) {
             const checkbox = document.getElementById(`public-checkbox-${teamId}`);
@@ -207,7 +225,6 @@
             console.error('Toggle Public Fehler:', error);
         }
     }
-    // ... (Formular: Team erstellen Logik unverändert) ...
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-team-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -245,7 +262,7 @@
 
 
     // ==================================================
-    // --- D E A D L I N E S   S E T T I N G S (NEU) ---
+    // --- D E A D L I N E S   S E T T I N G S (unverändert) ---
     // ==================================================
 
     async function loadDeadlines(teamId) {
@@ -271,12 +288,12 @@
             
             const settings = await response.json();
             
-            // Felder mit Werten füllen
-            settingGame.value = settings.deadline_game || 0;
-            settingTournament.value = settings.deadline_tournament || 0;
-            settingTestspiel.value = settings.deadline_testspiel || 0;
-            settingTraining.value = settings.deadline_training || 0;
-            settingOther.value = settings.deadline_other || 0;
+            // Felder mit Werten füllen (ACHTUNG: Namen entsprechen TeamSettingsResponse)
+            settingGame.value = settings.game_deadline_hours || 0;
+            settingTournament.value = settings.tournament_deadline_hours || 0;
+            settingTestspiel.value = settings.testspiel_deadline_hours || 0;
+            settingTraining.value = settings.training_deadline_hours || 0;
+            settingOther.value = settings.other_deadline_hours || 0;
             
             settingsLoadingIndicator.style.display = 'none';
             settingsFormContent.style.display = 'grid';
@@ -299,12 +316,11 @@
         saveSettingsBtn.disabled = true;
         
         const payload = {
-            team_id: selectedTeamId,
-            deadline_game: parseInt(settingGame.value) || 0,
-            deadline_tournament: parseInt(settingTournament.value) || 0,
-            deadline_testspiel: parseInt(settingTestspiel.value) || 0,
-            deadline_training: parseInt(settingTraining.value) || 0,
-            deadline_other: parseInt(settingOther.value) || 0
+            game_deadline_hours: parseInt(settingGame.value) || 0,
+            tournament_deadline_hours: parseInt(settingTournament.value) || 0,
+            testspiel_deadline_hours: parseInt(settingTestspiel.value) || 0,
+            training_deadline_hours: parseInt(settingTraining.value) || 0,
+            other_deadline_hours: parseInt(settingOther.value) || 0
         };
 
         try {
@@ -330,12 +346,17 @@
             saveSettingsBtn.disabled = false;
         }
     }
+    document.addEventListener('DOMContentLoaded', () => {
+        if (updateSettingsForm) {
+            updateSettingsForm.addEventListener('submit', handleSaveDeadlines);
+        }
+    });
 
     // ==================================================
-    // --- P L A Y E R   M A N A G E M E N T ---
+    // --- P L A Y E R / C U S T O M - A C T I O N S (unverändert) ---
     // ==================================================
 
-    // ... (loadPlayers Logik unverändert) ...
+    // --- Spieler laden (loadPlayers) ---
     async function loadPlayers(teamId) {
         if (!teamId) {
              playerListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
@@ -355,7 +376,6 @@
                 return;
             }
             
-            // Header für die Spielerliste
             const header = document.createElement('div');
             header.className = 'player-list-item';
             header.style.background = 'none';
@@ -379,7 +399,6 @@
                 } else if (player.email) {
                     accountStatusHtml = '<span class="account-status pending">⚠️ Eingeladen</span>';
                 } else {
-                    // Fall 3: Noch kein Account -> Einlade-Button
                     accountStatusHtml = `<button class="btn btn-info" onclick="openInviteModal(${player.id}, '${player.name.replace(/'/g, "\\'")}')">👤 Account einladen</button>`;
                 }
 
@@ -400,8 +419,7 @@
     }
     window.loadPlayers = loadPlayers; 
 
-    // ... (Restliche Logik für Spieler und Custom Actions unverändert) ...
-    // --- Formular: Spieler erstellen ---
+    // --- Spieler erstellen (Formular) ---
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-player-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -444,7 +462,7 @@
             }
         });
     });
-
+    
     // --- Spieler löschen ---
     async function deletePlayer(playerId) {
         if (!window.checkVerification()) { return; }
@@ -473,7 +491,7 @@
     }
     window.deletePlayer = deletePlayer;
 
-    // --- Modal: Spieler Einladung ---
+    // --- Modal: Spieler Einladung (openInviteModal, sendInvitation, closeInviteModal) ---
     function openInviteModal(playerId, playerName) {
         inviteModalTitle.textContent = `Account für ${playerName} einladen`;
         invitePlayerIdInput.value = playerId;
@@ -520,7 +538,6 @@
             
             loadPlayers(selectedTeamId); 
             
-            // NOTE: closeInviteModal wird in team_management.html definiert
             if (typeof closeInviteModal === 'function') {
                 setTimeout(closeInviteModal, 1500);
             }
@@ -532,12 +549,8 @@
         }
     }
     window.sendInvitation = sendInvitation;
-
-    // ==================================================
-    // --- C U S T O M   A C T I O N S ---
-    // ==================================================
-
-    // --- Aktionen laden ---
+    
+    // --- Custom Actions (unverändert) ---
     async function loadCustomActions(teamId) {
         if (!teamId) { 
             customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie ein Team.</p>';
@@ -569,7 +582,6 @@
     }
     window.loadCustomActions = loadCustomActions;
 
-    // --- Formular: Aktion erstellen ---
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-custom-action-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -612,8 +624,7 @@
             }
         });
     });
-
-    // --- Aktion löschen ---
+    
     async function deleteCustomAction(actionId) {
         if (!window.checkVerification()) { return; }
         if (!confirm("Sind Sie sicher, dass Sie diese Aktionsvorlage löschen möchten?")) return;
@@ -639,8 +650,9 @@
     }
     window.deleteCustomAction = deleteCustomAction;
 
+
     // ==================================================
-    // --- S T A F F   M A N A G E M E N T (PHASE 10.2) ---
+    // --- S T A F F   M A N A G E M E N T ---
     // ==================================================
 
     // --- Staff-Liste laden ---
@@ -672,10 +684,10 @@
             const staff = await response.json();
             currentStaff = staff; 
             
-            // Finde den eingeloggten Trainer (Wir wissen seinen Benutzernamen aus Jinja2)
-            const trainerIdentifierElement = document.querySelector('.sidebar p:last-child');
-            const trainerIdentifier = trainerIdentifierElement ? trainerIdentifierElement.textContent.split(': ')[1] : null; 
-            const loggedInTrainer = staff.find(c => c.username === trainerIdentifier || c.email === trainerIdentifier);
+            // Finde den eingeloggten Trainer
+            const loggedInUsername = localStorage.getItem('logged_in_username');
+            const loggedInTrainer = staff.find(c => c.username === loggedInUsername);
+            
             currentLoggedInTrainerId = loggedInTrainer ? loggedInTrainer.id : null;
             currentLoggedInTrainerRole = loggedInTrainer ? loggedInTrainer.role : null;
             
@@ -708,9 +720,10 @@
             
             let roleButtonDisabled = !canManage;
             let roleButtonTitle = canManage ? '' : 'Keine Berechtigung.';
+            // Der Haupttrainer kann seine Rolle nur über den Tausch-Endpunkt ändern.
             if (isMe && isCriticalRole) {
-                roleButtonDisabled = true;
-                roleButtonTitle = 'Rolle als Haupttrainer/Admin muss über den Tausch-Endpunkt geändert werden.';
+                roleButtonDisabled = false; // Wir erlauben den Klick, um das Modal zu zeigen
+                roleButtonTitle = 'Rolle tauschen / bearbeiten'; 
             }
             
             let deleteButtonDisabled = !canManage || isMe;
@@ -736,7 +749,7 @@
         });
     }
 
-    // --- Trainer hinzufügen ---
+    // --- Trainer hinzufügen (unverändert) ---
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-coach-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -772,7 +785,7 @@
         });
     });
 
-    // --- Trainer entfernen ---
+    // --- Trainer entfernen (unverändert) ---
     async function removeCoach(coachId, username) {
         if (!window.checkVerification() || !selectedTeamId) return;
         
@@ -800,27 +813,62 @@
     }
     window.removeCoach = removeCoach;
 
-    // --- Modal: Rolle ändern/tauschen ---
+    // --- Modal: Rolle ändern/tauschen (Logik) ---
     function openRoleModal(coachId, username, currentRole) {
-        if (!window.checkVerification() || !selectedTeamId) return;
+        if (!checkVerification() || !selectedTeamId) return;
 
         targetCoachId = coachId;
+        targetCoachUsername = username;
         roleModalCoachName.textContent = username;
         roleModalMessage.textContent = '';
         roleModalMessage.className = 'message';
         
         const isTargetMainCoach = currentRole === 'MAIN_COACH';
         const isMeTheMainCoach = currentLoggedInTrainerRole === 'MAIN_COACH';
+        const isMe = coachId === currentLoggedInTrainerId;
         
-        if (isMeTheMainCoach) {
+        // Optionen für das Dropdown im Update-Feld setzen (ohne MAIN_COACH)
+        newRoleSelectUpdate.innerHTML = `
+            <option value="TEAM_ADMIN">Team-Admin (TEAM_ADMIN)</option>
+            <option value="ASSISTANT_COACH">Co-Trainer (ASSISTANT_COACH)</option>
+        `;
+
+        if (isMe && isMeTheMainCoach) {
+            // FALL 1: Ich bin Haupttrainer und klicke auf MICH SELBST
             roleSwapSection.style.display = 'block';
             roleUpdateSection.style.display = 'none';
             swapTargetName.textContent = username;
-            newRoleSelectSwap.value = currentRole; 
-        } else if (isTargetMainCoach) {
-            window.showToast("Sie können die Rolle des Haupttrainers nur als Haupttrainer selbst tauschen.", "error");
-            return;
+            
+            // Ich kann mich nur auf ASSISTANT_COACH herabstufen (via Swap-Endpunkt)
+            newRoleSelectSwap.innerHTML = `
+                <option value="MAIN_COACH" selected>Haupttrainer (MAIN_COACH)</option>
+                <option value="ASSISTANT_COACH">Co-Trainer (ASSISTANT_COACH)</option>
+            `;
+            // Der Button wird nun "Rolle herabstufen" (muss über Code im HTML erfolgen, hier nicht möglich)
+            // Wir lassen den Button-Text gleich, aber der Swap-Handler muss den Fall abfangen.
+
+        } else if (isMeTheMainCoach) {
+            // FALL 2: Ich bin Haupttrainer und klicke auf EINEN ANDEREN Trainer
+            roleSwapSection.style.display = 'block';
+            roleUpdateSection.style.display = 'none';
+            swapTargetName.textContent = username;
+            
+            // Der Haupttrainer kann jeden anderen zum Haupttrainer machen.
+            newRoleSelectSwap.innerHTML = `
+                <option value="MAIN_COACH">Haupttrainer (MAIN_COACH)</option>
+                <option value="TEAM_ADMIN">Team-Admin (TEAM_ADMIN)</option>
+                <option value="ASSISTANT_COACH">Co-Trainer (ASSISTANT_COACH)</option>
+            `;
+            newRoleSelectSwap.value = currentRole;
+
         } else {
+            // FALL 3: Ich bin Admin/Co-Trainer und klicke auf irgendjemanden
+            // Als Admin/Co-Trainer kann ich keine kritischen Rollen ändern/tauschen
+            if (isCriticalRole) {
+                 window.showToast("Als Co-Trainer/Admin können Sie die Rolle des Haupttrainers/Admins nicht ändern.", "error");
+                 return;
+            }
+            // Zeige nur das Update-Feld für unkritische Rollen
             roleSwapSection.style.display = 'none';
             roleUpdateSection.style.display = 'block';
             updateTargetName.textContent = username;
@@ -831,9 +879,9 @@
     }
     window.openRoleModal = openRoleModal;
 
-    // --- Rolle aktualisieren (Update) ---
+    // --- Rolle aktualisieren (Update, für Admin/Co-Trainer / Nur unkritische Rollen) ---
     async function confirmRoleUpdate() {
-        if (!window.checkVerification() || !selectedTeamId || !targetCoachId) return;
+        if (!checkVerification() || !selectedTeamId || !targetCoachId) return;
         const newRole = newRoleSelectUpdate.value;
         
         roleModalMessage.textContent = 'Aktualisiere Rolle...';
@@ -851,7 +899,6 @@
                 roleModalMessage.textContent = '✅ Rolle erfolgreich aktualisiert.';
                 roleModalMessage.className = 'message success';
                 loadStaff(selectedTeamId);
-                // NOTE: closeRoleModal wird in team_management.html definiert
                 if (typeof closeRoleModal === 'function') {
                     setTimeout(closeRoleModal, 1500);
                 }
@@ -868,24 +915,48 @@
 
     // --- Haupttrainer-Rolle tauschen (Swap) ---
     async function confirmRoleSwap() {
-        if (!window.checkVerification() || !selectedTeamId || !targetCoachId) return;
+        if (!checkVerification() || !selectedTeamId || !targetCoachId) return;
         const newRole = newRoleSelectSwap.value;
         
-        roleModalMessage.textContent = 'Führe Tausch aus...';
+        roleModalMessage.textContent = 'Führe Aktion aus...';
         roleModalMessage.className = 'message';
         
-        if (newRole !== 'MAIN_COACH' && currentLoggedInTrainerRole === 'MAIN_COACH') {
+        if (targetCoachId === currentLoggedInTrainerId && newRole === 'ASSISTANT_COACH') {
+            // FALL 1: Der Haupttrainer stuft sich selbst herab
+             if (!confirm(`Sicher? Sie werden auf Co-Trainer herabgestuft! Wählen Sie den neuen Haupttrainer über den Rollen-Button des ZIEL-Trainers.`)) {
+                roleModalMessage.textContent = 'Abgebrochen.';
+                roleModalMessage.className = 'message error';
+                return;
+            }
+            
+            // Nutze den Update-Endpunkt, um den eigenen Status zu ändern
             try {
-                 await confirmRoleUpdate();
-            } catch (e) {
-                 roleModalMessage.textContent = '❌ Fehler beim Rollen-Update (Nicht-Tausch).';
+                 const response = await fetch(`/teams/staff/role/${selectedTeamId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coach_id: targetCoachId, new_role: newRole }),
+                });
+                
+                if (response.ok) {
+                    window.showToast(`✅ Ihre Rolle wurde auf Co-Trainer herabgestuft.`, "success");
+                    loadStaff(selectedTeamId);
+                    if (typeof closeRoleModal === 'function') {
+                        setTimeout(closeRoleModal, 1500);
+                    }
+                } else {
+                     const data = await response.json();
+                     throw new Error(data.detail || 'Fehler beim Herabstufen der eigenen Rolle.');
+                }
+            } catch (error) {
+                 roleModalMessage.textContent = `❌ Fehler: ${error.message}`;
                  roleModalMessage.className = 'message error';
             }
             return;
         }
-        
+
         if (newRole === 'MAIN_COACH') {
-            if (!confirm(`Sicher? Ihre Rolle wird auf Co-Trainer herabgestuft und ${roleModalCoachName.textContent} wird Haupttrainer!`)) {
+            // FALL 2: Haupttrainer tauscht die Rolle auf einen anderen Trainer
+            if (!confirm(`Sicher? Ihre Rolle wird auf Co-Trainer herabgestuft und ${targetCoachUsername} wird Haupttrainer!`)) {
                 roleModalMessage.textContent = 'Abgebrochen.';
                 roleModalMessage.className = 'message error';
                 return;
@@ -903,6 +974,7 @@
                     roleModalMessage.textContent = `✅ ${data.message}`;
                     roleModalMessage.className = 'message success';
                     
+                    // Aktualisiere den globalen Status, da der eingeloggte Trainer herabgestuft wurde
                     currentLoggedInTrainerRole = 'ASSISTANT_COACH';
                     loadStaff(selectedTeamId);
                     if (typeof closeRoleModal === 'function') {
@@ -916,6 +988,9 @@
                 roleModalMessage.textContent = '❌ Serverfehler beim Rollen-Tausch.';
                 roleModalMessage.className = 'message error';
             }
+        } else {
+            // FALL 3: Haupttrainer ändert die Rolle eines anderen auf Admin/Co-Trainer
+            await confirmRoleUpdate();
         }
     }
     window.confirmRoleSwap = confirmRoleSwap;
@@ -942,31 +1017,12 @@
         invitePlayerIdInput = document.getElementById('invite-player-id');
         invitePlayerEmailInput = document.getElementById('invite-player-email');
         invitePlayerMessage = document.getElementById('invite-player-message');
-        staffTeamName = document.getElementById('staff-team-name');
-        staffListContainer = document.getElementById('staff-list-container');
-        addCoachButton = document.getElementById('add-coach-button');
-        coachMessageDiv = document.getElementById('coach-message');
-        addCoachForm = document.getElementById('add-coach-form');
-        roleChangeModal = document.getElementById('role-change-modal');
-        roleModalCoachName = document.getElementById('role-modal-coach-name');
-        roleSwapSection = document.getElementById('role-swap-section');
-        roleUpdateSection = document.getElementById('role-update-section');
-        swapTargetName = document.getElementById('swap-target-name');
-        updateTargetName = document.getElementById('update-target-name');
-        newRoleSelectSwap = document.getElementById('new-role-select-swap');
-        newRoleSelectUpdate = document.getElementById('new-role-select-update');
-        roleModalMessage = document.getElementById('role-modal-message');
         
-        // Zuweisung der NEUEN SETTINGS-Elemente
+        // Zuweisung der Staff- und Settings-Elemente
         assignSettingsElements(); 
 
         console.log("initTeamManagement() wird aufgerufen. Lade Teams...");
         loadTeams();
-        
-        // Event Listener für Deadline-Formular
-        if (updateSettingsForm) {
-            updateSettingsForm.addEventListener('submit', handleSaveDeadlines);
-        }
     }
 
     document.addEventListener('DOMContentLoaded', initTeamManagement);

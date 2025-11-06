@@ -1,11 +1,13 @@
 # DATEI: backend/database.py
-# +++ NEU: ERWEITERT UM TeamSettings MODELL für Standard-Deadlines +++
+# +++ FIX: VERSCHIEBT ALLE MODELL-DEFINITIONEN AN DEN ANFANG (Behebt ImportError) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 import enum
+from pydantic import BaseModel
+from typing import Optional, Dict
 
 # SQLite Datenbank (wird im Hauptverzeichnis der App erstellt)
 SQLALCHEMY_DATABASE_URL = "sqlite:///./handball.db"
@@ -18,29 +20,32 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ==================================================
-# ENUM für Trainer-Rollen
+# ENUMS
 # ==================================================
 class UserRole(enum.Enum):
     MAIN_COACH = "MAIN_COACH"
     ASSISTANT_COACH = "ASSISTANT_COACH"
     TEAM_ADMIN = "TEAM_ADMIN"
 
-# +++ NEUE ENUMS FÜR PHASE 12 +++
 class EventType(enum.Enum):
     TRAINING = "Training"
     GAME = "Spiel"
     OTHER = "Sonstiges"
+
+class EventStatus(enum.Enum):
+    PLANNED = "Geplant"
+    CANCELED = "Abgesagt"
+    COMPLETED = "Abgeschlossen"
 
 class AttendanceStatus(enum.Enum):
     ATTENDING = "Zugesagt"
     DECLINED = "Abgesagt"
     TENTATIVE = "Vielleicht"
     NOT_RESPONDED = "Keine Antwort"
-# +++ ENDE NEUE ENUMS +++
 
 
 # ==================================================
-# Assoziationstabelle (Trainer : Team)
+# AS-SOZIATIONSTABELLEN (MÜSSEN VOR DEN MODELLEN DEFINIERT WERDEN)
 # ==================================================
 team_trainer_association = Table(
     "team_trainer_association",
@@ -49,12 +54,18 @@ team_trainer_association = Table(
     Column("trainer_id", Integer, ForeignKey("trainers.id"), primary_key=True),
     Column("role", Enum(UserRole), default=UserRole.ASSISTANT_COACH)
 )
+game_participations_table = Table(
+    "game_participations",
+    Base.metadata,
+    Column("game_id", Integer, ForeignKey("games.id"), primary_key=True),
+    Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
+)
 # ==================================================
 
 
-# ---------------------------------
+# ==================================================
 # 1. Trainer (User) Modell
-# ---------------------------------
+# ==================================================
 class Trainer(Base):
     __tablename__ = "trainers"
     id = Column(Integer, primary_key=True, index=True)
@@ -71,8 +82,6 @@ class Trainer(Base):
     )
 
     scouting_reports = relationship("ScoutingReport", back_populates="trainer", cascade="all, delete-orphan")
-    
-    # +++ NEU: Beziehung zu erstellten Events (Phase 12) +++
     created_events = relationship("TeamEvent", back_populates="creator", foreign_keys="[TeamEvent.created_by_trainer_id]")
 
 # ---------------------------------
@@ -95,22 +104,8 @@ class Team(Base):
     games = relationship("Game", back_populates="team", cascade="all, delete-orphan") 
     custom_actions = relationship("CustomAction", back_populates="team", cascade="all, delete-orphan")
     scouting_reports = relationship("ScoutingReport", back_populates="team", cascade="all, delete-orphan")
-    
-    # +++ NEU: Beziehung zu Events (Phase 12) +++
     events = relationship("TeamEvent", back_populates="team", cascade="all, delete-orphan")
-
-    # +++ NEU: Beziehung zu den Einstellungen +++
     settings = relationship("TeamSettings", back_populates="team", uselist=False, cascade="all, delete-orphan")
-
-
-# --- Verknüpfungstabelle (Spieler:Spiel) ---
-game_participations_table = Table(
-    "game_participations",
-    Base.metadata,
-    Column("game_id", Integer, ForeignKey("games.id"), primary_key=True),
-    Column("player_id", Integer, ForeignKey("players.id"), primary_key=True),
-)
-# --- ENDE ---
 
 
 # ---------------------------------
@@ -152,7 +147,6 @@ class Player(Base):
         back_populates="participating_players"
     )
     
-    # +++ NEU: Beziehung zu Anwesenheiten (Phase 10) +++
     event_attendances = relationship("Attendance", back_populates="player", cascade="all, delete-orphan")
 
 # ---------------------------------
@@ -167,7 +161,7 @@ class Game(Base):
     game_category = Column(String, default="Testspiel", nullable=False)
     tournament_name = Column(String, nullable=True) 
     
-    video_url = Column(String, nullable=True) # (PHASE 8)
+    video_url = Column(String, nullable=True) 
 
     team = relationship("Team", back_populates="games")
     actions = relationship("Action", back_populates="game", cascade="all, delete-orphan") 
@@ -193,7 +187,7 @@ class Action(Base):
     x_coordinate = Column(Float, nullable=True)
     y_coordinate = Column(Float, nullable=True)
     
-    video_timestamp = Column(String, nullable=True) # (PHASE 8)
+    video_timestamp = Column(String, nullable=True) 
     
     server_timestamp = Column(DateTime, default=datetime.utcnow) 
 
@@ -228,7 +222,7 @@ class CustomAction(Base):
 
 
 # ---------------------------------
-# 7. ScoutingReport Modell (Phase 9)
+# 7. ScoutingReport Modell 
 # ---------------------------------
 class ScoutingReport(Base):
     __tablename__ = "scouting_reports"
@@ -250,7 +244,6 @@ class ScoutingReport(Base):
     trainer = relationship("Trainer", back_populates="scouting_reports")
 
 
-# +++ NEUES MODELL (PHASE 16 - Deadlines) +++
 # ---------------------------------
 # 8. TeamSettings (Standard-Deadlines)
 # ---------------------------------
@@ -258,7 +251,6 @@ class TeamSettings(Base):
     __tablename__ = "team_settings"
     team_id = Column(Integer, ForeignKey("teams.id"), primary_key=True)
     
-    # Standard-Deadline in Stunden (Response Deadline Hours)
     game_deadline_hours = Column(Integer, default=48)
     tournament_deadline_hours = Column(Integer, default=72)
     testspiel_deadline_hours = Column(Integer, default=48)
@@ -268,7 +260,6 @@ class TeamSettings(Base):
     team = relationship("Team", back_populates="settings")
 
 
-# +++ NEUES MODELL (PHASE 12) +++
 # ---------------------------------
 # 9. TeamEvent (Kalender-Termin) Modell
 # ---------------------------------
@@ -282,6 +273,8 @@ class TeamEvent(Base):
     title = Column(String, index=True)
     event_type = Column(Enum(EventType), default=EventType.TRAINING)
     
+    status = Column(Enum(EventStatus), default=EventStatus.PLANNED) 
+    
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     
@@ -290,19 +283,14 @@ class TeamEvent(Base):
     
     default_status = Column(Enum(AttendanceStatus), default=AttendanceStatus.NOT_RESPONDED)
     
-    # +++ NEUE SPALTE (PHASE 10/12) +++
-    # Antwortfrist in Stunden VOR 'start_time'. 
-    # 'None' oder 0 bedeutet keine Frist.
     response_deadline_hours = Column(Integer, nullable=True) 
     
     team = relationship("Team", back_populates="events")
     creator = relationship("Trainer", back_populates="created_events", foreign_keys=[created_by_trainer_id])
     
-    # Beziehung zur Anwesenheits-Tabelle
     attendances = relationship("Attendance", back_populates="event", cascade="all, delete-orphan")
 
 
-# +++ NEUES MODELL (PHASE 10/12) +++
 # ---------------------------------
 # 10. Attendance (Anwesenheit) Modell
 # ---------------------------------
@@ -312,11 +300,38 @@ class Attendance(Base):
     player_id = Column(Integer, ForeignKey("players.id"), primary_key=True)
     
     status = Column(Enum(AttendanceStatus), default=AttendanceStatus.NOT_RESPONDED)
-    reason = Column(String, nullable=True) # z.B. "Krank", "Urlaub"
+    reason = Column(String, nullable=True) 
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     event = relationship("TeamEvent", back_populates="attendances")
     player = relationship("Player", back_populates="event_attendances")
+
+
+# ==================================================
+# NEUTRALES PYDANTIC MODELL FÜR STATISTIKEN (FIX)
+# (MUSS HIER UNTEN BLEIBEN, NACH DER DEFINITION DER MODELLE)
+# ==================================================
+class PlayerStats(BaseModel):
+    player_id: int
+    player_name: str
+    player_number: Optional[int] = None
+    position: Optional[str] = None
+    games_played: int = 0
+    goals: int = 0
+    misses: int = 0
+    tech_errors: int = 0
+    fehlpaesse: int = 0
+    seven_meter_goals: int = 0
+    seven_meter_misses: int = 0
+    seven_meter_caused: int = 0
+    seven_meter_saves: int = 0
+    seven_meter_received: int = 0
+    saves: int = 0
+    opponent_goals_received: int = 0
+    custom_counts: Dict[str, int] = {}
+    time_on_court_seconds: int = 0 
+    time_on_court_display: str = "00:00" 
+    class Config: from_attributes = True
 
 
 # Initialisierungsfunktion

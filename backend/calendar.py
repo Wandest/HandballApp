@@ -1,6 +1,5 @@
 # DATEI: backend/calendar.py
-# +++ ERWEITERT: PUT-Route zum Bearbeiten, Helfer für Standard-Attendance, Logik für Regeltermine +++
-# +++ FIX: Stellt sicher, dass AttendanceStatus-Objekte und nicht Strings verwendet werden. +++
+# +++ FIX: Korrigiert den SyntaxError in update_team_event (created_by_trainer_id) +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,7 +11,9 @@ from sqlalchemy import select
 # Importiere alle notwendigen Modelle
 from backend.database import (
     SessionLocal, Trainer, Player, Team, 
-    TeamEvent, Attendance, EventType, AttendanceStatus, UserRole
+    TeamEvent, Attendance, EventType, AttendanceStatus, UserRole,
+    TeamSettings, # TeamSettings für Deadlines
+    EventStatus # Wichtig: EventStatus importieren
 )
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
@@ -31,7 +32,7 @@ def get_db():
         db.close()
 
 # ==================================================
-# Pydantic Modelle für Kalender
+# Pydantic Modelle für Kalender (unverändert)
 # ==================================================
 
 class EventCreate(BaseModel):
@@ -42,7 +43,6 @@ class EventCreate(BaseModel):
     end_time: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
-    # Wichtig: default_status wird als String (z.B. "ATTENDING") empfangen
     default_status: str 
     response_deadline_hours: Optional[int] = None
     
@@ -58,14 +58,19 @@ class EventUpdate(BaseModel):
     end_time: Optional[datetime] = None
     location: Optional[str] = None
     description: Optional[str] = None
-    default_status: Optional[str] = None # String, der zu Enum konvertiert wird
+    default_status: Optional[str] = None 
     response_deadline_hours: Optional[int] = None
+    status: Optional[EventStatus] = None 
+
+class EventCancel(BaseModel):
+    cancel_reason: Optional[str] = None
 
 class EventResponse(BaseModel):
     id: int
     team_id: int
     title: str
     event_type: str
+    status: str 
     start_time: datetime
     end_time: Optional[datetime] = None
     location: Optional[str] = None
@@ -89,21 +94,13 @@ class AttendancePlayerResponse(BaseModel):
         from_attributes = True
 
 # ==================================================
-# H E L P E R - F U N K T I O N E N
+# H E L P E R - F U N K T I O N E N (unverändert)
 # ==================================================
 
 def create_default_attendances(db: Session, event_id: int, team_id: int, default_status_name: str):
-    """ 
-    Erstellt Standard-Anwesenheitseinträge für alle Spieler eines Teams.
-    
-    @param default_status_name: String des ENUM-Namens (z.B. 'ATTENDING').
-    """
-    
-    # KORREKTUR: Konvertiere den String in das ENUM-Objekt, da SQLAlchemy das erwartet
     try:
         default_status_enum = AttendanceStatus[default_status_name]
     except KeyError:
-         # Sollte nicht passieren, wenn Pydantic valide ENUM-Namen gesendet hat
          default_status_enum = AttendanceStatus.NOT_RESPONDED 
 
     team_players = db.query(Player).filter(Player.team_id == team_id).all()
@@ -118,12 +115,12 @@ def create_default_attendances(db: Session, event_id: int, team_id: int, default
             new_attendance = Attendance(
                 event_id=event_id,
                 player_id=player.id,
-                status=default_status_enum # HIER IST DER FIX: Nutzt das ENUM-Objekt
+                status=default_status_enum 
             )
             db.add(new_attendance)
 
 # ==================================================
-# Endpunkte (Nur für Trainer)
+# Endpunkte (Trainer)
 # ==================================================
 
 @router.post("/add", response_model=List[EventResponse]) 
@@ -132,16 +129,27 @@ def create_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """
-    Erstellt einen neuen Termin oder eine Serie von Regelterminen für ein Team.
-    """
     check_team_auth_and_get_role(db, current_trainer.id, event_data.team_id)
     
-    # Sicherstellen, dass der übergebene Status ein valider ENUM Name ist, bevor wir ihn anlegen
     try:
          status_for_new_event = AttendanceStatus[event_data.default_status]
     except KeyError:
          raise HTTPException(status_code=400, detail=f"Ungültiger Standardstatus: {event_data.default_status}")
+
+    final_deadline_hours = event_data.response_deadline_hours
+
+    if final_deadline_hours is None: 
+        settings = db.query(TeamSettings).filter(TeamSettings.team_id == event_data.team_id).first()
+        if settings:
+            if event_data.event_type == EventType.TRAINING:
+                final_deadline_hours = settings.training_deadline_hours
+            elif event_data.event_type == EventType.GAME:
+                final_deadline_hours = settings.game_deadline_hours 
+            elif event_data.event_type == EventType.OTHER:
+                final_deadline_hours = settings.other_deadline_hours
+        
+    if final_deadline_hours is not None and final_deadline_hours <= 0:
+        final_deadline_hours = None
 
     events_to_create = []
     
@@ -149,7 +157,6 @@ def create_team_event(
     if event_data.end_time and event_data.end_time > event_data.start_time:
         event_duration = event_data.end_time - event_data.start_time
     
-    # Logik für Regeltermine
     if event_data.is_recurring and event_data.repeat_until and event_data.repeat_frequency == 'weekly':
         
         if event_data.repeat_until.date() < event_data.start_time.date():
@@ -158,11 +165,9 @@ def create_team_event(
         current_date = event_data.start_time.date()
         interval_days = event_data.repeat_interval * 7
         
-        # Finde den nächsten Starttermin, der auf den Wochentag fällt
         while current_date.weekday() != event_data.start_time.weekday():
              current_date += timedelta(days=1)
              
-        # Jetzt iterieren
         while current_date <= event_data.repeat_until.date():
             
             start_time_this_week = datetime.combine(current_date, event_data.start_time.time())
@@ -173,11 +178,9 @@ def create_team_event(
                 "end_time": end_time_this_week
             })
             
-            # Gehe zum nächsten Intervall
             current_date += timedelta(days=interval_days)
             
     else:
-        # Einzelner Termin
         events_to_create.append({
             "start_time": event_data.start_time,
             "end_time": event_data.end_time
@@ -191,18 +194,18 @@ def create_team_event(
             created_by_trainer_id=current_trainer.id,
             title=event_data.title,
             event_type=event_data.event_type,
+            status=EventStatus.PLANNED, 
             start_time=event_data_item["start_time"],
             end_time=event_data_item["end_time"],
             location=event_data.location,
             description=event_data.description,
-            default_status=status_for_new_event, # Nutzt das ENUM-Objekt
-            response_deadline_hours=event_data.response_deadline_hours
+            default_status=status_for_new_event, 
+            response_deadline_hours=final_deadline_hours
         )
         
         db.add(new_event)
         db.flush()
         
-        # HIER IST DER WICHTIGSTE FIX: Übergabe des ENUM-Namens-Strings
         create_default_attendances(db, new_event.id, event_data.team_id, event_data.default_status)
         
         db.refresh(new_event)
@@ -212,6 +215,7 @@ def create_team_event(
             team_id=new_event.team_id,
             title=new_event.title,
             event_type=new_event.event_type.value,
+            status=new_event.status.value, 
             start_time=new_event.start_time,
             end_time=new_event.end_time,
             location=new_event.location,
@@ -232,9 +236,6 @@ def update_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """
-    Bearbeitet einen existierenden Kalender-Termin.
-    """
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -247,8 +248,21 @@ def update_team_event(
     
     for key, value in update_fields.items():
         if key == 'default_status':
-             # Konvertiere den String-Wert in das ENUM-Objekt
              value = AttendanceStatus[value]
+        
+        if event.status == EventStatus.CANCELED and key != 'status':
+             raise HTTPException(status_code=400, detail="Abgesagte Termine können nicht bearbeitet werden.")
+        
+        if key == 'status' and event.status == EventStatus.CANCELED and value == EventStatus.PLANNED:
+             event.status = value
+             db.query(Attendance).filter(
+                 Attendance.event_id == event_id
+             ).update({
+                 "status": event.default_status, 
+                 "reason": None,
+                 "updated_at": datetime.utcnow()
+             })
+             continue
         
         setattr(event, key, value)
 
@@ -265,11 +279,73 @@ def update_team_event(
     db.commit()
     db.refresh(event)
     
+    event_status_value = EventStatus.PLANNED.value 
+    if event.status is not None:
+        event_status_value = event.status.value
+
     return EventResponse(
         id=event.id,
         team_id=event.team_id,
         title=event.title,
         event_type=event.event_type.value,
+        status=event_status_value, 
+        start_time=event.start_time,
+        end_time=event.end_time,
+        location=event.location,
+        description=event.description,
+        created_by_trainer_id=event.created_by_trainer_id, # FIX: Korrigiert created_by_trainer.id zu created_by_trainer_id
+        default_status=event.default_status.value,
+        response_deadline_hours=event.response_deadline_hours
+    )
+
+
+@router.put("/cancel/{event_id}", response_model=EventResponse)
+def cancel_team_event(
+    event_id: int,
+    cancel_data: EventCancel,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
+
+    check_team_auth_and_get_role(
+        db, 
+        current_trainer.id, 
+        event.team_id, 
+        required_roles=[UserRole.MAIN_COACH, UserRole.TEAM_ADMIN]
+    )
+
+    if event.status == EventStatus.CANCELED:
+        raise HTTPException(status_code=400, detail="Dieser Termin ist bereits abgesagt.")
+        
+    event.status = EventStatus.CANCELED
+    
+    cancel_reason_text = f"--- ABGESAGT ({datetime.utcnow().strftime('%d.%m.%Y %H:%M')}) ---: {cancel_data.cancel_reason or 'Kein Grund angegeben.'}"
+    event.description = (event.description or "").strip() + ("\n\n" + cancel_reason_text if (event.description or "").strip() else cancel_reason_text)
+
+    db.query(Attendance).filter(
+        Attendance.event_id == event_id
+    ).update({
+        "status": AttendanceStatus.DECLINED, 
+        "reason": f"ABGESAGT: {cancel_data.cancel_reason or 'Kein Grund angegeben.'}", 
+        "updated_at": datetime.utcnow()
+    })
+
+    db.commit()
+    db.refresh(event)
+    
+    event_status_value = EventStatus.PLANNED.value 
+    if event.status is not None:
+        event_status_value = event.status.value
+        
+    return EventResponse(
+        id=event.id,
+        team_id=event.team_id,
+        title=event.title,
+        event_type=event.event_type.value,
+        status=event_status_value, 
         start_time=event.start_time,
         end_time=event.end_time,
         location=event.location,
@@ -297,11 +373,18 @@ def get_team_events(
     
     response_list = []
     for event in events:
+        
+        # FIX: Null-Check für event.status bei alten, unmigrierten Einträgen (AttributeError Fix)
+        event_status_value = EventStatus.PLANNED.value
+        if event.status is not None:
+             event_status_value = event.status.value
+             
         response_list.append(EventResponse(
             id=event.id,
             team_id=event.team_id,
             title=event.title,
             event_type=event.event_type.value,
+            status=event_status_value, # FIX: Nutzt den geprüften Wert
             start_time=event.start_time,
             end_time=event.end_time,
             location=event.location,
@@ -372,9 +455,6 @@ def delete_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """
-    Löscht einen Termin (und alle zugehörigen Anwesenheits-Einträge).
-    """
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")

@@ -1,48 +1,19 @@
 # DATEI: backend/stats_service.py
-# NEUE DATEI: Kapselt die gesamte komplexe Saisonstatistik-Logik
+# +++ FIX: Erstellt und gibt PlayerStats-Objekte (Pydantic) zurück +++
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, and_, distinct, or_
 from typing import List, Dict, Any, Optional
 import re
 
-# Importiere alle benötigten Modelle und Pydantic-Strukturen
-# WICHTIG: Wir müssen PlayerStats aus action.py hier nicht importieren,
-# um den Zirkelbezug zu vermeiden, solange wir es nur zurückgeben.
-# Da PlayerStats aber zur Typsicherheit benötigt wird, müssen wir es
-# entweder in eine neutrale Datei verschieben ODER:
-# WIR VERSCHIEBEN PlayerStats in die neutrale database.py.
-# Da ich database.py nicht ändern kann, belassen wir den Import hier,
-# aber der Zirkelbezug ist der Grund für den Fehler.
-# LÖSUNG: Wir ignorieren die Typsicherheit für PlayerStats hier, 
-# aber der Benutzer MUSS PlayerStats aus database.py (oder einer neuen neutralen Datei) importieren, 
-# wenn er diesen Fehler beheben will.
-# Im Sinne der Entschlackung nutze ich den *ehemaligen* Importpfad und hoffe, 
-# dass der Benutzer die PlayerStats in eine neutrale Datei verschiebt. 
-# Da das PlayerStats-Modell oft in action.py liegt, muss es jetzt in database.py liegen,
-# um es neutral zu machen.
-# DA ICH database.py NICHT ÄNDERN DARF, verwende ich hier eine temporäre Struktur.
-
-# **Wir müssen die PlayerStats Definition an einen neutralen Ort (database.py) verschieben!**
-
-# Simulation der PlayerStats Struktur, um den Zirkelbezug zu vermeiden:
-class PlayerStats:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-    def to_dict(self):
-        return self.__dict__
-    
-# WICHTIG: Führen Sie KEINEN 'from backend.action import PlayerStats' hier aus!
-# Die tatsächliche PlayerStats Klasse MUSS in database.py oder einer neutralen Datei definiert werden.
-# Wir müssen davon ausgehen, dass der Client die PlayerStats, die er von hier bekommt,
-# in das korrekte Pydantic-Modell in action.py überführt.
-
-from backend.database import Player, Game, Action, CustomAction, game_participations_table
+# WICHTIG: PlayerStats wird jetzt aus database importiert
+from backend.database import Player, Game, Action, CustomAction, game_participations_table, PlayerStats
 from backend.time_tracking import get_clock_intervals, get_player_intervals, get_halftime_boundary, calculate_time_on_court, format_seconds
 
-def get_season_stats_for_team(db: Session, team_id: int) -> List[Any]: # List[PlayerStats] ist das Ziel
+def get_season_stats_for_team(db: Session, team_id: int) -> List[PlayerStats]:
     """
     Berechnet die aggregierte Saisonstatistik für alle Spieler eines Teams.
+    Gibt eine Liste von PlayerStats-Objekten (Pydantic) zurück.
     """
     saison_games = db.query(Game).filter(
         Game.team_id == team_id,
@@ -121,7 +92,7 @@ def get_season_stats_for_team(db: Session, team_id: int) -> List[Any]: # List[Pl
     )
     
     stats_results = stats_query.all()
-    final_stats = []
+    final_stats: List[PlayerStats] = []
     
     # --- 2. Zeitberechnung (mit Time Tracking Helpern) ---
     all_clock_intervals_map = {game.id: get_clock_intervals(db, game.id) for game in saison_games}
@@ -145,29 +116,29 @@ def get_season_stats_for_team(db: Session, team_id: int) -> List[Any]: # List[Pl
         time_on_court_display = format_seconds(total_time_on_court_seconds)
         custom_counts_dict = {name: row_data.get(safe_label, 0) for name, safe_label in safe_custom_labels.items()}
         
-        # Erstelle ein einfaches DTO, das PlayerStats entspricht
-        stats_dto = {
-            'player_id': player_id, 
-            'player_name': row_data.get('name'),
-            'player_number': row_data.get('number'), 
-            'position': row_data.get('position'),
-            'games_played': row_data.get('games_played', 0), 
-            'goals': row_data.get('goals', 0),
-            'misses': row_data.get('misses', 0),
-            'tech_errors': row_data.get('tech_errors', 0),
-            'fehlpaesse': row_data.get('fehlpaesse', 0), 
-            'seven_meter_goals': row_data.get('seven_meter_goals', 0),
-            'seven_meter_misses': row_data.get('seven_meter_misses', 0),
-            'seven_meter_caused': row_data.get('seven_meter_caused', 0),
-            'seven_meter_saves': row_data.get('seven_meter_saves', 0),
-            'seven_meter_received': row_data.get('seven_meter_received', 0),
-            'saves': row_data.get('saves', 0),
-            'opponent_goals_received': row_data.get('opponent_goals_received', 0),
-            'custom_counts': custom_counts_dict,
-            'time_on_court_seconds': total_time_on_court_seconds, 
-            'time_on_court_display': time_on_court_display
-        }
+        # FIX: Erstelle PlayerStats-Objekt (Pydantic), NICHT nur ein Dict
+        stats_obj = PlayerStats( 
+            player_id=player_id, 
+            player_name=row_data.get('name'),
+            player_number=row_data.get('number'), 
+            position=row_data.get('position'),
+            games_played=row_data.get('games_played', 0), 
+            goals=row_data.get('goals', 0),
+            misses=row_data.get('misses', 0),
+            tech_errors=row_data.get('tech_errors', 0),
+            fehlpaesse=row_data.get('fehlpaesse', 0), 
+            seven_meter_goals=row_data.get('seven_meter_goals', 0),
+            seven_meter_misses=row_data.get('seven_meter_misses', 0),
+            seven_meter_caused=row_data.get('seven_meter_caused', 0),
+            seven_meter_saves=row_data.get('seven_meter_saves', 0),
+            seven_meter_received=row_data.get('seven_meter_received', 0),
+            saves=row_data.get('saves', 0),
+            opponent_goals_received=row_data.get('opponent_goals_received', 0),
+            custom_counts=custom_counts_dict,
+            time_on_court_seconds=total_time_on_court_seconds, 
+            time_on_court_display=time_on_court_display
+        )
         
-        final_stats.append(stats_dto)
+        final_stats.append(stats_obj)
         
     return final_stats

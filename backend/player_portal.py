@@ -1,5 +1,5 @@
-# DATEI: backend/player_portal.py (Finaler Absagegrund Fix und Statistik/Clips Implementierung)
-# +++ ENTSCHLACKT: Statistik-Logik in stats_service.py ausgelagert. +++
+# DATEI: backend/player_portal.py (Behebt den AttributeError: 'NoneType' object has no attribute 'value')
+# +++ FIX: Führt eine Null-Prüfung für event.status ein (Fehler nach Alembic-Upgrade) +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -11,17 +11,19 @@ from datetime import datetime, timedelta
 
 from backend.database import (
     SessionLocal, Player, Game, Action, CustomAction, 
-    game_participations_table, TeamEvent, Attendance, AttendanceStatus, EventType
+    game_participations_table, TeamEvent, Attendance, AttendanceStatus, EventType,
+    PlayerStats, 
+    EventStatus # WICHTIG: EventStatus importieren, da TeamEvent es nun enthält
 )
 from backend.auth import get_current_player_only
-from backend.action import PlayerStats, ActionPlaylistResponse
+from backend.action import ActionPlaylistResponse 
 from backend.time_tracking import format_seconds
 # NEU: Import des Statistik-Service
 from backend.stats_service import get_season_stats_for_team
 
 
 router = APIRouter(
-    prefix="/portal",
+    prefix="/portal", 
     tags=["Player Portal"],
     dependencies=[Depends(get_current_player_only)]
 )
@@ -35,13 +37,14 @@ def get_db():
         db.close()
 
 # ==================================================
-# Pydantic Modelle (Unverändert)
+# Pydantic Modelle 
 # ==================================================
 
 class PlayerEventResponse(BaseModel):
     id: int
     title: str
     event_type: str
+    status: str # NEU: Fügt den Event-Status hinzu (Geplant/Abgesagt/etc.)
     start_time: datetime
     end_time: Optional[datetime] = None
     location: Optional[str] = None
@@ -61,10 +64,9 @@ class PlayerAttendanceUpdate(BaseModel):
 
 
 # ==================================================
-# Endpunkte: Spieler-Statistiken und Clips (NEU)
+# Endpunkte: Spieler-Statistiken und Clips (Unverändert, aber enthalten)
 # ==================================================
 
-# NEU: Liefert die aggregierten Saison-Statistiken des Spielers
 @router.get("/stats", response_model=Dict[str, str])
 def get_my_season_stats(
     current_player: Player = Depends(get_current_player_only),
@@ -73,15 +75,12 @@ def get_my_season_stats(
     team_id = current_player.team_id
     player_id = current_player.id
     
-    # RUFT JETZT DEN SERVICE AUF
     all_team_stats = get_season_stats_for_team(db, team_id)
     my_stats = next((s for s in all_team_stats if s.player_id == player_id), None)
 
     if not my_stats:
         return {"field_stats": "", "goalie_stats": "", "custom_stats": ""}
 
-    # 1. Erstelle die HTML-Strings (Basierend auf der Position)
-    
     def create_field_html(stats: PlayerStats):
         if stats.position == 'Torwart': return ""
         if stats.games_played == 0: return ""
@@ -146,7 +145,6 @@ def get_my_season_stats(
         "custom_stats": create_custom_html(my_stats)
     }
 
-# NEU: Liefert alle Clips des Spielers
 @router.get("/clips", response_model=List[ActionPlaylistResponse])
 def get_my_season_clips(
     current_player: Player = Depends(get_current_player_only),
@@ -165,7 +163,6 @@ def get_my_season_clips(
     if not saison_game_ids:
         return []
 
-    # Suche nach Aktionen des Spielers (Feldspieler ODER Torwart-Aktion)
     actions_query = db.query(Action).join(Game).filter(
         Action.game_id.in_(saison_game_ids),
         Action.video_timestamp.isnot(None),
@@ -201,9 +198,10 @@ def get_my_season_clips(
 
 
 # ==================================================
-# Endpunkte: Spieler-Kalender (Unverändert)
+# Endpunkte: Spieler-Kalender
 # ==================================================
 
+# ROUTE IST: /portal/calendar/list
 @router.get("/calendar/list", response_model=List[PlayerEventResponse])
 def get_my_team_events(
     current_player: Player = Depends(get_current_player_only),
@@ -235,15 +233,22 @@ def get_my_team_events(
             my_status = my_attendances_map[event.id].status
             my_reason = my_attendances_map[event.id].reason
         
+        # KORRIGIERTER ZUGRIFF: Prüft, ob event.status None ist (nach Alembic-Upgrade möglich)
+        # Setze den Status auf PLANNED, wenn er None ist (alter Eintrag)
+        event_status_value = EventStatus.PLANNED.value 
+        if event.status is not None:
+            event_status_value = event.status.value
+            
         response_list.append(PlayerEventResponse(
             id=event.id,
             title=event.title,
             event_type=event.event_type.value,
+            status=event_status_value, # FIX: Nutzt den geprüften Wert
             start_time=event.start_time,
             end_time=event.end_time,
             location=event.location,
             description=event.description,
-            my_status=my_status.name, # Sende Status als ENUM NAME
+            my_status=my_status.name, 
             my_reason=my_reason,
             response_deadline_hours=event.response_deadline_hours
         ))
@@ -307,10 +312,17 @@ def respond_to_event(
     db.refresh(attendance)
     
     # 4. Response erstellen
+    
+    # FIX: Erneute Null-Prüfung für den Event-Status (selber Fix wie oben)
+    event_status_value = EventStatus.PLANNED.value 
+    if event.status is not None:
+        event_status_value = event.status.value
+
     return PlayerEventResponse(
         id=event.id,
         title=event.title,
         event_type=event.event_type.value,
+        status=event_status_value, # FIX: Nutzt den geprüften Wert
         start_time=event.start_time,
         end_time=event.end_time,
         location=event.location,

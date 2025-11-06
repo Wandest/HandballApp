@@ -1,12 +1,13 @@
 // DATEI: frontend/static/calendar.js
-// +++ ERWEITERT: Logik für Regeltermine (inkl. Multi-Woche), Bearbeiten-Modal und PUT-Anfrage +++
+// +++ ERWEITERT: Absage-Funktionalität, Modal und Event-Status-Anzeige +++
 
 (function() {
     
     // Globale Variablen
     var selectedTeamId = localStorage.getItem('selected_team_id');
     var selectedTeamName = localStorage.getItem('selected_team_name');
-    var currentTeamDeadlines = {}; // Speichert die Standard-Fristen des Teams
+    var currentTeamDeadlines = {}; 
+    var currentEventToCancel = null; // Speichert Event-ID für die Absage
 
     // DOM-Elemente
     var calendarTeamName, addEventButton, eventMessageDiv, createEventForm;
@@ -15,11 +16,14 @@
     var eventListContainer;
     var attendanceModal, attendanceModalTitle, attendanceModalStats, attendanceList;
     
-    // NEU: DOM-Elemente für Regeltermine
+    // Regeltermine
     var isRecurringCheckbox, recurringOptionsDiv, repeatFrequencySelect, repeatUntilInput, repeatIntervalInput;
 
-    // NEU: DOM-Elemente für Bearbeiten-Modal
+    // Bearbeiten-Modal
     var editEventModal, editEventForm, editEventId, editEventTitle, editEventType, editEventStartTime, editEventEndTime, editEventLocation, editEventDescription, editDefaultStatusSelect, editResponseDeadlineInput, editMessageDiv, editModalTitle;
+    
+    // NEU: Absage-Modal
+    var cancelEventModal, cancelEventModalTitle, cancelReasonInput, confirmCancelButton, cancelMessageDiv;
 
 
     // ==================================================
@@ -40,29 +44,21 @@
 
     /**
      * Wählt die korrekte Standard-Deadline aus den Team Settings.
+     * @param {string} eventType 
      */
     function getDefaultDeadline(eventType) {
         if (!currentTeamDeadlines) return 0;
         
-        // Die Logik muss den Team-Settings (team.py) entsprechen:
-        // deadline_game/tournament/testspiel/training/other
-        
-        if (eventType === 'Training') return currentTeamDeadlines.deadline_training || 0;
-        
-        // Annahme: Wenn der Typ "Spiel" ist, verwenden wir den allgemeinen Spiel-Deadline-Wert.
-        if (eventType === 'Spiel') return currentTeamDeadlines.deadline_game || 0;
-        
-        // Für 'Sonstiges' nutzen wir den 'other' Wert.
-        if (eventType === 'Sonstiges') return currentTeamDeadlines.deadline_other || 0;
-        
-        // Fallback
-        if (eventType === 'Turnier') return currentTeamDeadlines.deadline_tournament || 0;
-        if (eventType === 'Testspiel') return currentTeamDeadlines.deadline_testspiel || 0;
+        // Annahme, dass die Schlüssel in currentTeamDeadlines den Attributnamen von TeamSettings entsprechen
+        if (eventType === 'Training') return currentTeamDeadlines.training_deadline_hours || 0;
+        if (eventType === 'Spiel') return currentTeamDeadlines.game_deadline_hours || 0;
+        if (eventType === 'Turnier') return currentTeamDeadlines.tournament_deadline_hours || 0;
+        if (eventType === 'Testspiel') return currentTeamDeadlines.testspiel_deadline_hours || 0;
+        if (eventType === 'Sonstiges') return currentTeamDeadlines.other_deadline_hours || 0;
         
         return 0;
     }
-
-
+    
     // ==================================================
     // --- L A D E N   &   A N Z E I G E N ---
     // ==================================================
@@ -78,6 +74,7 @@
         eventListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Termine...</p>';
         if (addEventButton) addEventButton.disabled = false;
         
+        // Lade Deadlines VOR Events (um Standardwerte setzen zu können)
         await loadTeamDeadlines(teamId); 
 
         try {
@@ -121,6 +118,7 @@
             const settings = await response.json();
             currentTeamDeadlines = settings;
             
+            // Setzt den Standardwert in der Erstellungsmaske
             const selectedType = eventType.value;
             responseDeadlineInput.value = getDefaultDeadline(selectedType);
 
@@ -141,9 +139,16 @@
         events.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         
         events.forEach(event => {
+            // NEU: Status-Klasse und -Text
+            const isCanceled = event.status === 'CANCELED';
+            const statusClass = isCanceled ? 'event-type-Abgesagt' : `event-type-${event.event_type.replace(' ', '-')}`;
+            const statusLabel = isCanceled ? 'ABGESAGT' : event.event_type;
+            const statusColor = isCanceled ? '#f44336' : (event.event_type === 'Training' ? '#00bcd4' : '#38E838');
+
             const item = document.createElement('div');
-            item.className = `event-item event-type-${event.event_type.replace(' ', '-')}`;
-            
+            item.className = `event-item ${statusClass}`;
+            item.style.borderLeftColor = statusColor; // Für die Farbe des abgesagten Events
+
             const startTime = formatDateTime(event.start_time);
             const endTime = event.end_time ? ` - ${formatDateTime(event.end_time)}` : '';
             const location = event.location ? `<br>Ort: ${event.location}` : '';
@@ -153,23 +158,32 @@
                  deadlineHtml = `<br><span style="color:#ffcc00; font-size:0.9em;">Frist: ${event.response_deadline_hours}h vorher</span>`;
             }
 
-            // NEU: Bugfix: Prüft, ob es sich wirklich um einen Regeltermin handelt (Startdatum != Enddatum)
-            // Dies behebt den Fehler, dass Einzeltermine, bei denen end_time gleich start_time war, fälschlicherweise als Regeltermin galten.
             let isRecurringEvent = event.end_time && (new Date(event.end_time).getDate() !== new Date(event.start_time).getDate() || new Date(event.end_time).getMonth() !== new Date(event.start_time).getMonth());
             
             const isRecurringDisplay = isRecurringEvent ? ' (Regeltermin)' : '';
             const recurringClass = isRecurringEvent ? 'recurring' : '';
 
+            // Buttons anpassen
+            let editButton = isCanceled 
+                ? `<button class="btn btn-secondary btn-inline" disabled title="Abgesagte Termine können nicht bearbeitet werden.">Bearbeiten</button>` 
+                : `<button class="btn btn-secondary btn-inline" onclick="openEditModal(${event.id})">Bearbeiten</button>`;
+                
+            let cancelButton = isCanceled
+                ? `<button class="btn btn-primary btn-inline" disabled title="Bereits abgesagt.">Abgesagt</button>`
+                : `<button class="btn btn-danger btn-inline" onclick="openCancelModal(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Absagen</button>`;
+
+
             item.innerHTML = `
                 <div class="event-info">
-                    <h4 class="${recurringClass}">${event.title}${isRecurringDisplay}</h4>
-                    <p>Typ: ${event.event_type}${deadlineHtml}</p>
+                    <h4 class="${recurringClass}" style="color: ${isCanceled ? '#f44336' : '#fff'};">${event.title}${isRecurringDisplay}</h4>
+                    <p>Status: <strong>${statusLabel}</strong>${deadlineHtml}</p>
                     <p>Zeit: ${startTime}${endTime}${location}</p>
                 </div>
                 <div class="event-actions">
                     <button class="btn btn-info btn-inline" onclick="showAttendance(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Anwesenheit</button>
-                    <button class="btn btn-secondary btn-inline" onclick="openEditModal(${event.id})">Bearbeiten</button>
-                    <button class="btn btn-danger btn-inline-delete" onclick="deleteEvent(${event.id})">Löschen</button>
+                    ${editButton}
+                    ${cancelButton}
+                    <button class="btn btn-danger btn-inline-delete" onclick="deleteEvent(${event.id})" title="Termin endgültig löschen">Löschen</button>
                 </div>
             `;
             eventListContainer.appendChild(item);
@@ -208,6 +222,7 @@
              }
              deadlineHours = parsedHours;
         } else {
+             // Wenn das Feld leer ist, wird der Wert null gesendet, das Backend lädt dann den Standard.
              deadlineHours = null;
         }
         
@@ -220,7 +235,7 @@
         if (isRecurring) {
             repeatUntilValue = repeatUntilInput.value;
             repeatFrequency = repeatFrequencySelect.value;
-            repeatInterval = parseInt(repeatIntervalInput.value) || 1; // NEU: Wiederholungsintervall
+            repeatInterval = parseInt(repeatIntervalInput.value) || 1; 
             
             if (!repeatUntilValue) {
                  eventMessageDiv.textContent = '❌ Fehler: Für Regeltermine muss ein Enddatum gewählt werden.';
@@ -253,7 +268,7 @@
             location: eventLocation.value || null,
             description: eventDescription.value || null,
             default_status: defaultStatusSelect.value, 
-            response_deadline_hours: deadlineHours,
+            response_deadline_hours: deadlineHours, // Sendet null oder die Zahl
             
             is_recurring: isRecurring,
             repeat_until: repeatUntilValue ? new Date(repeatUntilValue + 'T23:59:59').toISOString() : null,
@@ -285,7 +300,7 @@
             
             if(isRecurringCheckbox) isRecurringCheckbox.checked = false;
             if(recurringOptionsDiv) recurringOptionsDiv.style.display = 'none';
-            if(repeatIntervalInput) repeatIntervalInput.value = 1; // Intervall zurücksetzen
+            if(repeatIntervalInput) repeatIntervalInput.value = 1; 
 
             loadEvents(selectedTeamId);
             
@@ -300,7 +315,7 @@
 
     async function deleteEvent(eventId) {
         if (!window.checkVerification()) return;
-        if (!confirm('Sind Sie sicher, dass Sie diesen Termin löschen möchten? Alle Anwesenheitsdaten gehen verloren.')) return;
+        if (!confirm('Sind Sie sicher, dass Sie diesen Termin endgültig löschen möchten? Alle Anwesenheitsdaten gehen verloren.')) return;
 
         try {
             const response = await fetch(`/calendar/delete/${eventId}`, {
@@ -338,15 +353,23 @@
         editEventModal.style.display = 'block';
 
         try {
-            const response = await fetch(`/calendar/list/${selectedTeamId}`);
-            if (response.status === 401) { window.logout(); return; }
-            if (!response.ok) throw new Error('Terminliste konnte nicht geladen werden.');
+            // Lade die Event-Liste (muss die aktuelle Liste neu abrufen, falls sie veraltet ist)
+            const listResponse = await fetch(`/calendar/list/${selectedTeamId}`);
+            if (listResponse.status === 401) { window.logout(); return; }
+            if (!listResponse.ok) throw new Error('Terminliste konnte nicht geladen werden.');
             
-            const events = await response.json();
+            const events = await listResponse.json();
             const event = events.find(e => e.id === eventId);
             
             if (!event) throw new Error('Termin nicht gefunden.');
             
+            // Prüfung: Kann nur bearbeitet werden, wenn nicht abgesagt
+            if (event.status === 'CANCELED') {
+                closeEditModal();
+                window.showToast("Abgesagte Termine können nicht bearbeitet werden.", "error");
+                return;
+            }
+
             const formatForInput = (dt) => {
                  if (!dt) return '';
                  const date = new Date(dt);
@@ -447,6 +470,68 @@
 
 
     // ==================================================
+    // --- T E R M I N - A B S A G E N ---
+    // ==================================================
+
+    function closeCancelModal() {
+        cancelEventModal.style.display = 'none';
+        cancelMessageDiv.textContent = '';
+        currentEventToCancel = null;
+    }
+    window.closeCancelModal = closeCancelModal;
+
+    function openCancelModal(eventId, title) {
+        currentEventToCancel = eventId;
+        cancelEventModalTitle.textContent = `Termin absagen: ${title}`;
+        cancelReasonInput.value = '';
+        cancelMessageDiv.textContent = '';
+        cancelEventModal.style.display = 'block';
+    }
+    window.openCancelModal = openCancelModal;
+
+    async function handleCancelEvent() {
+        if (!window.checkVerification() || !currentEventToCancel) return;
+        
+        confirmCancelButton.disabled = true;
+        cancelMessageDiv.textContent = 'Sende Absage...';
+        cancelMessageDiv.className = 'message';
+        
+        const reason = cancelReasonInput.value || null;
+        
+        try {
+            const response = await fetch(`/calendar/cancel/${currentEventToCancel}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cancel_reason: reason })
+            });
+            
+            const data = await response.json();
+            
+            if (response.status === 401) { window.logout(); return; }
+            
+            if (!response.ok) {
+                const detail = data.detail || 'Unbekannter Fehler bei der Absage.';
+                throw new Error(detail);
+            }
+            
+            window.showToast('✅ Termin wurde abgesagt und Spieler informiert.', "success");
+            cancelMessageDiv.textContent = '✅ Absage erfolgreich.';
+            cancelMessageDiv.className = 'message success';
+            
+            loadEvents(selectedTeamId);
+            setTimeout(closeCancelModal, 1500);
+
+        } catch (error) {
+            console.error('Fehler beim Absagen des Termins:', error);
+            cancelMessageDiv.textContent = `❌ ${error.message}`;
+            cancelMessageDiv.className = 'message error';
+        } finally {
+            confirmCancelButton.disabled = false;
+        }
+    }
+
+
+    // ==================================================
     // --- I N I T I A L I S I E R U N G ---
     // ==================================================
     function initCalendar() {
@@ -469,6 +554,13 @@
         defaultStatusSelect = document.getElementById('default-status-select');
         responseDeadlineInput = document.getElementById('response-deadline-input');
         
+        // NEU: DOM-Zuweisung (Absage)
+        cancelEventModal = document.getElementById('cancel-event-modal');
+        cancelEventModalTitle = document.getElementById('cancel-modal-title');
+        cancelReasonInput = document.getElementById('cancel-reason-input');
+        confirmCancelButton = document.getElementById('confirm-cancel-button');
+        cancelMessageDiv = document.getElementById('cancel-message');
+
         // NEU: DOM-Zuweisung (Regeltermine)
         isRecurringCheckbox = document.getElementById('is-recurring-checkbox');
         recurringOptionsDiv = document.getElementById('recurring-options');
@@ -495,6 +587,9 @@
         console.log("initCalendar() wird aufgerufen.");
         
         // Initialer Ladezustand
+        selectedTeamId = localStorage.getItem('selected_team_id');
+        selectedTeamName = localStorage.getItem('selected_team_name');
+        
         if (selectedTeamId && selectedTeamName && selectedTeamId !== 'null' && selectedTeamName !== 'null') {
             calendarTeamName.textContent = selectedTeamName;
             loadEvents(selectedTeamId);
@@ -507,6 +602,11 @@
         // Event Listeners
         if(createEventForm) {
             createEventForm.addEventListener('submit', handleCreateEvent);
+        }
+        
+        // NEU: Absage Event Listener
+        if(confirmCancelButton) {
+            confirmCancelButton.addEventListener('click', handleCancelEvent);
         }
         
         // NEU: Event Listener für Regeltermine Umschalter
@@ -531,20 +631,17 @@
         }
         
         // Event Listener für Modal-Klicks (Schließen)
-        if(attendanceModal) {
-            attendanceModal.addEventListener('click', function(event) {
-                if (event.target == attendanceModal) {
-                    // closeAttendanceModal ist global im HTML definiert
-                }
-            });
-        }
-        if(editEventModal) {
-            editEventModal.addEventListener('click', function(event) {
-                if (event.target == editEventModal) {
-                    closeEditModal();
-                }
-            });
-        }
+        window.addEventListener('click', function(event) {
+            if (event.target == attendanceModal) {
+                 // closeAttendanceModal ist global im HTML definiert
+            }
+            if (event.target == editEventModal) {
+                closeEditModal();
+            }
+            if (event.target == cancelEventModal) {
+                closeCancelModal();
+            }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', initCalendar);
