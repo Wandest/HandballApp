@@ -12,7 +12,7 @@
     
     <div class="card">
         <div class="card-content">
-            <h2>Spielplan & Protokoll</h2>
+            <h2>Spielplan & Protokoll (Nächste 14 Tage)</h2>
             <h3><span id="gameplan-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
             <p style="opacity: 0.8; font-size: 0.9em;">Wähle ein Spiel aus, um das Live-Protokoll zu starten.</p>
             <div id="game-list-container" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
@@ -24,8 +24,8 @@
 
 <script>
     // --- Lokale Variablen ---
-    let selectedTeamId = localStorage.getItem('selected_team_id');
-    let selectedTeamName = localStorage.getItem('selected_team_name');
+    var selectedTeamId = localStorage.getItem('selected_team_id');
+    var selectedTeamName = localStorage.getItem('selected_team_name');
 
     // --- DOM-Elemente ---
     const teamListDiv = document.getElementById('team-list');
@@ -53,9 +53,9 @@
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
         
-        // Nutzt die bereits global verfügbare Funktion aus game_planning.js
+        // WICHTIG: Übergibt 'dashboard', um die Liste zu filtern
         if (typeof loadGames === 'function') {
-            loadGames(teamId);
+            loadGames(teamId, 'dashboard');
         } else {
              gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         }
@@ -68,7 +68,6 @@
             });
 
             if (response.status === 401 || response.status === 403) { 
-                // Rufen Sie die globale logout-Funktion auf (aus global.js)
                 if(typeof logout === 'function') {
                     logout(); 
                 } else {
@@ -127,16 +126,7 @@
         loadTeams();
     }
     
-    // Wir müssen warten, bis global.js geladen ist, falls selectTeam/loadGames von dort abhängen
-    // (obwohl sie jetzt in game_planning.js sind)
     document.addEventListener('DOMContentLoaded', initDashboard);
 </script>
 
-<!-- DIESES SKRIPT LÄDT DIE FUNKTION "loadGames" FÜR DIE SPIELPLAN-BOX -->
 <script src="/static/game_planning.js"></script>
-
-<!-- 
-  ENTFERNT: 
-  <script src="/static/player_dashboard.js"></script> 
-  (Diese Zeile war der Fehler)
--->

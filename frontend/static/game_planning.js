@@ -1,18 +1,20 @@
-// DATEI: frontend/static/game_planning.js (KORRIGIERT: IIFE Kapselung gegen SyntaxError)
+// DATEI: frontend/static/game_planning.js
+// +++ FIX: Korrigiert die Datums-Filterlogik für den Dashboard-Modus +++
 
 (function() {
     
-    // Globale Variablen (müssen aus Local Storage geladen werden)
+    // Globale Variablen
     var selectedTeamId = localStorage.getItem('selected_team_id');
     var selectedTeamName = localStorage.getItem('selected_team_name');
 
-    // DOM-Elemente (Deklariert als var/null, um SyntaxError zu verhindern)
+    // DOM-Elemente
     var gameplanTeamName, addGameButton, gameMessageDiv, gameListContainer, tabBtnSaison, tabBtnTestspiel, tabBtnTurnier, activeGameCategoryInput, tournamentGameFields, tournamentSelect, newTournamentGroup;
     var videoModal, videoUrlInputModal, videoModalGameId, videoModalMessage;
 
     // --- Ladefunktionen (werden global verfügbar gemacht) ---
     
     function switchGameCategory(category) {
+        if (!activeGameCategoryInput) return; // Nicht auf Dashboard-Seite
         activeGameCategoryInput.value = category;
         [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.classList.remove('active'));
         if (category === 'Saison') tabBtnSaison.classList.add('active');
@@ -32,8 +34,6 @@
         }
     }
     window.switchGameCategory = switchGameCategory;
-
-    // --- Event Listener für Turnier-Auswahl muss in init ---
 
     function deleteGame(gameId) {
         if (!window.checkVerification()) return; 
@@ -59,8 +59,13 @@
     }
     window.startProtocol = startProtocol;
 
-    // --- Spielplan laden ---
-    async function loadGames(teamId) {
+    // --- Spielplan laden (MIT FILTER-LOGIK) ---
+    async function loadGames(teamId, mode = 'all') { // 'all' (Standard) oder 'dashboard'
+        if (!gameListContainer) {
+            // Verhindert Fehler, wenn auf Seiten geladen, die die Liste nicht haben
+            return;
+        }
+        
         gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         
         if (!teamId) return;
@@ -68,11 +73,37 @@
         try {
             const response = await fetch(`/games/list/${teamId}`, { method: 'GET' });
             if (response.status === 401 || response.status === 403) { window.logout(); return; }
-            const games = await response.json();
+            let games = await response.json(); 
+
+            // +++ KORRIGIERTE FILTERLOGIK FÜR DASHBOARD +++
+            if (mode === 'dashboard') {
+                const now = new Date();
+                
+                // 1. ZUERST das Zieldatum (in 14 Tagen) berechnen
+                const twoWeeksFromNow = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
+                
+                // 2. DANN 'now' auf den Beginn des heutigen Tages setzen (00:00:00)
+                now.setHours(0, 0, 0, 0); 
+
+                games = games.filter(game => {
+                    const gameDate = new Date(game.date);
+                    
+                    // Zeige Spiele, die HEUTE oder SPÄTER stattfinden (>= now)
+                    // UND VOR dem 14-Tage-Limit liegen (<= twoWeeksFromNow)
+                    return gameDate >= now && gameDate <= twoWeeksFromNow;
+                });
+            }
+            // +++ ENDE KORREKTUR +++
+
+
             gameListContainer.innerHTML = '';
 
             if (games.length === 0) {
-                gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
+                if (mode === 'dashboard') {
+                    gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele in den nächsten 14 Tagen geplant.</p>`;
+                } else {
+                    gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
+                }
                 return;
             }
             
@@ -86,19 +117,27 @@
                     if (!groupedGames.Turnier[tourName]) groupedGames.Turnier[tourName] = [];
                     groupedGames.Turnier[tourName].push(game);
                 } else {
-                    const archiveName = game.game_category;
-                    if (!archiveGroups[archiveName]) archiveGroups[archiveName] = [];
-                    archiveGroups[archiveName].push(game);
+                    if (mode === 'all') { 
+                        const archiveName = game.game_category;
+                        if (!archiveGroups[archiveName]) archiveGroups[archiveName] = [];
+                        archiveGroups[archiveName].push(game);
+                    }
                 }
             });
             
             const renderGameList = (gameList) => {
                 let html = '';
+                // Sortiere nach Datum (aufsteigend)
+                gameList.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
                 gameList.forEach(game => {
                     const dateObj = new Date(game.date);
-                    const formattedDate = dateObj.toLocaleDateString('de-DE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit'
-                    });
+                    // Zeige Datum UND Uhrzeit an, wenn vorhanden
+                    const formattedDate = dateObj.toLocaleString('de-DE', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    }).replace(' Uhr', '');
+                    
                     const videoIcon = game.video_url ? ' 🎬' : '';
                     const videoUrlJs = game.video_url ? `'${game.video_url.replace(/'/g, "\\'")}'` : "''";
 
@@ -139,7 +178,7 @@
                     finalHtml += renderGameList(groupedGames.Turnier[tourName]);
                 }
             }
-            if (Object.keys(archiveGroups).length > 0) {
+            if (mode === 'all' && Object.keys(archiveGroups).length > 0) {
                 finalHtml += '<h3 class="game-list-header" style="color: #9e9e9e;">Archiv</h3>';
                 for (const archiveName in archiveGroups) {
                     finalHtml += `<h4 style="margin: 10px 0 5px 5px; color: #ccc;">${archiveName}</h4>`;
@@ -156,6 +195,7 @@
     
     // --- Turniere laden ---
     async function loadTournaments(teamId) {
+        if (!tournamentSelect) return; // Nicht auf Dashboard-Seite
         tournamentSelect.innerHTML = '<option value="" disabled selected>Lade Turniere...</option>';
         if (!teamId) return;
 
@@ -205,6 +245,7 @@
     // ==================================================
 
     function openVideoModal(gameId, currentUrl) {
+        if (!videoModal) return;
         videoModalGameId.value = gameId;
         videoUrlInputModal.value = (currentUrl && currentUrl !== 'null') ? currentUrl : ''; 
         videoModalMessage.textContent = '';
@@ -213,8 +254,6 @@
         videoModal.style.display = 'block';
     }
     window.openVideoModal = openVideoModal;
-
-    // --- closeVideoModal wird lokal in game_planning.html definiert ---
 
     async function saveVideoUrl() {
         if (!window.checkVerification()) return;
@@ -240,9 +279,8 @@
             videoModalMessage.textContent = '✅ Erfolgreich gespeichert.';
             videoModalMessage.className = 'message success';
             
-            loadGames(selectedTeamId); 
+            loadGames(selectedTeamId, 'all'); // Im Zweifel immer alle laden
 
-            // NOTE: closeVideoModal ist eine globale Funktion im HTML, muss hier über window.closeVideoModal aufgerufen werden
             if (typeof window.closeVideoModal === 'function') {
                 setTimeout(window.closeVideoModal, 1000); 
             }
@@ -278,9 +316,15 @@
         videoModalGameId = document.getElementById('video-modal-game-id');
         videoModalMessage = document.getElementById('video-modal-message');
 
+        // Prüfen, ob wir uns auf der game-planning Seite befinden
+        if (!addGameButton) {
+            // Wir sind auf dem Dashboard, das nur 'loadGames' braucht.
+            return;
+        }
+
         console.log("initGamePlanning() wird aufgerufen.");
         
-        // --- Event Listener muss hier drin sein, nachdem DOM-Elemente zugewiesen wurden ---
+        // --- Event Listener ---
         document.getElementById('add-game-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             if (!window.checkVerification()) return;
@@ -291,7 +335,13 @@
                 return;
             }
             const opponent = document.getElementById('game-opponent').value;
-            const date = document.getElementById('game-date').value;
+            const dateInput = document.getElementById('game-date');
+            
+            let date = dateInput.value;
+            if (date && date.length === 10) { 
+                 date = date + 'T12:00'; // Standard-Uhrzeit
+            }
+            
             const videoUrl = document.getElementById('game-video-url').value.trim();
             
             const category = activeGameCategoryInput.value;
@@ -318,7 +368,7 @@
             
             const payload = {
                 opponent: opponent,
-                date: date,
+                date: date, 
                 team_id: parseInt(selectedTeamId),
                 game_category: category,
                 tournament_name: tournamentName,
@@ -338,7 +388,7 @@
                     gameMessageDiv.className = 'message success';
                     document.getElementById('add-game-form').reset();
                     switchGameCategory('Testspiel');
-                    loadGames(selectedTeamId);
+                    loadGames(selectedTeamId, 'all'); 
                     if (category === "Turnier") {
                         loadTournaments(selectedTeamId);
                     }
@@ -363,7 +413,6 @@
         });
         // --- ENDE Event Listener ---
 
-
         const storedId = localStorage.getItem('selected_team_id');
         const storedName = localStorage.getItem('selected_team_name');
         
@@ -374,7 +423,7 @@
             gameplanTeamName.textContent = selectedTeamName;
             addGameButton.disabled = false;
             [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = false);
-            loadGames(selectedTeamId);
+            loadGames(selectedTeamId, 'all'); // Explizit 'all'
             loadTournaments(selectedTeamId);
             switchGameCategory('Testspiel');
         } else {

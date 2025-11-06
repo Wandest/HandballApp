@@ -1,10 +1,5 @@
 // DATEI: frontend/static/trainer_stats.js
-// +++ FIX: Aktualisiert alle Fetch URLs auf die neuen, gekürzten Pfade. +++
-
-/**
- * Verantwortlichkeit: Enthält die gesamte Logik für die Trainer-Statistiken,
- * Wurfbilder (Shot Charts), Fehlerbilder (Error Charts) und Saison-Archivierung.
- */
+// +++ FIX: Fügt die "TOTAL TEAM"-Zeile zur Torwart-Statistiktabelle hinzu +++
 
 (function() {
     
@@ -178,25 +173,41 @@
         goalieTableHtml += `</tr></thead><tbody>`;
         
         let fieldPlayersFound = false, goaliesFound = false;
-        let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0, totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0, totalGamesPlayed = 0, totalFieldPlayers = 0;
-        let totalTimeOnCourt = 0;
+        let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0, totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0, totalGamesPlayedField = 0, totalFieldPlayers = 0;
+        let totalTimeOnCourtField = 0;
+        
+        // NEU: Total-Zähler für Torhüter
+        let totalSaves = 0, totalGoalsReceived = 0, totalSevenMeterSaves = 0, totalSevenMeterReceived = 0, totalTimeOnCourtGoalie = 0, totalGamesPlayedGoalie = 0;
+
 
         stats.forEach(player => {
-            totalTimeOnCourt += player.time_on_court_seconds || 0;
             
             if (player.position === 'Torwart') {
-                goaliesFound = true; goalieTableHtml += `<tr>`;
+                goaliesFound = true; 
+                totalGamesPlayedGoalie += player.games_played;
+                totalTimeOnCourtGoalie += player.time_on_court_seconds || 0;
+                totalSaves += player.saves || 0;
+                totalGoalsReceived += player.opponent_goals_received || 0;
+                totalSevenMeterSaves += player.seven_meter_saves || 0;
+                totalSevenMeterReceived += player.seven_meter_received || 0;
+
+                goalieTableHtml += `<tr>`;
                 goalieHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
-                    if (h.name === 'Paraden Ges. (Quote)') { const totalSaves = player.saves + player.seven_meter_saves; const totalGoalsReceived = player.opponent_goals_received + player.seven_meter_received; const totalShotsOnGoal = totalSaves + totalGoalsReceived; const quote = totalShotsOnGoal > 0 ? ((totalSaves / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${totalSaves} (${quote})`; }
+                    if (h.name === 'Paraden Ges. (Quote)') { const totalSavesPlayer = player.saves + player.seven_meter_saves; const totalGoalsReceivedPlayer = player.opponent_goals_received + player.seven_meter_received; const totalShotsOnGoal = totalSavesPlayer + totalGoalsReceivedPlayer; const quote = totalShotsOnGoal > 0 ? ((totalSavesPlayer / totalShotsOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${totalSavesPlayer} (${quote})`; }
                     if (h.name === '7m-Quote') { const totalSevenMetersOnGoal = player.seven_meter_saves + player.seven_meter_received; const quote = totalSevenMetersOnGoal > 0 ? ((player.seven_meter_saves / totalSevenMetersOnGoal) * 100).toFixed(0) + '%' : '—'; value = `${player.seven_meter_saves} / ${totalSevenMetersOnGoal} (${quote})`; }
-                    if (h.name === 'Tore (Quote)') { const totalShots = player.goals + player.misses + player.seven_meter_goals + player.seven_meter_misses; const totalGoals = player.goals + player.seven_meter_goals; const quote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; value = `${totalGoals} (${quote})`; }
-                    if (h.name === 'Tore/Spiel') { if (player.games_played > 0) { const totalGoals = player.goals + player.seven_meter_goals; value = (totalGoals / player.games_played).toFixed(1); } else { value = '0.0'; } }
                     goalieTableHtml += `<td>${value}</td>`;
                 });
                 goalieTableHtml += `</tr>`;
             } else {
-                fieldPlayersFound = true; totalFieldPlayers++; const currentTotalGoals = player.goals + player.seven_meter_goals; const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
+                fieldPlayersFound = true; 
+                totalFieldPlayers++; 
+                totalGamesPlayedField += player.games_played;
+                totalTimeOnCourtField += player.time_on_court_seconds || 0;
+                
+                const currentTotalGoals = player.goals + player.seven_meter_goals; 
+                const currentTotalShots = currentTotalGoals + player.misses + player.seven_meter_misses;
+                
                 fieldTableHtml += `<tr>`;
                 fieldHeaders.forEach(h => {
                     let value = player[h.key] !== undefined ? player[h.key] : 0;
@@ -207,19 +218,42 @@
                     fieldTableHtml += `<td>${value}</td>`;
                 });
                 fieldTableHtml += `</tr>`;
-                totalGoals += currentTotalGoals; totalShots += currentTotalShots; totalTechErrors += player.tech_errors; totalFehlpaesse += player.fehlpaesse; totalSevenMeterCaused += player.seven_meter_caused; totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses; totalSevenMeterGoals += player.seven_meter_goals; totalGamesPlayed += player.games_played;
+                
+                totalGoals += currentTotalGoals; 
+                totalShots += currentTotalShots; 
+                totalTechErrors += player.tech_errors; 
+                totalFehlpaesse += player.fehlpaesse; 
+                totalSevenMeterCaused += player.seven_meter_caused; 
+                totalSevenMeterAttempts += player.seven_meter_goals + player.seven_meter_misses; 
+                totalSevenMeterGoals += player.seven_meter_goals; 
             }
         });
         
+        // --- TOTAL FÜR FELDSPIELER ---
         const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; 
-        const totalTimeDisplay = formatSeconds(totalTimeOnCourt); 
-        const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayed / totalFieldPlayers).toFixed(0) : 0; 
-        const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayed > 0 ? (totalGoals / totalGamesPlayed).toFixed(1) : "0.0");
+        const totalTimeDisplay = formatSeconds(totalTimeOnCourtField); 
+        const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayedField / totalFieldPlayers).toFixed(0) : 0; 
+        const avgGoalsPerGame = parseFloat(avgGames) > 0 ? (totalGoals / parseFloat(avgGames)).toFixed(1) : (totalGamesPlayedField > 0 ? (totalGoals / totalGamesPlayedField).toFixed(1) : "0.0");
         
         fieldTableHtml += `</tbody><tfoot><tr><td>TOTAL TEAM</td><td>-</td><td>${avgGames}</td><td>${totalTimeDisplay}</td><td>${totalGoals} (${totalShotQuote})</td><td>${avgGoalsPerGame}</td><td>${totalShots - totalGoals}</td><td>${totalTechErrors} / ${totalFehlpaesse}</td><td>${totalSevenMeterGoals}</td><td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td><td>${totalSevenMeterCaused}</td></tr></tfoot></table>`;
-        goalieTableHtml += `</tbody></table>`;
-        fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
-        goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
+        
+        // --- TOTAL FÜR TORWART (KORRIGIERT) ---
+        const totalGoalieShotsOnGoal = totalSaves + totalGoalsReceived;
+        const totalGoalieQuote = totalGoalieShotsOnGoal > 0 ? ((totalSaves / totalGoalieShotsOnGoal) * 100).toFixed(0) + '%' : '—';
+        const totalGoalie7m = totalSevenMeterSaves + totalSevenMeterReceived;
+        const totalGoalie7mQuote = totalGoalie7m > 0 ? ((totalSevenMeterSaves / totalGoalie7m) * 100).toFixed(0) + '%' : '—';
+        const totalGoalieTimeDisplay = formatSeconds(totalTimeOnCourtGoalie);
+        const avgGamesGoalie = totalGamesPlayedGoalie > 0 ? totalGamesPlayedGoalie : 0; // Zeigt die Gesamtanzahl der Spiele der Torhüter
+
+        goalieTableHtml += `</tbody><tfoot><tr>
+            <td>TOTAL TEAM</td><td>-</td><td>${avgGamesGoalie}</td>
+            <td>${totalGoalieTimeDisplay}</td>
+            <td>${totalSaves} (${totalGoalieQuote})</td>
+            <td>${totalSevenMeterSaves} / ${totalGoalie7m} (${totalGoalie7mQuote})</td>
+        </tr></tfoot></table>`;
+        
+        // --- CUSTOM AKTIONEN (unverändert) ---
+        customContainer.innerHTML = '';
         const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
         if (customActionNames.length === 0) { customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>'; } else {
             let customTableHtml = `<table class="stats-table"><thead><tr><th>Spieler</th><th>#</th><th>Spiele</th>`;
@@ -232,8 +266,13 @@
                     customTableHtml += `</tr>`;
                 }
             });
-            customTableHtml += `</tbody></table>`; customContainer.innerHTML = customTableHtml;
+            customTableHtml += `</tbody></table>`; 
+            customContainer.innerHTML = customTableHtml;
         }
+        
+        // Container füllen
+        fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
+        goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
     }
     window.displaySeasonPlayerStats = displaySeasonPlayerStats;
 
@@ -253,9 +292,6 @@
     // --- L A D E - F U N K T I O N E N ---
     // ==================================================
 
-    /**
-     * Lädt alle Spiele und füllt BEIDE Spiel-Filter (Cutter + Gegner-Chart).
-     */
     async function loadSeasonGamesFilter() {
         if (!selectedTeamId) return;
 
@@ -285,10 +321,6 @@
         }
     }
 
-
-    /**
-     * Lädt alle Saison-Statistiken und Wurfbilder in einem Rutsch.
-     */
     async function loadSeasonStats() {
         if (!selectedTeamId) {
              seasonStatsMessage.textContent = '❌ Fehler: Bitte zuerst Team auswählen.';
@@ -307,7 +339,6 @@
         loadSeasonGamesFilter(); // Lädt Spiele-Filter
         
         try {
-            // FIX: Verwendung der korrekten Destrukturierung
             const [
                 playerStatsResponse, 
                 opponentStatsResponse,
@@ -318,11 +349,10 @@
             ] = await Promise.all([
                 fetch(`/actions/stats/season/${selectedTeamId}`), 
                 fetch(`/actions/stats/opponent/season/${selectedTeamId}`),
-                // KORREKTE URLS: Verwenden die neuen, kürzeren Endpunkte
                 fetch(`/actions/shots/team/${selectedTeamId}`), 
                 fetch(`/actions/errors/team/${selectedTeamId}`), 
                 fetch(`/actions/shots/opponent/team/${selectedTeamId}`), 
-                fetch(`/actions/clips/season/${selectedTeamId}`) // Der Clips-Endpunkt wurde auch umbenannt!
+                fetch(`/actions/clips/season/${selectedTeamId}`)
             ]);
 
             if (!playerStatsResponse.ok) throw new Error('Spieler-Statistikdaten konnten nicht abgerufen werden.');
@@ -372,9 +402,6 @@
     }
     window.loadSeasonStats = loadSeasonStats;
 
-    /**
-     * Füllt das Spieler-Dropdown für die Wurfbilder.
-     */
     function populateShotChartDropdown(selectElement, dataStore) {
         selectElement.innerHTML = '<option value="all" selected>Alle Spieler</option>';
         dataStore.forEach(playerData => {
@@ -389,9 +416,6 @@
     // --- V I D E O - C U T T E R - H I L F E R ---
     // ==================================================
 
-    /**
-     * Füllt die Cutter-Filter (Spieler, Aktionen).
-     */
     function populateCutterFilters() {
         if (seasonActionData.length === 0) return;
 
@@ -418,9 +442,6 @@
         });
     }
     
-    /**
-     * Rendert die Cutter-Playlist (nutzt die globale playCut Funktion).
-     */
     function renderCutterPlaylist() {
         const filterPlayerId = cutterPlayerSelect.value;
         const filterActionType = cutterActionSelect.value;

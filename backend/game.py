@@ -1,13 +1,12 @@
 # DATEI: backend/game.py
-# +++ ERWEITERT: Automatische Erstellung von TeamEvent beim Spiel-Anlegen +++
-# +++ FIX: Importiert 'distinct' von sqlalchemy, um NameError zu beheben. +++
+# +++ NEU: Übergibt event_start_time an create_default_attendances zur Abwesenheitsprüfung +++
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional, Any 
 from datetime import datetime, timedelta 
-from sqlalchemy import distinct # FIX: 'distinct' MUSS importiert werden
+from sqlalchemy import distinct 
 
 from backend.database import (
     SessionLocal, Trainer, Team, Game, Player, 
@@ -18,9 +17,9 @@ from backend.player import PlayerResponse
 
 router = APIRouter()
 
-# -----------------------------\
+# -----------------------------
 # Pydantic Modelle
-# -----------------------------\
+# -----------------------------
 
 class GameCreate(BaseModel):
     opponent: str
@@ -129,8 +128,12 @@ def create_game(
     db.add(new_event)
     db.flush()
     
+    # KORRIGIERT: Importiere die modifizierte Funktion und übergib die Startzeit
     from backend.calendar import create_default_attendances 
-    create_default_attendances(db, new_event.id, game_data.team_id, new_event.default_status.name) # ACHTUNG: Sende ENUM Name
+    create_default_attendances(
+        db, new_event.id, game_data.team_id, 
+        new_event.default_status.name, new_event.start_time
+    ) 
 
     db.commit()
     db.refresh(new_game)

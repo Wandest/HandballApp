@@ -12,10 +12,38 @@
         }
     }
 
-    #event-list-container {
-        max-height: 600px;
-        overflow-y: auto;
+    /* NEU: Stile für die Tabs */
+    .calendar-tabs {
+        display: flex;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
+    .calendar-tab-button {
+        padding: 8px 15px;
+        background: none;
+        border: none;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s, border-bottom 0.2s;
+    }
+    .calendar-tab-button.active {
+        opacity: 1;
+        border-bottom: 3px solid #ffcc00;
+        margin-bottom: -1px; /* Hebt den Tab hervor */
+    }
+    
+    /* NEU: Container für die Listen (Standardmäßig versteckt) */
+    .event-list-view {
+         display: none;
+         max-height: 600px;
+         overflow-y: auto;
+    }
+    .event-list-view.active {
+        display: block;
+    }
+
 
     .event-item {
         background: rgba(0, 0, 0, 0.2);
@@ -33,15 +61,19 @@
     .event-item.event-type-Sonstiges { border-left-color: #607d8b; }
     .event-item.event-type-Abgesagt { 
         border-left-color: #f44336; 
-        background-color: rgba(255, 102, 102, 0.1); /* Hellroter Hintergrund */
+        background-color: rgba(255, 102, 102, 0.1);
         opacity: 0.8;
+    }
+    /* NEU: Stil für vergangene Termine */
+    .event-item.past-event {
+        opacity: 0.6;
+        background: rgba(0, 0, 0, 0.1);
     }
 
     .event-info h4 {
         margin: 0 0 5px 0;
         color: #fff;
     }
-    /* NEU: Style für Regeltermine */
     .event-info h4.recurring {
         color: #ffcc00;
     }
@@ -197,8 +229,18 @@
     <div class="card">
         <div class="card-content">
             <h2>Kalender / Terminliste</h2>
-            <div id="event-list-container">
+            
+            <div class="calendar-tabs">
+                <button id="tab-btn-upcoming" class="calendar-tab-button active" onclick="switchCalendarView('upcoming')">Anstehend</button>
+                <button id="tab-btn-past" class="calendar-tab-button" onclick="switchCalendarView('past')">Vergangen</button>
+            </div>
+            
+            <div id="event-list-container" class="event-list-view active">
                 <p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>
+            </div>
+            
+            <div id="past-event-list-container" class="event-list-view">
+                <p style="opacity: 0.6;">Lade vergangene Termine...</p>
             </div>
         </div>
     </div>

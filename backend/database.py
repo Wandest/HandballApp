@@ -1,5 +1,5 @@
 # DATEI: backend/database.py
-# +++ FIX: VERSCHIEBT ALLE MODELL-DEFINITIONEN AN DEN ANFANG (Behebt ImportError) +++
+# +++ NEU: PlayerAbsence Modell hinzugefügt (Phase 12) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -43,9 +43,41 @@ class AttendanceStatus(enum.Enum):
     TENTATIVE = "Vielleicht"
     NOT_RESPONDED = "Keine Antwort"
 
+# NEU: Enum für Abwesenheitsgründe
+class AbsenceReason(enum.Enum):
+    ILLNESS = "Krankheit"
+    INJURY = "Verletzung"
+    VACATION = "Urlaub"
+    WORK = "Arbeit/Schule"
+    OTHER = "Sonstiges"
 
 # ==================================================
-# AS-SOZIATIONSTABELLEN (MÜSSEN VOR DEN MODELLEN DEFINIERT WERDEN)
+# NEUTRALES PYDANTIC MODELL FÜR STATISTIKEN
+# ==================================================
+class PlayerStats(BaseModel):
+    player_id: int
+    player_name: str
+    player_number: Optional[int] = None
+    position: Optional[str] = None
+    games_played: int = 0
+    goals: int = 0
+    misses: int = 0
+    tech_errors: int = 0
+    fehlpaesse: int = 0
+    seven_meter_goals: int = 0
+    seven_meter_misses: int = 0
+    seven_meter_caused: int = 0
+    seven_meter_saves: int = 0
+    seven_meter_received: int = 0
+    saves: int = 0
+    opponent_goals_received: int = 0
+    custom_counts: Dict[str, int] = {}
+    time_on_court_seconds: int = 0 
+    time_on_court_display: str = "00:00" 
+    class Config: from_attributes = True
+
+# ==================================================
+# AS-SOZIATIONSTABELLEN
 # ==================================================
 team_trainer_association = Table(
     "team_trainer_association",
@@ -120,7 +152,6 @@ class Player(Base):
     position = Column(String, nullable=True)
     team_id = Column(Integer, ForeignKey("teams.id"))
     
-    # Felder für Spieler-Login
     email = Column(String, unique=True, index=True, nullable=True)
     password = Column(String, nullable=True)
     is_active = Column(Boolean, default=False)
@@ -148,6 +179,10 @@ class Player(Base):
     )
     
     event_attendances = relationship("Attendance", back_populates="player", cascade="all, delete-orphan")
+    
+    # NEU: Beziehung zu Abwesenheiten
+    absences = relationship("PlayerAbsence", back_populates="player", cascade="all, delete-orphan")
+
 
 # ---------------------------------
 # 4. Game (Spiel) Modell
@@ -307,31 +342,22 @@ class Attendance(Base):
     player = relationship("Player", back_populates="event_attendances")
 
 
-# ==================================================
-# NEUTRALES PYDANTIC MODELL FÜR STATISTIKEN (FIX)
-# (MUSS HIER UNTEN BLEIBEN, NACH DER DEFINITION DER MODELLE)
-# ==================================================
-class PlayerStats(BaseModel):
-    player_id: int
-    player_name: str
-    player_number: Optional[int] = None
-    position: Optional[str] = None
-    games_played: int = 0
-    goals: int = 0
-    misses: int = 0
-    tech_errors: int = 0
-    fehlpaesse: int = 0
-    seven_meter_goals: int = 0
-    seven_meter_misses: int = 0
-    seven_meter_caused: int = 0
-    seven_meter_saves: int = 0
-    seven_meter_received: int = 0
-    saves: int = 0
-    opponent_goals_received: int = 0
-    custom_counts: Dict[str, int] = {}
-    time_on_court_seconds: int = 0 
-    time_on_court_display: str = "00:00" 
-    class Config: from_attributes = True
+# ---------------------------------
+# 11. PlayerAbsence (NEUES MODELL)
+# ---------------------------------
+class PlayerAbsence(Base):
+    __tablename__ = "player_absences"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(Integer, ForeignKey("players.id"))
+    
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)
+    reason = Column(Enum(AbsenceReason), default=AbsenceReason.OTHER)
+    notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    player = relationship("Player", back_populates="absences")
 
 
 # Initialisierungsfunktion

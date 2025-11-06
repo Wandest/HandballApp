@@ -1,5 +1,5 @@
 # DATEI: backend/calendar.py
-# +++ FIX: Korrigiert den SyntaxError in update_team_event (created_by_trainer_id) +++
+# +++ NEU: Prüft beim Erstellen von Terminen, ob Spieler bereits abwesend gemeldet sind +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,8 +12,9 @@ from sqlalchemy import select
 from backend.database import (
     SessionLocal, Trainer, Player, Team, 
     TeamEvent, Attendance, EventType, AttendanceStatus, UserRole,
-    TeamSettings, # TeamSettings für Deadlines
-    EventStatus # Wichtig: EventStatus importieren
+    TeamSettings, 
+    EventStatus,
+    PlayerAbsence # NEU: PlayerAbsence importieren
 )
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
@@ -33,8 +34,7 @@ def get_db():
 
 # ==================================================
 # Pydantic Modelle für Kalender (unverändert)
-# ==================================================
-
+# ... (Klassen EventCreate, EventUpdate, EventCancel, EventResponse, AttendancePlayerResponse) ...
 class EventCreate(BaseModel):
     team_id: int
     title: str
@@ -45,7 +45,6 @@ class EventCreate(BaseModel):
     description: Optional[str] = None
     default_status: str 
     response_deadline_hours: Optional[int] = None
-    
     is_recurring: bool = False
     repeat_until: Optional[datetime] = None
     repeat_frequency: Optional[str] = None 
@@ -78,9 +77,7 @@ class EventResponse(BaseModel):
     created_by_trainer_id: int
     default_status: str
     response_deadline_hours: Optional[int] = None
-    
-    class Config:
-        from_attributes = True
+    class Config: from_attributes = True
 
 class AttendancePlayerResponse(BaseModel):
     player_id: int
@@ -89,15 +86,19 @@ class AttendancePlayerResponse(BaseModel):
     status: str 
     reason: Optional[str] = None
     updated_at: datetime
+    class Config: from_attributes = True
+
+# ==================================================
+# H E L P E R - F U N K T I O N E N
+# ==================================================
+
+# KORRIGIERT: Akzeptiert event_start_time für die Abwesenheitsprüfung
+def create_default_attendances(db: Session, event_id: int, team_id: int, default_status_name: str, event_start_time: datetime):
+    """ 
+    Erstellt Standard-Anwesenheitseinträge für alle Spieler eines Teams.
+    Prüft dabei, ob der Spieler für diesen Tag als abwesend gemeldet ist.
+    """
     
-    class Config:
-        from_attributes = True
-
-# ==================================================
-# H E L P E R - F U N K T I O N E N (unverändert)
-# ==================================================
-
-def create_default_attendances(db: Session, event_id: int, team_id: int, default_status_name: str):
     try:
         default_status_enum = AttendanceStatus[default_status_name]
     except KeyError:
@@ -112,15 +113,32 @@ def create_default_attendances(db: Session, event_id: int, team_id: int, default
         ).first()
         
         if existing_attendance is None:
+            
+            # --- NEUE PRÜFUNG: Ist der Spieler an diesem Tag abwesend? ---
+            player_absence = db.query(PlayerAbsence).filter(
+                PlayerAbsence.player_id == player.id,
+                PlayerAbsence.start_date <= event_start_time,
+                (PlayerAbsence.end_date >= event_start_time) | (PlayerAbsence.end_date == None)
+            ).first()
+
+            final_status = default_status_enum
+            final_reason = None
+
+            if player_absence:
+                final_status = AttendanceStatus.DECLINED
+                final_reason = player_absence.reason.value # z.B. "Urlaub"
+            # --- ENDE NEUE PRÜFUNG ---
+            
             new_attendance = Attendance(
                 event_id=event_id,
                 player_id=player.id,
-                status=default_status_enum 
+                status=final_status,
+                reason=final_reason
             )
             db.add(new_attendance)
 
 # ==================================================
-# Endpunkte (Trainer)
+# Endpunkte (Nur für Trainer)
 # ==================================================
 
 @router.post("/add", response_model=List[EventResponse]) 
@@ -129,6 +147,7 @@ def create_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Logik für Deadlines und Regeltermine unverändert) ...
     check_team_auth_and_get_role(db, current_trainer.id, event_data.team_id)
     
     try:
@@ -206,7 +225,11 @@ def create_team_event(
         db.add(new_event)
         db.flush()
         
-        create_default_attendances(db, new_event.id, event_data.team_id, event_data.default_status)
+        # KORRIGIERT: Übergibt new_event.start_time an die Helferfunktion
+        create_default_attendances(
+            db, new_event.id, event_data.team_id, 
+            event_data.default_status, new_event.start_time
+        )
         
         db.refresh(new_event)
         
@@ -236,6 +259,7 @@ def update_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -269,10 +293,8 @@ def update_team_event(
     if 'default_status' in update_fields and old_default_status.value != event.default_status.value:
         db.query(Attendance).filter(
             Attendance.event_id == event_id,
-            # Muss das alte ENUM-Objekt verwenden
             Attendance.status == old_default_status 
         ).update({
-            # Muss das neue ENUM-Objekt verwenden
             "status": event.default_status 
         })
 
@@ -293,7 +315,7 @@ def update_team_event(
         end_time=event.end_time,
         location=event.location,
         description=event.description,
-        created_by_trainer_id=event.created_by_trainer_id, # FIX: Korrigiert created_by_trainer.id zu created_by_trainer_id
+        created_by_trainer_id=event.created_by_trainer_id,
         default_status=event.default_status.value,
         response_deadline_hours=event.response_deadline_hours
     )
@@ -306,6 +328,7 @@ def cancel_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -362,9 +385,7 @@ def get_team_events(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """
-    Listet alle Kalender-Termine für ein Team auf (Trainer-Sicht).
-    """
+    # ... (Logik mit Null-Check unverändert) ...
     check_team_auth_and_get_role(db, current_trainer.id, team_id)
     
     events = db.query(TeamEvent).filter(
@@ -374,7 +395,6 @@ def get_team_events(
     response_list = []
     for event in events:
         
-        # FIX: Null-Check für event.status bei alten, unmigrierten Einträgen (AttributeError Fix)
         event_status_value = EventStatus.PLANNED.value
         if event.status is not None:
              event_status_value = event.status.value
@@ -384,7 +404,7 @@ def get_team_events(
             team_id=event.team_id,
             title=event.title,
             event_type=event.event_type.value,
-            status=event_status_value, # FIX: Nutzt den geprüften Wert
+            status=event_status_value, 
             start_time=event.start_time,
             end_time=event.end_time,
             location=event.location,
@@ -403,9 +423,7 @@ def get_event_attendance(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    """
-    Ruft die Anwesenheitsliste (Status aller Spieler) für einen bestimmten Termin ab.
-    """
+    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -455,6 +473,7 @@ def delete_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
+    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")

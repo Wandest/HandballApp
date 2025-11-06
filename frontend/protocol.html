@@ -469,7 +469,7 @@
              padding: 15px; 
              border-radius: 5px; 
              margin-bottom: 20px; 
-             max-height: 70vh; /* ANGEPASST */
+             max-height: 70vh; 
              overflow-y: auto;
         }
         .timeline-row { 
@@ -527,13 +527,11 @@
             </div>
         </div>
         
-        <!-- +++ KORRIGIERTER HTML-BLOCK (Spieluhr) +++ -->
         <div class="game-clock-controls">
             <button id="btn-game-start" class="btn btn-start" onclick="handleGameClock('GAME_START')">▶ Spiel Start</button>
             <button id="btn-game-pause" class="btn btn-pause" onclick="handleGameClock('GAME_PAUSE')" style="display: none;">❚❚ Pause / Timeout</button>
             <button id="btn-game-resume" class="btn btn-resume" onclick="handleGameClock('GAME_RESUME')" style="display: none;">▶ Weiter</button>
         </div>
-        <!-- +++ ENDE KORRIGIERTER BLOCK +++ -->
     </div>
 
     <div class="protocol-grid">
@@ -570,13 +568,13 @@
             
             <button class="action-button btn-goal" onclick="showShotModal('Goal', false)">🥅 Tor erzielt</button>
             <button class="action-button btn-miss" onclick="showShotModal('Miss', false)">❌ Wurf verworfen</button>
-            <button class="action-button btn-goal" onclick="showShotModal('Goal', true)">🎯 7m Tor</button>
-            <button class="action-button btn-miss" onclick="showShotModal('Miss', true)">🧱 7m verworfen</button>
+            
+            <button class="action-button btn-goal" onclick="handleSevenMeterAction('Goal_7m')">🎯 7m Tor</button>
+            <button class="action-button btn-miss" onclick="handleSevenMeterAction('Miss_7m')">🧱 7m verworfen</button>
             <button class="action-button btn-error" onclick="showShotModal('TechError', false)">⚠️ Technischer Fehler</button>
-            
             <button class="action-button btn-error" onclick="showShotModal('Fehlpass', false)">🚫 Fehlpass</button>
-            
             <button class="action-button btn-error" onclick="handleAction('SEVEN_METER_CAUSED')">🚨 7m verursacht</button>
+            
             <hr class="divider">
             <h3>Team-Aktionen</h3>
             <div id="custom-action-buttons">
@@ -597,10 +595,9 @@
         
         <div class="right-column-area card protocol-card">
             
-            <!-- +++ NEUE TAB-REIHENFOLGE +++ -->
             <div class="tab-nav">
                 <button class="tab-button active" onclick="showTab('stats')">Live-Statistik</button>
-                <button class="tab-button" onclick="showTab('timeline')">Timeline</button> <!-- NEU -->
+                <button class="tab-button" onclick="showTab('timeline')">Timeline</button> 
                 <button class="tab-button" onclick="showTab('log')">Protokoll & Video</button>
                 <button class="tab-button" onclick="showTab('roster')">Kader / Roster</button>
             </div>
@@ -634,7 +631,6 @@
                 </div>
             </div>
 
-            <!-- +++ NEUER TAB-CONTAINER +++ -->
             <div id="timeline-tab" class="tab-content">
                 <h3>Aufstellungs-Timeline</h3>
                 <div class="stats-filter-container">
@@ -654,8 +650,6 @@
                     <button id="log-filter-btn-H1" class="filter-button" onclick="setFilterHalf('H1', 'log')">Hälfte 1</button>
                     <button id="log-filter-btn-H2" class="filter-button" onclick="setFilterHalf('H2', 'log')">Hälfte 2</button>
                 </div>
-                
-                <!-- TIMELINE WURDE VON HIER ENTFERNT -->
                 
                 <div class="video-log-layout">
                     

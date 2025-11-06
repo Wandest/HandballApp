@@ -1,8 +1,10 @@
 // DATEI: frontend/static/player_calendar.js
+// +++ FIX: Lädt die Kalenderliste neu, nachdem eine Abwesenheit hinzugefügt wurde +++
 
 /**
  * Verantwortlichkeit: Enthält die gesamte Logik für den Spieler-Kalender
- * (Laden der Events, Filtern nach 7 Tagen/Alle, Anwesenheits-Antwort).
+ * (Laden der Events, Filtern nach 7 Tagen/Alle, Anwesenheits-Antwort)
+ * UND die Logik für den Abwesenheits-Tracker.
  */
 
 (function() {
@@ -15,6 +17,10 @@
     var playerCalendarContainer;
     var playerCalendarMessage;
     
+    // NEU: DOM-Elemente für Abwesenheiten
+    var addAbsenceForm, absenceReasonSelect, absenceStartDate, absenceEndDate, absenceNotes, absenceMessage, absenceListContainer;
+
+
     // ==================================================
     // --- H I L F S F U N K T I O N E N ---
     // ==================================================
@@ -29,6 +35,16 @@
             hour: '2-digit',
             minute: '2-digit'
         }) + ' Uhr';
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     }
     
     function showToast(message, type = 'info') {
@@ -137,18 +153,29 @@
         filteredEvents.forEach(event => {
             const itemEl = document.createElement('div');
             const deadlinePassed = isDeadlinePassed(event); 
-            const statusClass = deadlinePassed ? 'deadline-passed' : '';
+            const isCanceled = event.status === 'CANCELED'; // Prüfen, ob Event abgesagt ist
+            
+            let statusClass = deadlinePassed ? 'deadline-passed' : '';
+            if (isCanceled) {
+                 statusClass += ' event-type-Abgesagt'; // Eigener Stil für Absage
+            } else {
+                 statusClass += ` event-type-${event.event_type.replace(' ', '-')}`;
+            }
 
-            itemEl.className = `player-event-item event-type-${event.event_type.replace(' ', '-')} ${statusClass}`;
-            itemEl.id = `player-event-${event.id}`;
+            itemEl.className = `player-event-item ${statusClass}`;
             
             const startTime = formatDateTime(event.start_time);
             const endTime = event.end_time ? ` - ${formatDateTime(event.end_time)}` : '';
             const location = event.location ? `<br>Ort: ${event.location}` : '';
-            const description = event.description ? `<br>Notiz: ${event.description}` : '';
             
+            // Zeige Absage-Grund statt Notiz, wenn abgesagt
+            let description = event.description ? `<br>Notiz: ${event.description}` : '';
+            if (isCanceled) {
+                description = `<br><strong style="color: #f44336;">ABGESAGT: ${event.description || ''}</strong>`;
+            }
+
             let deadlineHtml = '';
-            if (event.response_deadline_hours && event.response_deadline_hours > 0) {
+            if (event.response_deadline_hours && event.response_deadline_hours > 0 && !isCanceled) {
                  const deadlineTime = new Date(new Date(event.start_time).getTime() - (event.response_deadline_hours * 60 * 60 * 1000));
                  const formattedDeadline = formatDateTime(deadlineTime.toISOString());
                  
@@ -162,9 +189,16 @@
             const statusText = event.my_status.replace('_', ' ');
             const reasonText = event.my_reason ? ` (${event.my_reason})` : '';
             
+            // Buttons deaktivieren, wenn Event abgesagt ist ODER wenn der Status ABGESAGT ist (durch Abwesenheit)
+            const buttonsDisabled = (deadlinePassed || isCanceled || event.my_status === 'DECLINED') ? 'disabled' : '';
+            
+            // Wenn der Status DECLINED ist, aber es KEINEN Grund gibt (manuell),
+            // dann Button "Vielleicht" aktivieren, um Grund hinzuzufügen.
+            const maybeButtonDisabled = (deadlinePassed || isCanceled) ? 'disabled' : '';
+
             itemEl.innerHTML = `
                 <div class="player-event-info">
-                    <h4>${event.title} (${event.event_type})</h4>
+                    <h4 style="color: ${isCanceled ? '#f44336' : '#fff'};">${event.title} (${event.event_type})</h4>
                     <p>Zeit: ${startTime}${endTime}${deadlineHtml}${location}${description}</p>
                 </div>
                 <div class="player-event-status">
@@ -172,9 +206,9 @@
                         ${statusText}${reasonText}
                     </span>
                     <div class="status-buttons">
-                        <button class="btn btn-secondary btn-reason" onclick="respondToEvent(${event.id}, 'TENTATIVE')" ${deadlinePassed ? 'disabled' : ''}>Vielleicht</button>
-                        <button class="btn btn-danger" onclick="respondToEvent(${event.id}, 'DECLINED')" ${deadlinePassed ? 'disabled' : ''}>Absagen</button>
-                        <button class="btn btn-primary" onclick="respondToEvent(${event.id}, 'ATTENDING')" ${deadlinePassed ? 'disabled' : ''}>Zusagen</button>
+                        <button class="btn btn-secondary btn-reason" onclick="respondToEvent(${event.id}, 'TENTATIVE')" ${maybeButtonDisabled}>Vielleicht</button>
+                        <button class="btn btn-danger" onclick="respondToEvent(${event.id}, 'DECLINED')" ${buttonsDisabled}>Absagen</button>
+                        <button class="btn btn-primary" onclick="respondToEvent(${event.id}, 'ATTENDING')" ${buttonsDisabled}>Zusagen</button>
                     </div>
                 </div>
             `;
@@ -182,9 +216,6 @@
         });
     }
 
-    /**
-     * Setzt den Filter und rendert den Kalender neu.
-     */
     function setCalendarFilter(filter) {
         currentCalendarFilter = filter;
         const allTabs = document.querySelectorAll('.calendar-tab-button');
@@ -199,9 +230,6 @@
     }
     window.setCalendarFilter = setCalendarFilter; 
     
-    /**
-     * Sendet die Anwesenheits-Antwort an das Backend.
-     */
     async function respondToEvent(eventId, status) {
         const event = myEventsData.find(e => e.id === eventId);
         if (event && isDeadlinePassed(event)) {
@@ -254,12 +282,13 @@
             }
             showToast("Antwort gespeichert!", "success");
 
-            // Lokales Event-Daten-Objekt aktualisieren
             const index = myEventsData.findIndex(e => e.id === eventId);
             if (index !== -1) {
                 myEventsData[index].my_status = updatedEvent.my_status;
                 myEventsData[index].my_reason = updatedEvent.my_reason;
             }
+            
+            renderMyCalendar(currentCalendarFilter);
 
         } catch (error) {
             console.error("Fehler beim Antworten:", error);
@@ -271,19 +300,167 @@
 
 
     // ==================================================
+    // --- A B W E S E N H E I T E N (NEU) ---
+    // ==================================================
+
+    /**
+     * Lädt die Liste der Abwesenheiten vom neuen /absence/list Endpunkt.
+     */
+    async function loadAbsences() {
+        if (!absenceListContainer) return;
+        absenceListContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Abwesenheiten...</p>';
+
+        try {
+            const response = await fetch('/absence/list');
+            if (response.status === 401) { logout(); return; }
+            if (!response.ok) throw new Error('Abwesenheiten konnten nicht geladen werden.');
+            
+            const absences = await response.json();
+            renderAbsences(absences);
+
+        } catch (error) {
+            absenceListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
+        }
+    }
+    window.loadAbsences = loadAbsences;
+
+    /**
+     * Rendert die Abwesenheitsliste.
+     */
+    function renderAbsences(absences) {
+        absenceListContainer.innerHTML = '';
+        if (absences.length === 0) {
+            absenceListContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Abwesenheiten gemeldet.</p>';
+            return;
+        }
+
+        absences.forEach(absence => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'absence-item';
+            
+            const startDate = formatDate(absence.start_date);
+            const endDate = absence.end_date ? formatDate(absence.end_date) : 'Unbegrenzt';
+            
+            itemEl.innerHTML = `
+                <div class="absence-info">
+                    <span class="reason">${absence.reason}</span>
+                    <span>${startDate} - ${endDate}</span>
+                    <span style="opacity: 0.7; font-style: italic;">${absence.notes || ''}</span>
+                </div>
+                <button class="btn btn-danger btn-inline-delete" onclick="deleteAbsence(${absence.id})">Löschen</button>
+            `;
+            absenceListContainer.appendChild(itemEl);
+        });
+    }
+
+    /**
+     * Löscht eine Abwesenheit.
+     */
+    async function deleteAbsence(absenceId) {
+        if (!confirm("Soll diese Abwesenheit wirklich gelöscht werden? (Hinweis: Bereits abgesagte Termine werden nicht automatisch zurückgesetzt.)")) return;
+        
+        try {
+            const response = await fetch(`/absence/delete/${absenceId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.status === 401) { logout(); return; }
+            if (response.status === 204) {
+                 showToast("Abwesenheit gelöscht.", "success");
+                 loadAbsences(); // Liste neu laden
+                 loadMyCalendar(); // Kalender auch neu laden
+            } else {
+                 const data = await response.json();
+                 throw new Error(data.detail || 'Fehler beim Löschen');
+            }
+        } catch (error) {
+            showToast(`❌ ${error.message}`, "error");
+        }
+    }
+    window.deleteAbsence = deleteAbsence;
+
+    /**
+     * Handler für das Absenden des Abwesenheitsformulars.
+     */
+    async function handleAddAbsence(event) {
+        event.preventDefault();
+        absenceMessage.textContent = 'Speichere...';
+        absenceMessage.className = 'message';
+
+        const startDate = absenceStartDate.value;
+        const endDate = absenceEndDate.value || null;
+        
+        if (!startDate) {
+             absenceMessage.textContent = '❌ Ein Startdatum ist erforderlich.';
+             absenceMessage.className = 'message error';
+             return;
+        }
+        
+        if (endDate && (new Date(endDate) < new Date(startDate))) {
+             absenceMessage.textContent = '❌ Enddatum muss nach dem Startdatum liegen.';
+             absenceMessage.className = 'message error';
+             return;
+        }
+
+        const payload = {
+            start_date: startDate,
+            end_date: endDate,
+            reason: absenceReasonSelect.value,
+            notes: absenceNotes.value || null
+        };
+
+        try {
+            const response = await fetch('/absence/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) { logout(); return; }
+            
+            if (!response.ok) {
+                 const data = await response.json();
+                 throw new Error(data.detail || 'Fehler beim Speichern');
+            }
+            
+            showToast("Abwesenheit gespeichert. Kalender wird aktualisiert...", "success");
+            absenceMessage.textContent = '✅ Abwesenheit gespeichert.';
+            absenceMessage.className = 'message success';
+            addAbsenceForm.reset();
+            
+            // KORREKTUR: Lade beide Listen neu
+            loadAbsences(); 
+            loadMyCalendar(); 
+
+        } catch (error) {
+            absenceMessage.textContent = `❌ ${error.message}`;
+            absenceMessage.className = 'message error';
+        }
+    }
+
+
+    // ==================================================
     // --- I N I T I A L I S I E R U N G ---
     // ==================================================
     function initPlayerCalendar() {
-        // DOM-Zuweisung
+        // DOM-Zuweisung (Kalender)
         playerCalendarContainer = document.getElementById('player-calendar-container');
         playerCalendarMessage = document.getElementById('player-calendar-message');
+        
+        // DOM-Zuweisung (Abwesenheit)
+        addAbsenceForm = document.getElementById('add-absence-form');
+        absenceReasonSelect = document.getElementById('absence-reason');
+        absenceStartDate = document.getElementById('absence-start-date');
+        absenceEndDate = document.getElementById('absence-end-date');
+        absenceNotes = document.getElementById('absence-notes');
+        absenceMessage = document.getElementById('absence-message');
+        absenceListContainer = document.getElementById('absence-list-container');
         
         // Initialer Filter-Status basierend auf der geladenen Seite
         if (window.location.pathname === '/player-calendar') {
             // Seite 'Alle Termine'
             currentCalendarFilter = 'all';
             
-            // Tabs für 'Alle Termine' auf aktiv setzen, falls vorhanden
             if (document.getElementById('tab-week')) document.getElementById('tab-week').classList.remove('active');
             if (document.getElementById('tab-all')) document.getElementById('tab-all').classList.add('active');
             
@@ -293,7 +470,16 @@
         }
 
         console.log(`initPlayerCalendar() wird aufgerufen (Filter: ${currentCalendarFilter}).`);
+        
+        // Lade beide Sektionen
         loadMyCalendar(); 
+        
+        // Lade Abwesenheiten nur, wenn das Formular auf der Seite ist
+        if (addAbsenceForm) {
+            loadAbsences();
+            // Event Listener für das neue Formular
+            addAbsenceForm.addEventListener('submit', handleAddAbsence);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', initPlayerCalendar);

@@ -1,9 +1,5 @@
 // DATEI: frontend/static/protocol.js
-// +++ GEMINI KORREKTUR: Phase 10.5 - UI-Logik für Spieluhr-Buttons korrigiert (sofortige Reaktion) +++
-// +++ GEMINI KORREKTUR: "N/A" Score Bug (ReferenceError: response is not defined) behoben +++
-// +++ GEMINI KORREKTUR: Timeline-Bug (Balken-Logik) behoben +++
-// +++ GEMINI KORREKTUR: Goalie "TOTAL"-Zeile hinzugefügt +++
-// +++ GEMINI KORREKTUR: Timeline in eigenen Tab verschoben +++
+// +++ NEU: handleSevenMeterAction hinzugefügt (Phase 12 UX-Verbesserung) +++
 
 // --- Globale Variablen ---
 var GAME_ID, TEAM_ID; 
@@ -33,7 +29,7 @@ var ACTION_LOG_CONTAINER, PLAYER_BUTTONS_CONTAINER, SCORE_BOARD, SELECTED_PLAYER
 var SHOT_MODAL_FULL, SHOT_MODAL_TITLE_FULL, SHOT_MODAL_HALF, SHOT_MODAL_TITLE_HALF;
 var videoUrlInput; 
 var onCourtPlayerButtonsContainer, onCourtCount;
-var TIMELINE_CONTAINER, TIMELINE_TAB; // TIMELINE_TAB ist neu
+var TIMELINE_CONTAINER, TIMELINE_TAB; 
 var btnGameStart, btnGamePause, btnGameResume;
 
 
@@ -117,7 +113,6 @@ function setHalf(half) {
 }
 window.setHalf = setHalf;
 
-// KORRIGIERT: 'activeTabName' steuert, welche Daten geladen werden
 function setFilterHalf(half, activeTabName = 'stats') {
     currentFilterHalf = half;
     
@@ -340,7 +335,7 @@ async function logActionToBackend(actionType, playerId, x = null, y = null, isSe
         x_coordinate: x,
         y_coordinate: y,
         active_goalie_id: activeGoalie,
-        server_timestamp: new Date().toISOString() // Für Phase 10.5
+        server_timestamp: new Date().toISOString() 
     };
     
     try {
@@ -407,6 +402,21 @@ function handleAction(actionType) {
 }
 window.handleAction = handleAction;
 
+// +++ NEUE FUNKTION (ersetzt showShotModal für 7m) +++
+function handleSevenMeterAction(actionType) {
+    if (!selectedPlayerId || selectedPlayerId === 'opponent') {
+        window.showToast("Bitte zuerst einen Spieler (links oben) auswählen.", "error");
+        return;
+    }
+    if (!isGameClockRunning) {
+        window.showToast("Spieluhr läuft nicht. Aktion wird geloggt, aber Zeitmessung ist evtl. inkorrekt.", "error");
+    }
+    
+    // Loggt die Aktion direkt, ohne Wurfbild, aber mit activeGoalieId
+    logActionToBackend(actionType, selectedPlayerId, null, null, true, activeGoalieId);
+}
+window.handleSevenMeterAction = handleSevenMeterAction;
+
 function handleOpponentAction(actionType) {
     if (!isGameClockRunning) {
         window.showToast("Spieluhr läuft nicht. Aktion wird geloggt, aber Zeitmessung ist evtl. inkorrekt.", "error");
@@ -439,7 +449,7 @@ window.handleGoalieAction = handleGoalieAction;
 
 
 // ==================================================
-// --- STATISTIK LADEN & ANZEIGEN ---
+// --- STATISTIK LADEN & ANZEIGEN (unverändert) ---
 // ==================================================
 
 async function loadOpponentStats() {
@@ -490,7 +500,6 @@ async function updateScoreDisplay() {
         ]);
         if (!myStatsRes.ok || !oppStatsRes.ok) throw new Error("Score-Daten nicht gefunden.");
         
-        // KORREKTUR (Bug 1): response -> myStatsRes
         const myStats = await myStatsRes.json(); 
         const oppStats = await oppStatsRes.json();
         
@@ -519,9 +528,7 @@ function renderStatsTables(stats) {
     customActionNames.forEach(name => { customTableHtml += `<th>${name}</th>`; });
     customTableHtml += '</tr></thead><tbody>';
     
-    // Feldspieler-Total
     let total = { goals: 0, misses: 0, seven_meter_goals: 0, seven_meter_misses: 0, tech_errors: 0, fehlpaesse: 0, seven_meter_caused: 0, time_on_court_seconds: 0 };
-    // Torwart-Total (NEU)
     let totalGoalie = { saves: 0, opponent_goals_received: 0, seven_meter_saves: 0, seven_meter_received: 0, time_on_court_seconds: 0 };
 
 
@@ -548,7 +555,6 @@ function renderStatsTables(stats) {
         
         if (player.position === 'Torwart') {
             goaliesFound = true;
-            // Add to Goalie Totals
             totalGoalie.saves += player.saves || 0;
             totalGoalie.opponent_goals_received += player.opponent_goals_received || 0;
             totalGoalie.seven_meter_saves += player.seven_meter_saves || 0;
@@ -570,7 +576,6 @@ function renderStatsTables(stats) {
             </tr>`;
         } else {
             fieldPlayersFound = true;
-            // Add to Field Player Totals
             total.goals += player.goals || 0;
             total.misses += player.misses || 0;
             total.seven_meter_goals += player.seven_meter_goals || 0;
@@ -623,7 +628,7 @@ function renderStatsTables(stats) {
         <td>${totalTimeDisplay}</td>
     </tr></tfoot></table>`;
     
-    // --- TOTAL FÜR TORWART (NEU) ---
+    // --- TOTAL FÜR TORWART ---
     const totalGoalieShots = totalGoalie.saves + totalGoalie.opponent_goals_received;
     const totalGoalieQuote = totalGoalieShots > 0 ? ((totalGoalie.saves / totalGoalieShots) * 100).toFixed(0) + '%' : '—';
     const totalGoalie7m = totalGoalie.seven_meter_saves + totalGoalie.seven_meter_received;
@@ -647,7 +652,7 @@ function renderStatsTables(stats) {
 
 
 // ==================================================
-// --- LOG & VIDEO ---
+// --- LOG & VIDEO (unverändert) ---
 // ==================================================
 
 function renderSubstitutionTimeline(actions) {
@@ -661,11 +666,9 @@ function renderSubstitutionTimeline(actions) {
         return;
     }
     
-    // Berechne die absolute Start- und Endzeit (UTC)
     const gameStartTime = new Date(clockActions[0].server_timestamp).getTime();
     let gameEndTime = new Date(clockActions[clockActions.length - 1].server_timestamp).getTime();
     
-    // Wenn die Uhr noch läuft, ist das Ende "jetzt"
     if (clockActions[clockActions.length - 1].action_type === 'GAME_START') {
         gameEndTime = new Date().getTime();
     }
@@ -676,7 +679,6 @@ function renderSubstitutionTimeline(actions) {
         return;
     }
 
-    // Finde alle Spieler-Intervalle
     const playerIntervals = new Map(); 
     const onCourtMap = new Map(); 
 
@@ -697,14 +699,12 @@ function renderSubstitutionTimeline(actions) {
         }
     });
 
-    // Spieler, die am Ende des Logs noch auf dem Feld sind
     onCourtMap.forEach((inTime, playerId) => {
-        const interval = { start: inTime, end: gameEndTime }; // Ende ist das Ende der Uhr
+        const interval = { start: inTime, end: gameEndTime }; 
         if (!playerIntervals.has(playerId)) playerIntervals.set(playerId, []);
         playerIntervals.get(playerId).push(interval);
     });
 
-    // Rendere die Balken für jeden Spieler im Roster
     participatingPlayers.forEach(player => {
         if (!playerIntervals.has(player.id)) return; 
 
@@ -719,7 +719,6 @@ function renderSubstitutionTimeline(actions) {
         `;
         
         intervals.forEach(interval => {
-            // Skaliere relativ zur Startzeit und Dauer der Uhr
             const leftPercent = Math.max(0, ((interval.start - gameStartTime) / totalDisplayDuration) * 100);
             const widthPercent = Math.max(0.5, ((interval.end - interval.start) / totalDisplayDuration) * 100); 
             const barClass = isGoalie ? 'timeline-bar goalkeeper' : 'timeline-bar';
@@ -745,7 +744,7 @@ async function loadActionLog() {
         if (response.status === 401) { window.logout(); return; }
         if (!response.ok) throw new Error("Aktions-Log nicht gefunden.");
         
-        gameActionLog = await response.json(); // Speichere Aktionen global
+        gameActionLog = await response.json(); 
         
         renderSubstitutionTimeline(gameActionLog); 
         renderActionLog(gameActionLog); 
@@ -790,7 +789,6 @@ function renderActionLog(actions) {
             <td>${action.action_type}</td>
         </tr>`;
         
-        // Status für Spieluhr
         if (action.action_type === 'GAME_START') { 
             isGameClockRunning = true;
             gameHasStarted = true;
@@ -798,7 +796,6 @@ function renderActionLog(actions) {
             isGameClockRunning = false;
         }
         
-        // Status für Spieler
         if (action.action_type === 'SubIn' && action.player_id) {
             playersOnCourt.add(action.player_id);
             const player = fullTeamRoster.find(p => p.id === action.player_id);
@@ -816,7 +813,6 @@ function renderActionLog(actions) {
     logHtml += '</tbody></table>';
     ACTION_LOG_CONTAINER.innerHTML = logHtml;
     
-    // Globalen Status aktualisieren und UI neu rendern
     updateGameClockUI(); 
     renderPlayerButtons(); 
     renderOnCourtButtons(); 
@@ -835,7 +831,7 @@ window.handleLogClick = handleLogClick;
 
 
 // ==================================================
-// --- ROSTER (KADER) ---
+// --- ROSTER (KADER) (unverändert) ---
 // ==================================================
 
 async function loadCustomActions() {
@@ -1042,7 +1038,7 @@ function initProtocol() {
     onCourtPlayerButtonsContainer = document.getElementById('on-court-player-buttons-container');
     onCourtCount = document.getElementById('on-court-count');
     TIMELINE_CONTAINER = document.getElementById('timeline-container');
-    TIMELINE_TAB = document.getElementById('timeline-tab'); // NEU
+    TIMELINE_TAB = document.getElementById('timeline-tab'); 
     
     btnGameStart = document.getElementById('btn-game-start');
     btnGamePause = document.getElementById('btn-game-pause');

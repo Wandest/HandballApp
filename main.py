@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT: Fügt /player-calendar Route hinzu und entfernt redundantes /portal Präfix)
+# DATEI: main.py (KORRIGIERT: Fügt den neuen /absence Router hinzu)
 import webview
 import threading
 import uvicorn
@@ -20,9 +20,10 @@ from backend.scouting import router as scouting_router
 # KORREKTUR: EventType importieren für Jinja
 from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player, EventType
 
-# WICHTIG: player_portal_router hat bereits das Präfix /portal in seiner Definition
 from backend.player_portal import router as player_portal_router 
 from backend.calendar import router as calendar_router
+# NEU: Abwesenheits-Router importieren
+from backend.absence import router as absence_router
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -41,12 +42,10 @@ app.include_router(action_router, prefix="/actions", tags=["Actions"])
 app.include_router(custom_action_router, prefix="/custom-actions", tags=["Custom Actions"]) 
 app.include_router(public_router, prefix="/public", tags=["Public Data"])
 app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
-
-# FIX: player_portal_router wird ohne Präfix eingebunden, da er in player_portal.py das Präfix /portal schon hat
 app.include_router(player_portal_router) 
-
-# Prefix "/calendar" ist bereits in calendar.py definiert.
 app.include_router(calendar_router) 
+# NEU: Abwesenheits-Router einbinden (Präfix /absence ist bereits in absence.py definiert)
+app.include_router(absence_router)
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -96,6 +95,8 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
 def player_dashboard_page(request: Request, current_player: Player = Depends(get_current_player_only)):
     db = SessionLocal()
     try:
+        # NEU: Lade Abwesenheitsgründe für das Formular
+        from backend.database import AbsenceReason
         template_vars = {
             "request": request,
             "title": f"Spieler Portal: {current_player.name}",
@@ -105,7 +106,8 @@ def player_dashboard_page(request: Request, current_player: Player = Depends(get
             "leagues": [],
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "player_dashboard.html", 
+            "page_content_template": "player_dashboard.html",
+            "absence_reasons": [e.value for e in AbsenceReason] # NEU
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -119,6 +121,8 @@ def player_dashboard_page(request: Request, current_player: Player = Depends(get
 def player_calendar_page(request: Request, current_player: Player = Depends(get_current_player_only)):
     db = SessionLocal()
     try:
+        # NEU: Lade Abwesenheitsgründe für das Formular
+        from backend.database import AbsenceReason
         template_vars = {
             "request": request,
             "title": "Alle Termine",
@@ -129,6 +133,7 @@ def player_calendar_page(request: Request, current_player: Player = Depends(get_
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
             "page_content_template": "player_calendar.html", 
+            "absence_reasons": [e.value for e in AbsenceReason] # NEU
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -190,7 +195,6 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
 def calendar_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
     try:
-        # Lade Event-Typen aus der Datenbank-Enum
         from backend.database import EventType 
         
         template_vars = {
@@ -283,7 +287,7 @@ def protocol(game_id: int, request: Request, current_trainer: Trainer = Depends(
                 "team_name": team.name,
                 "video_url": game.video_url 
             }
-        ) # +++ KORREKTUR: HIER WAR DER SYNTAXFEHLER. DIE KLAMMER WURDE HINZUGEFÜGT. +++
+        ) 
     finally:
         db.close()
 

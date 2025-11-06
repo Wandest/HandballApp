@@ -1,5 +1,5 @@
 <style>
-    /* Allgemeine Stile für die Kalenderansicht (kopiert aus player_dashboard.html) */
+    /* ... (Stile von oben kopiert) ... */
     .analysis-grid-1-col {
         display: grid;
         grid-template-columns: 1fr; 
@@ -13,19 +13,12 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
     .calendar-tab-button {
-        padding: 8px 15px;
-        background: none;
-        border: none;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        opacity: 0.6;
-        transition: opacity 0.2s;
+        padding: 8px 15px; background: none; border: none;
+        color: white; font-weight: bold; cursor: pointer;
+        opacity: 0.6; transition: opacity 0.2s;
     }
     .calendar-tab-button.active {
-        opacity: 1;
-        border-bottom: 3px solid #ffcc00;
-        margin-bottom: -1px; 
+        opacity: 1; border-bottom: 3px solid #ffcc00; margin-bottom: -1px; 
     }
     
     #player-calendar-container {
@@ -33,64 +26,70 @@
         overflow-y: auto;
     }
     .player-event-item {
-        background: rgba(0, 0, 0, 0.2);
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-        border-left: 5px solid #607d8b; /* Standard (Sonstiges) */
+        background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 5px;
+        margin-bottom: 10px; border-left: 5px solid #607d8b; 
         transition: background-color 0.2s;
     }
     .player-event-item.event-type-Training { border-left-color: #00bcd4; }
     .player-event-item.event-type-Spiel { border-left-color: #38E838; }
-
     .player-event-item.deadline-passed {
          background: rgba(255, 102, 102, 0.1);
-         border-left-color: #f44336;
-         opacity: 0.7;
+         border-left-color: #f44336; opacity: 0.7;
     }
-
     .player-event-info h4 { margin: 0 0 5px 0; color: #fff; }
     .player-event-info p { margin: 0; font-size: 0.9em; opacity: 0.8; }
-    
     .player-event-status {
-        margin-top: 15px;
-        padding-top: 15px;
+        margin-top: 15px; padding-top: 15px;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        display: flex; justify-content: space-between; align-items: center;
     }
-    
     .status-badge {
-        font-weight: bold;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 0.9em;
+        font-weight: bold; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;
     }
-    /* Status-Farben */
     .status-badge.ATTENDING { color: #1e3c72; background-color: #38E838; }
     .status-badge.DECLINED { color: white; background-color: #f44336; }
     .status-badge.TENTATIVE { color: #1e3c72; background-color: #ffcc00; }
     .status-badge.NOT_RESPONDED { color: #ddd; background-color: #607d8b; }
-    
     .status-buttons .btn {
-        margin: 0 0 0 5px;
-        padding: 6px 12px;
-        font-size: 0.9em;
+        margin: 0 0 0 5px; padding: 6px 12px; font-size: 0.9em;
     }
     .status-buttons .btn-reason {
-        background: none;
-        border: 1px solid #607d8b;
-        color: #607d8b;
+        background: none; border: 1px solid #607d8b; color: #607d8b;
     }
-    .status-buttons .btn-reason:hover {
-        background: #607d8b;
-        color: white;
-    }
+    .status-buttons .btn-reason:hover { background: #607d8b; color: white; }
+    .status-buttons .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     
-    .status-buttons .btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
+    /* +++ STILE FÜR ABWESENHEITS-TRACKER (identisch zu player_dashboard) +++ */
+    .absence-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .absence-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    #absence-list-container {
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .absence-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0,0,0,0.2);
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+    .absence-info span {
+        display: block;
+        font-size: 0.9em;
+    }
+    .absence-info span.reason {
+        font-weight: bold;
+        color: #ffcc00;
     }
 </style>
 
@@ -113,6 +112,53 @@
             </div>
         </div>
     </div>
-</div>
+    
+    <div class="card">
+        <div class="card-content">
+            <h2>🤒 Abwesenheit melden (Krank, Urlaub, etc.)</h2>
+            <p style="opacity: 0.8; font-size: 0.9em;">
+                Trage hier Zeiträume ein, in denen du generell nicht verfügbar bist.
+            </p>
+            
+            <div class="absence-layout">
+                <div class="absence-form">
+                    <form id="add-absence-form">
+                        <div class="form-section active">
+                            <label for="absence-reason">Grund:</label>
+                            <select id="absence-reason" required>
+                                {% for reason in absence_reasons %}
+                                    <option value="{{ reason }}">{{ reason }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="absence-form-grid">
+                            <div class="form-section active">
+                                <label for="absence-start-date">Von (Datum):</label>
+                                <input type="date" id="absence-start-date" required>
+                            </div>
+                            <div class="form-section active">
+                                <label for="absence-end-date">Bis (Datum, optional):</label>
+                                <input type="date" id="absence-end-date">
+                            </div>
+                        </div>
+                        <div class="form-section active">
+                            <label for="absence-notes">Notiz (optional):</label>
+                            <input type="text" id="absence-notes" placeholder="z.B. Nur Vormittags verfügbar">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full-width">Abwesenheit eintragen</button>
+                    </form>
+                    <div id="absence-message" class="message"></div>
+                </div>
+                
+                <div class="absence-list">
+                    <h4 style="margin-top: 0;">Meine gemeldeten Abwesenheiten</h4>
+                    <div id="absence-list-container">
+                        <p style="opacity: 0.6; text-align: center;">Lade Abwesenheiten...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
 
 <script src="/static/player_calendar.js"></script>
