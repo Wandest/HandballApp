@@ -123,18 +123,23 @@
         }
         .dashboard-grid {
              display: grid;
-             grid-template-columns: 1fr 2fr; /* Neu */
+             grid-template-columns: 1fr 2fr; /* Alt */
              gap: 20px;
+        }
+        /* NEU: Grid für Dashboard mit Ampel */
+        .dashboard-grid-ampel {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr; 
+            gap: 20px;
         }
         .card-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
-        /* +++ NEUES GRID FÜR KALENDER +++ */
         .calendar-layout {
             display: grid;
-            grid-template-columns: 1fr 2fr; /* 1/3 für Erstellung, 2/3 für Liste */
+            grid-template-columns: 1fr 2fr; 
             gap: 20px;
         }
         
@@ -178,7 +183,6 @@
           color: #333;
           font-size: 1em;
         }
-        /* Korrektur für Textarea */
         textarea {
             font-family: system-ui, sans-serif;
             resize: vertical;
@@ -549,7 +553,6 @@
             height: 100%;
             z-index: 2; 
         }
-        /* Text im Overlay (z.B. "Keine Wurfdaten") auf schwarz */
         .shot-overlay p {
             color: #000000;
             opacity: 0.7;
@@ -597,9 +600,10 @@
              <a id="nav-player-dashboard" href="/player-dashboard" class="nav-link">🏠 Mein Portal</a>
         {% endif %}
 
-        <!-- KORREKTUR: Navigationsstruktur für Spieler getrennt -->
         {% if user_type == "trainer" %}
             <a id="nav-calendar" href="/calendar" class="nav-link">🗓️ Kalender</a>
+            <a id="nav-drills" href="/drills" class="nav-link">📚 Übungs-DB</a>
+            
             <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
             <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
             
@@ -607,7 +611,6 @@
             <a id="nav-scouting" href="/league-scouting" class="nav-link">🔭 Liga Scouting</a>
         
         {% elif user_type == "player" %}
-            <!-- NEU: Separater Link für alle Termine -->
             <a id="nav-calendar" href="/player-calendar" class="nav-link">🗓️ Alle Termine</a>
         {% endif %}
         <div style="flex-grow: 1;"></div> 

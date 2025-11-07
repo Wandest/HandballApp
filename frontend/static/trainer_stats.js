@@ -1,5 +1,5 @@
 // DATEI: frontend/static/trainer_stats.js
-// +++ FIX: Fügt die "TOTAL TEAM"-Zeile zur Torwart-Statistiktabelle hinzu +++
+// +++ FIX: Aktualisiert alle Fetch URLs auf die neuen, korrekten Pfade (behebt 404-Fehler) +++
 
 (function() {
     
@@ -9,7 +9,7 @@
     var seasonShotData = [];
     var seasonErrorData = [];
     var seasonOpponentShotData = [];
-    var seasonActionData = []; // Für den Video-Cutter (wird hier nur geladen)
+    var seasonActionData = []; // Für den Video-Cutter
 
     // DOM-Elemente
     var seasonStatsTeamName, loadSeasonStatsBtn, seasonStatsMessage, statsContainerFieldSeason, statsContainerGoalieSeason, statsContainerCustomSeason, statsContainerOpponentSeason, archiveNameInput, archiveSeasonBtn, archiveMessageDiv;
@@ -157,6 +157,7 @@
 
 
     function displaySeasonPlayerStats(stats, containerPrefix) {
+        // ... (Logik unverändert) ...
         const fieldContainer = document.getElementById(`${containerPrefix}field-season`);
         const goalieContainer = document.getElementById(`${containerPrefix}goalie-season`);
         const customContainer = document.getElementById(`${containerPrefix}custom-season`);
@@ -176,9 +177,7 @@
         let totalGoals = 0, totalShots = 0, totalTechErrors = 0, totalFehlpaesse = 0, totalSevenMeterCaused = 0, totalSevenMeterAttempts = 0, totalSevenMeterGoals = 0, totalGamesPlayedField = 0, totalFieldPlayers = 0;
         let totalTimeOnCourtField = 0;
         
-        // NEU: Total-Zähler für Torhüter
         let totalSaves = 0, totalGoalsReceived = 0, totalSevenMeterSaves = 0, totalSevenMeterReceived = 0, totalTimeOnCourtGoalie = 0, totalGamesPlayedGoalie = 0;
-
 
         stats.forEach(player => {
             
@@ -229,7 +228,6 @@
             }
         });
         
-        // --- TOTAL FÜR FELDSPIELER ---
         const totalShotQuote = totalShots > 0 ? ((totalGoals / totalShots) * 100).toFixed(0) + '%' : '—'; 
         const totalTimeDisplay = formatSeconds(totalTimeOnCourtField); 
         const avgGames = totalFieldPlayers > 0 ? (totalGamesPlayedField / totalFieldPlayers).toFixed(0) : 0; 
@@ -237,13 +235,12 @@
         
         fieldTableHtml += `</tbody><tfoot><tr><td>TOTAL TEAM</td><td>-</td><td>${avgGames}</td><td>${totalTimeDisplay}</td><td>${totalGoals} (${totalShotQuote})</td><td>${avgGoalsPerGame}</td><td>${totalShots - totalGoals}</td><td>${totalTechErrors} / ${totalFehlpaesse}</td><td>${totalSevenMeterGoals}</td><td>${totalSevenMeterAttempts - totalSevenMeterGoals}</td><td>${totalSevenMeterCaused}</td></tr></tfoot></table>`;
         
-        // --- TOTAL FÜR TORWART (KORRIGIERT) ---
         const totalGoalieShotsOnGoal = totalSaves + totalGoalsReceived;
         const totalGoalieQuote = totalGoalieShotsOnGoal > 0 ? ((totalSaves / totalGoalieShotsOnGoal) * 100).toFixed(0) + '%' : '—';
         const totalGoalie7m = totalSevenMeterSaves + totalSevenMeterReceived;
         const totalGoalie7mQuote = totalGoalie7m > 0 ? ((totalSevenMeterSaves / totalGoalie7m) * 100).toFixed(0) + '%' : '—';
         const totalGoalieTimeDisplay = formatSeconds(totalTimeOnCourtGoalie);
-        const avgGamesGoalie = totalGamesPlayedGoalie > 0 ? totalGamesPlayedGoalie : 0; // Zeigt die Gesamtanzahl der Spiele der Torhüter
+        const avgGamesGoalie = totalGamesPlayedGoalie > 0 ? totalGamesPlayedGoalie : 0; 
 
         goalieTableHtml += `</tbody><tfoot><tr>
             <td>TOTAL TEAM</td><td>-</td><td>${avgGamesGoalie}</td>
@@ -252,7 +249,6 @@
             <td>${totalSevenMeterSaves} / ${totalGoalie7m} (${totalGoalie7mQuote})</td>
         </tr></tfoot></table>`;
         
-        // --- CUSTOM AKTIONEN (unverändert) ---
         customContainer.innerHTML = '';
         const customActionNames = (stats.length > 0 && stats[0].custom_counts) ? Object.keys(stats[0].custom_counts) : [];
         if (customActionNames.length === 0) { customContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen definiert.</p>'; } else {
@@ -270,7 +266,6 @@
             customContainer.innerHTML = customTableHtml;
         }
         
-        // Container füllen
         fieldContainer.innerHTML = fieldPlayersFound ? fieldTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler im Kader.</p>';
         goalieContainer.innerHTML = goaliesFound ? goalieTableHtml : '<p style="opacity: 0.6; text-align: center;">Keine Torhüter im Kader.</p>';
     }
@@ -339,6 +334,7 @@
         loadSeasonGamesFilter(); // Lädt Spiele-Filter
         
         try {
+            // FIX: Verwendung der korrekten URLs, die in action.py (Schritt 1) definiert wurden
             const [
                 playerStatsResponse, 
                 opponentStatsResponse,

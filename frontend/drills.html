@@ -1,0 +1,240 @@
+<style>
+    /* ... (CSS für .drills-layout, .category-item, .drill-card, etc. bleibt unverändert) ... */
+    .drills-layout {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        gap: 20px;
+    }
+    
+    @media (max-width: 900px) {
+        .drills-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .drill-categories-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .category-item {
+        padding: 12px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.2);
+        margin-bottom: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .category-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    .category-item.active {
+        background: #ffcc00;
+        color: #1e3c72;
+    }
+    .category-delete-btn {
+        float: right;
+        color: #f44336;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        opacity: 0.7;
+    }
+    .category-item.active .category-delete-btn {
+        color: #1e3c72;
+    }
+    
+    #drill-list-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 15px;
+    }
+    .drill-card {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        border-left: 5px solid #00bcd4;
+        display: flex;
+        flex-direction: column;
+    }
+    .drill-card-content {
+        padding: 15px;
+        flex-grow: 1;
+    }
+    .drill-card-content h4 {
+        margin: 0 0 10px 0;
+        color: #ffcc00;
+    }
+    .drill-card-content p {
+        margin: 0 0 10px 0;
+        font-size: 0.9em;
+        opacity: 0.8;
+        white-space: pre-wrap; 
+    }
+    .drill-card-content .drill-meta {
+        font-size: 0.85em;
+        opacity: 0.7;
+        font-style: italic;
+    }
+    .drill-card-actions {
+        padding: 10px 15px;
+        background: rgba(0, 0, 0, 0.2);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .drill-card-actions .btn {
+        margin-top: 0;
+        padding: 5px 10px;
+        font-size: 0.9em;
+    }
+    
+    #drill-modal .modal-content,
+    #view-drill-modal .modal-content {
+        max-width: 600px;
+    }
+    
+    /* NEU: Stile für das Video-Container im View-Modal */
+    #view-drill-video-container {
+        position: relative;
+        padding-bottom: 56.25%; /* 16:9 Aspekt */
+        height: 0;
+        overflow: hidden;
+        background: #000;
+        border-radius: 5px;
+        margin-top: 15px;
+        display: none; /* Standardmäßig versteckt */
+    }
+    #view-drill-video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    #view-drill-description {
+         white-space: pre-wrap;
+         opacity: 0.9;
+         background: rgba(0,0,0,0.1);
+         padding: 10px;
+         border-radius: 5px;
+    }
+</style>
+
+<div class="drills-layout">
+    
+    <div class="card">
+        <div class="card-content">
+            <h2 style="margin-bottom: 5px;">Kategorien</h2>
+            <p style="font-size: 0.9em; opacity: 0.8; margin-top: 0; margin-bottom: 15px;">Filtere deine Übungen.</p>
+            
+            <ul id="drill-categories-list" class="drill-categories-list">
+                </ul>
+            
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+            
+            <form id="add-category-form">
+                <div class="form-section active">
+                    <label for="category-name">Neue Kategorie:</label>
+                    <input type="text" id="category-name" placeholder="z.B. Aufwärmen" required>
+                </div>
+                <button type="submit" class="btn btn-secondary btn-full-width" style="margin-top: 0;">Kategorie erstellen</button>
+            </form>
+            <div id="category-message" class="message"></div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">Übungs-DB</h2>
+                <button class="btn btn-primary" onclick="openDrillModal(null)">
+                    Neue Übung erstellen
+                </button>
+            </div>
+            <h3 id="drills-team-name" style="color: #00bcd4;">(Team wählen)</h3>
+            
+            <div id="drill-list-container">
+                </div>
+        </div>
+    </div>
+    
+</div>
+
+<div id="drill-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeDrillModal()">&times;</span>
+        <h3 id="drill-modal-title">Neue Übung erstellen</h3>
+        
+        <form id="drill-form">
+            <input type="hidden" id="drill-id">
+            
+            <div class="form-section active">
+                <label for="drill-title">Titel der Übung:</label>
+                <input type="text" id="drill-title" placeholder="z.B. 3-2-1 Abwehr" required>
+            </div>
+            
+            <div class="form-section active">
+                <label for="drill-category">Kategorie:</label>
+                <select id="drill-category">
+                    <option value="">(Keine Kategorie)</option>
+                </select>
+            </div>
+            
+            <div class="form-section active">
+                <label for="drill-duration">Geschätzte Dauer (Minuten):</label>
+                <input type="number" id="drill-duration" min="1" placeholder="z.B. 15">
+            </div>
+            
+            <div class="form-section active">
+                <label for="drill-media-url">Media URL (YouTube, Bild, etc.) (Optional):</label>
+                <input type="text" id="drill-media-url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            
+            <div class="form-section active">
+                <label for="drill-description">Beschreibung / Notizen:</label>
+                <textarea id="drill-description" rows="6" placeholder="Ablauf, Coaching-Punkte, Material..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full-width">Übung speichern</button>
+        </form>
+        <div id="drill-message" class="message"></div>
+    </div>
+</div>
+
+<div id="view-drill-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeViewModal()">&times;</span>
+        <h3 id="view-drill-title" style="color: #ffcc00;">Übungs-Titel</h3>
+        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-top: 0;" id="view-drill-meta">
+            Kategorie: Aufwärmen | Dauer: 15 min
+        </p>
+        
+        <div id="view-drill-video-container">
+            <iframe id="view-drill-iframe"
+                    width="560" 
+                    height="315" 
+                    src="" 
+                    title="YouTube video player" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>
+        
+        <p id="view-drill-link-container" style="display: none;">
+            <a id="view-drill-link" href="#" target="_blank" class="btn btn-secondary">Externen Link ansehen</a>
+        </p>
+        
+        <h4 style="color: #00bcd4; margin-top: 20px; margin-bottom: 10px;">Beschreibung / Notizen:</h4>
+        <p id="view-drill-description">
+            Hier steht die Beschreibung...
+        </p>
+    </div>
+</div>
+
+
+<script src="/static/drills.js"></script>

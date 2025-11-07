@@ -1,5 +1,5 @@
 # DATEI: backend/action.py
-# +++ FIX: Stellt alle fehlenden Protokoll-Routen (stats/game, stats/opponent, list, add) wieder her +++
+# +++ FINAL FIX: Stellt alle Protokoll-Routen wieder her UND definiert Pydantic-Modelle korrekt +++
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -9,10 +9,14 @@ from typing import List, Optional, Dict, Any
 import re
 from datetime import datetime, timedelta
 
+# KORRIGIERT: PlayerStats wird jetzt aus database.py importiert!
 from backend.database import SessionLocal, Trainer, Player, Game, Team, Action, CustomAction, UserRole, game_participations_table, PlayerStats
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
+# NEU: Import des Statistik-Service
 from backend.stats_service import get_season_stats_for_team
+
+# Importe, die lokal benötigt werden (Time Tracking wird nur für Einzelspiel-Statistiken benötigt)
 from backend.time_tracking import calculate_all_player_times, format_seconds
 
 router = APIRouter()
@@ -120,7 +124,6 @@ def create_action(
     
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
     
-    # KORREKTUR: Verwende server_timestamp, wenn vom Client gesendet (für Stoppuhr)
     timestamp_to_use = action_data.server_timestamp if action_data.server_timestamp else datetime.utcnow()
 
     new_action = Action(
@@ -212,7 +215,6 @@ def get_game_stats(
         raise HTTPException(status_code=404, detail="Spiel nicht gefunden.")
     check_team_auth_and_get_role(db, current_trainer.id, game.team_id)
 
-    # Lade Roster und Custom Actions
     roster_player_ids = [p.id for p in game.participating_players]
     if not roster_player_ids:
         return []
@@ -220,7 +222,6 @@ def get_game_stats(
     custom_actions = db.query(CustomAction).filter(CustomAction.team_id == game.team_id).all()
     custom_action_names = [ca.name for ca in custom_actions]
 
-    # Baue die Subquery (gefiltert nach Hälfte)
     action_subquery = db.query(Action).filter(Action.game_id == game_id)
     action_subquery = apply_half_filter(action_subquery, half).subquery()
     
@@ -249,7 +250,6 @@ def get_game_stats(
             func.count(case((action_subquery.c.action_type == name, 1), else_=None)).label(safe_label)
         )
 
-    # Haupt-Query
     stats_query = (
         db.query(
             Player.id, Player.name, Player.number, Player.position,
@@ -268,7 +268,6 @@ def get_game_stats(
     
     stats_results = stats_query.all()
     
-    # Zeitberechnung für dieses Spiel
     time_on_court_map = calculate_all_player_times(db, game_id, roster_player_ids, half)
 
     final_stats = []
@@ -320,7 +319,6 @@ def get_opponent_stats(
     query = db.query(Action).filter(Action.game_id == game_id)
     query = apply_half_filter(query, half)
     
-    # Aggregiere die Aktionen
     stats_query = query.with_entities(
         func.coalesce(func.sum(case((Action.action_type == 'OppGoal', 1), else_=0)), 0).label('opponent_goals'),
         func.coalesce(func.sum(case((Action.action_type == 'OppMiss', 1), else_=0)), 0).label('opponent_misses'),
@@ -334,11 +332,10 @@ def get_opponent_stats(
     )
 
 
-# --- SAISON-ANALYSE ROUTEN (unverändert, außer Pfade) ---
+# --- SAISON-ANALYSE ROUTEN (KORRIGIERTE PFADE) ---
 
 @router.get("/shots/team/{team_id}", response_model=List[ShotDataResponse])
 def get_season_shot_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Logik von letztem Mal) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(
@@ -367,7 +364,6 @@ def get_season_shot_charts(team_id: int, db: Session = Depends(get_db)):
 
 @router.get("/errors/team/{team_id}", response_model=List[ShotDataResponse])
 def get_season_error_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Logik von letztem Mal) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(
@@ -398,7 +394,6 @@ def get_season_error_charts(team_id: int, db: Session = Depends(get_db)):
 
 @router.get("/clips/season/{team_id}", response_model=List[ActionPlaylistResponse])
 def list_season_actions(team_id: int, db: Session = Depends(get_db)):
-    # ... (Logik von letztem Mal) ...
     game_filter = db.query(Game.id, Game.opponent, Game.video_url, Game.game_category).filter(
         Game.team_id == team_id
     ).all()
@@ -438,7 +433,6 @@ def list_season_actions(team_id: int, db: Session = Depends(get_db)):
 
 @router.get("/shots/opponent/team/{team_id}", response_model=List[ShotData])
 def get_season_opponent_shot_charts(team_id: int, db: Session = Depends(get_db)):
-    # ... (Logik von letztem Mal) ...
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team: raise HTTPException(status_code=404, detail="Team nicht gefunden.")
     saison_games_ids = [g.id for g in db.query(Game).filter(

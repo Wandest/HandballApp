@@ -1,5 +1,5 @@
 # DATEI: backend/database.py
-# +++ NEU: PlayerAbsence Modell hinzugefügt (Phase 12) +++
+# +++ NEU: Fügt DrillCategory und Drill Modelle hinzu (Phase 12.5) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -43,7 +43,6 @@ class AttendanceStatus(enum.Enum):
     TENTATIVE = "Vielleicht"
     NOT_RESPONDED = "Keine Antwort"
 
-# NEU: Enum für Abwesenheitsgründe
 class AbsenceReason(enum.Enum):
     ILLNESS = "Krankheit"
     INJURY = "Verletzung"
@@ -115,6 +114,10 @@ class Trainer(Base):
 
     scouting_reports = relationship("ScoutingReport", back_populates="trainer", cascade="all, delete-orphan")
     created_events = relationship("TeamEvent", back_populates="creator", foreign_keys="[TeamEvent.created_by_trainer_id]")
+    
+    # NEU: Beziehung zu erstellten Übungen
+    created_drills = relationship("Drill", back_populates="creator", cascade="all, delete-orphan")
+
 
 # ---------------------------------
 # 2. Team (Mannschaft) Modell
@@ -138,6 +141,10 @@ class Team(Base):
     scouting_reports = relationship("ScoutingReport", back_populates="team", cascade="all, delete-orphan")
     events = relationship("TeamEvent", back_populates="team", cascade="all, delete-orphan")
     settings = relationship("TeamSettings", back_populates="team", uselist=False, cascade="all, delete-orphan")
+    
+    # NEU: Beziehung zur Übungs-DB
+    drill_categories = relationship("DrillCategory", back_populates="team", cascade="all, delete-orphan")
+    drills = relationship("Drill", back_populates="team", cascade="all, delete-orphan")
 
 
 # ---------------------------------
@@ -179,8 +186,6 @@ class Player(Base):
     )
     
     event_attendances = relationship("Attendance", back_populates="player", cascade="all, delete-orphan")
-    
-    # NEU: Beziehung zu Abwesenheiten
     absences = relationship("PlayerAbsence", back_populates="player", cascade="all, delete-orphan")
 
 
@@ -243,7 +248,6 @@ class Action(Base):
     
     game = relationship("Game", back_populates="actions")
 
-
 # ---------------------------------
 # 6. CustomAction (Definition) Modell
 # ---------------------------------
@@ -254,7 +258,6 @@ class CustomAction(Base):
     category = Column(String, nullable=True) 
     team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", back_populates="custom_actions")
-
 
 # ---------------------------------
 # 7. ScoutingReport Modell 
@@ -278,7 +281,6 @@ class ScoutingReport(Base):
     team = relationship("Team", back_populates="scouting_reports")
     trainer = relationship("Trainer", back_populates="scouting_reports")
 
-
 # ---------------------------------
 # 8. TeamSettings (Standard-Deadlines)
 # ---------------------------------
@@ -293,7 +295,6 @@ class TeamSettings(Base):
     other_deadline_hours = Column(Integer, default=24)
 
     team = relationship("Team", back_populates="settings")
-
 
 # ---------------------------------
 # 9. TeamEvent (Kalender-Termin) Modell
@@ -325,7 +326,6 @@ class TeamEvent(Base):
     
     attendances = relationship("Attendance", back_populates="event", cascade="all, delete-orphan")
 
-
 # ---------------------------------
 # 10. Attendance (Anwesenheit) Modell
 # ---------------------------------
@@ -341,9 +341,8 @@ class Attendance(Base):
     event = relationship("TeamEvent", back_populates="attendances")
     player = relationship("Player", back_populates="event_attendances")
 
-
 # ---------------------------------
-# 11. PlayerAbsence (NEUES MODELL)
+# 11. PlayerAbsence
 # ---------------------------------
 class PlayerAbsence(Base):
     __tablename__ = "player_absences"
@@ -358,6 +357,49 @@ class PlayerAbsence(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     player = relationship("Player", back_populates="absences")
+
+
+# ==================================================
+# NEUE MODELLE (PHASE 12.5): ÜBUNGS-DB
+# ==================================================
+
+# ---------------------------------
+# 12. DrillCategory (NEUES MODELL)
+# ---------------------------------
+class DrillCategory(Base):
+    __tablename__ = "drill_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    # Jede Kategorie gehört zu einem Team (damit Teams ihre eigenen Kategorien haben)
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    
+    team = relationship("Team", back_populates="drill_categories")
+    drills = relationship("Drill", back_populates="category", cascade="all, delete-orphan")
+
+# ---------------------------------
+# 13. Drill (NEUES MODELL)
+# ---------------------------------
+class Drill(Base):
+    __tablename__ = "drills"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(Text, nullable=True)
+    duration_minutes = Column(Integer, nullable=True) # Geschätzte Dauer in Min.
+    media_url = Column(String, nullable=True) # Für YouTube-Links oder Bilder
+    
+    # Jede Übung gehört zu einem Team
+    team_id = Column(Integer, ForeignKey("teams.id"))
+    # Jede Übung kann einer Kategorie angehören
+    category_id = Column(Integer, ForeignKey("drill_categories.id"), nullable=True)
+    # Jede Übung hat einen Ersteller
+    creator_id = Column(Integer, ForeignKey("trainers.id"))
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    team = relationship("Team", back_populates="drills")
+    category = relationship("DrillCategory", back_populates="drills")
+    creator = relationship("Trainer", back_populates="created_drills")
 
 
 # Initialisierungsfunktion

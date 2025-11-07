@@ -1,15 +1,13 @@
-# DATEI: main.py (KORRIGIERT: Behebt Tippfehler Jinj2Templates -> Jinja2Templates)
+# DATEI: main.py (KORRIGIERT: Fügt den neuen /drills Router hinzu)
 import webview
 import threading
 import uvicorn
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
-# KORRIGIERTER IMPORT
 from fastapi.templating import Jinja2Templates 
 from fastapi.staticfiles import StaticFiles 
 from typing import Optional, List, Dict 
 
-# Importiert Session für Typ-Hinweise
 from sqlalchemy.orm import Session
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
@@ -21,15 +19,15 @@ from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
 from backend.public import router as public_router
 from backend.scouting import router as scouting_router
-# KORREKTUR: SessionLocal, EventType importieren für Jinja und get_db
 from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player, EventType
 
 from backend.player_portal import router as player_portal_router 
 from backend.calendar import router as calendar_router
 from backend.absence import router as absence_router
-
-# NEU: Import des Dashboard-Service
 from backend.dashboard_service import get_team_availability
+
+# NEU: Übungs-DB Router
+from backend.drill import router as drill_router
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -51,6 +49,8 @@ app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
 app.include_router(player_portal_router) 
 app.include_router(calendar_router) 
 app.include_router(absence_router)
+# NEU: Übungs-DB Router einbinden (Präfix /drills ist in drill.py definiert)
+app.include_router(drill_router)
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -58,14 +58,12 @@ templates = Jinja2Templates(directory="frontend")
 # Datenbank initialisieren
 init_db()
 
-# +++ NEU: get_db Hilfsfunktion (Wurde in main.py benötigt) +++
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-# +++ ENDE NEU +++
 
 # ==================================================
 # ÖFFENTLICHE ROUTEN (z.B. Login)
@@ -103,16 +101,12 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
     finally:
         db.close()
 
-# NEU: Endpunkt für die "Ampel"
 @app.get("/dashboard/availability/{team_id}", response_model=List[Dict])
 def get_dashboard_availability(
     team_id: int,
     current_trainer: Trainer = Depends(get_current_trainer),
-    db: Session = Depends(get_db) # Nutzt jetzt die neue get_db Funktion
+    db: Session = Depends(get_db) 
 ):
-    """
-    Ruft den aggregierten Verfügbarkeitsstatus (Ampel) für das Dashboard ab.
-    """
     return get_team_availability(db, team_id)
 
 
@@ -238,6 +232,30 @@ def calendar_page(request: Request, current_trainer: Trainer = Depends(get_curre
         )
     finally:
         db.close()
+
+# NEU: Route für die Übungs-DB-Seite
+@app.get("/drills", response_class=HTMLResponse)
+def drills_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
+    db = SessionLocal()
+    try:
+        template_vars = {
+            "request": request,
+            "title": "Übungs-Datenbank",
+            "display_name": current_trainer.username,
+            "user_type": "trainer",
+            "is_verified": current_trainer.is_verified,
+            "leagues": get_league_list(),
+            "positions": POSITIONS,
+            "action_categories": ACTION_CATEGORIES,
+            "page_content_template": "drills.html", # Verweist auf die neue HTML-Datei
+        }
+        return templates.TemplateResponse(
+            "app_layout.html",
+            template_vars
+        )
+    finally:
+        db.close()
+
 
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
