@@ -1,5 +1,5 @@
 // DATEI: frontend/static/drills.js
-// +++ NEU: Logik für "Ansehen"-Modal (openViewModal) inkl. YouTube-Embed +++
+// +++ KORREKTUR: Exportiert loadDrills und den Cache garantiert global. +++
 
 (function() {
     
@@ -8,16 +8,17 @@
     var selectedTeamName = localStorage.getItem('selected_team_name');
     var allDrillsCache = [];
     var allCategoriesCache = [];
-    var currentFilterCategoryId = 'all'; // Standard: Zeige alle
+    var currentFilterCategoryId = 'all'; 
+    
+    // EXPORTIEREN DES CACHES GARANTIERT GLOBAL
+    window.allDrillsCache = allDrillsCache;
 
     // DOM-Elemente
     var drillsTeamName, drillListContainer;
     var categoryListContainer, addCategoryForm, categoryNameInput, categoryMessage;
     
-    // Modal-Elemente (Erstellen/Bearbeiten)
     var drillModal, drillModalTitle, drillForm, drillIdInput, drillTitleInput, drillCategorySelect, drillDurationInput, drillMediaUrlInput, drillDescriptionInput, drillMessage;
     
-    // NEU: Modal-Elemente (Ansehen)
     var viewDrillModal, viewDrillTitle, viewDrillMeta, viewDrillVideoContainer, viewDrillIframe, viewDrillLinkContainer, viewDrillLink, viewDrillDescription;
 
 
@@ -48,7 +49,6 @@
         return true; 
     }
     
-    // NEU: YouTube Video-ID Extraktion (aus video_cutter.js kopiert)
     function getYouTubeId(url) {
         if (!url) return null;
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -84,7 +84,6 @@
 
             if (allCategoriesCache.length > 0) {
                 allCategoriesCache.forEach(cat => {
-                    // 1. Zum Filter-Menü hinzufügen
                     const item = document.createElement('li');
                     item.className = 'category-item';
                     item.textContent = cat.name;
@@ -102,7 +101,6 @@
                     item.appendChild(deleteBtn);
                     categoryListContainer.appendChild(item);
                     
-                    // 2. Zum Modal-Dropdown hinzufügen
                     const option = document.createElement('option');
                     option.value = cat.id;
                     option.textContent = cat.name;
@@ -193,7 +191,6 @@
         drillMessage.className = 'message';
         
         if (drill) {
-            // Bearbeiten-Modus
             drillModalTitle.textContent = 'Übung bearbeiten';
             drillIdInput.value = drill.id;
             drillTitleInput.value = drill.title;
@@ -202,7 +199,6 @@
             drillMediaUrlInput.value = drill.media_url || '';
             drillDescriptionInput.value = drill.description || '';
         } else {
-            // Erstellen-Modus
             drillModalTitle.textContent = 'Neue Übung erstellen';
             drillIdInput.value = '';
             if (currentFilterCategoryId !== 'all') {
@@ -214,7 +210,6 @@
     }
     window.openDrillModal = openDrillModal; 
 
-    // NEU: "Ansehen"-Modal öffnen
     function openViewModal(drill) {
         if (!drill) return;
         
@@ -225,37 +220,32 @@
         const duration = drill.duration_minutes ? `${drill.duration_minutes} min` : 'Keine Dauer';
         viewDrillMeta.textContent = `Kategorie: ${categoryName} | Dauer: ${duration}`;
         
-        // Video/Link-Handling
         const youtubeId = getYouTubeId(drill.media_url);
         
         if (youtubeId) {
-            // Es ist ein YouTube-Link -> Iframe einbetten
             viewDrillIframe.src = `https://www.youtube.com/embed/${youtubeId}`;
             viewDrillVideoContainer.style.display = 'block';
             viewDrillLinkContainer.style.display = 'none';
         } else if (drill.media_url) {
-            // Es ist ein anderer Link
             viewDrillLink.href = drill.media_url;
             viewDrillLinkContainer.style.display = 'block';
             viewDrillVideoContainer.style.display = 'none';
-            viewDrillIframe.src = ''; // Iframe leeren
+            viewDrillIframe.src = ''; 
         } else {
-            // Kein Medium
             viewDrillVideoContainer.style.display = 'none';
             viewDrillLinkContainer.style.display = 'none';
-            viewDrillIframe.src = ''; // Iframe leeren
+            viewDrillIframe.src = ''; 
         }
         
         viewDrillModal.style.display = 'block';
     }
-    window.openViewModal = openViewModal; // Global machen
+    window.openViewModal = openViewModal; 
     
-    // NEU: "Ansehen"-Modal schließen (wichtig, um Video zu stoppen)
     function closeViewModal() {
         viewDrillModal.style.display = 'none';
-        viewDrillIframe.src = ''; // Stoppt das YouTube-Video
+        viewDrillIframe.src = ''; 
     }
-    window.closeViewModal = closeViewModal; // Global machen
+    window.closeViewModal = closeViewModal; 
 
 
     async function handleSaveDrill(event) {
@@ -328,23 +318,43 @@
     // --- Ü B U N G E N (Laden & Filtern) ---
     // ==================================================
     
+    // WICHTIG: Die globale Funktion loadDrills, die calendar.js aufruft
     async function loadDrills() {
-        if (!selectedTeamId || !drillListContainer) return;
         
-        drillListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Übungen...</p>';
+        if (drillListContainer) {
+            drillListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Übungen...</p>';
+        }
         
+        if (!selectedTeamId) {
+             // Wenn kein Team gewählt, wird der Cache geleert, aber kein Fetch ausgeführt
+             allDrillsCache = [];
+             window.allDrillsCache = [];
+             if (drillListContainer) {
+                drillListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte Team auswählen.</p>';
+             }
+             return;
+        }
+
         try {
             const response = await fetch(`/drills/list/${selectedTeamId}`);
             if (response.status === 401) { logout(); return; }
             if (!response.ok) throw new Error('Übungen konnten nicht geladen werden.');
             
             allDrillsCache = await response.json();
-            renderDrills(currentFilterCategoryId); 
+            window.allDrillsCache = allDrillsCache; // WICHTIG: Cache für Calendar aktualisieren
+            
+            if (drillListContainer) {
+                renderDrills(currentFilterCategoryId); 
+            }
 
         } catch (error) {
-            drillListContainer.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            if (drillListContainer) {
+                drillListContainer.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+            }
         }
     }
+    // EXPORT: MUSS global sein, damit calendar.js es aufrufen kann
+    window.loadDrills = loadDrills; 
     
     function filterDrillsByCategory(categoryId) {
         currentFilterCategoryId = categoryId;
@@ -392,6 +402,8 @@
                 }
             }
 
+            const drillJsonString = JSON.stringify(drill).replace(/'/g, "\\'");
+
             card.innerHTML = `
                 <div class="drill-card-content">
                     <h4>${drill.title}</h4>
@@ -400,8 +412,8 @@
                     <p style="color: #ffcc00; font-weight: bold;">${mediaLink}</p>
                 </div>
                 <div class="drill-card-actions">
-                    <button class="btn btn-info" onclick="openViewModal(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(drill))}')))">Ansehen</button>
-                    <button class="btn btn-secondary" onclick="openDrillModal(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(drill))}')))">Bearbeiten</button>
+                    <button class="btn btn-info" onclick="openViewModal(JSON.parse(decodeURIComponent('${encodeURIComponent(drillJsonString)}')))">Ansehen</button>
+                    <button class="btn btn-secondary" onclick="openDrillModal(JSON.parse(decodeURIComponent('${encodeURIComponent(drillJsonString)}')))">Bearbeiten</button>
                     <button class="btn btn-danger" onclick="deleteDrill(${drill.id}, '${drill.title.replace(/'/g, "\\'")}')">Löschen</button>
                 </div>
             `;
@@ -448,13 +460,17 @@
         
         if (selectedTeamId && selectedTeamName) {
             drillsTeamName.textContent = selectedTeamName;
+            
             loadCategories().then(() => {
-                loadDrills();
+                if (window.location.pathname === '/drills') {
+                     loadDrills();
+                }
             });
+            
         } else {
             drillsTeamName.textContent = "(Team wählen)";
-            drillListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
-            categoryListContainer.innerHTML = '<p style="opacity: 0.6; font-size: 0.9em;">Team wählen.</p>';
+            if (drillListContainer) drillListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte im Team Management ein Team auswählen.</p>';
+            if (categoryListContainer) categoryListContainer.innerHTML = '<p style="opacity: 0.6; font-size: 0.9em;">Team wählen.</p>';
         }
 
         // Event Listeners

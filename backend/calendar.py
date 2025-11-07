@@ -1,5 +1,5 @@
 # DATEI: backend/calendar.py
-# +++ NEU: Prüft beim Erstellen von Terminen, ob Spieler bereits abwesend gemeldet sind +++
+# +++ NEU: Implementiert die Verknüpfung von Übungen (Drills) mit Kalender-Events (Phase 12.5) +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,7 +14,8 @@ from backend.database import (
     TeamEvent, Attendance, EventType, AttendanceStatus, UserRole,
     TeamSettings, 
     EventStatus,
-    PlayerAbsence # NEU: PlayerAbsence importieren
+    PlayerAbsence,
+    Drill # NEU: Drill Modell importieren
 )
 from backend.auth import get_current_trainer, check_team_auth_and_get_role
 
@@ -33,64 +34,23 @@ def get_db():
         db.close()
 
 # ==================================================
-# Pydantic Modelle für Kalender (unverändert)
-# ... (Klassen EventCreate, EventUpdate, EventCancel, EventResponse, AttendancePlayerResponse) ...
-class EventCreate(BaseModel):
-    team_id: int
-    title: str
-    event_type: EventType
-    start_time: datetime
-    end_time: Optional[datetime] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    default_status: str 
-    response_deadline_hours: Optional[int] = None
-    is_recurring: bool = False
-    repeat_until: Optional[datetime] = None
-    repeat_frequency: Optional[str] = None 
-    repeat_interval: int = 1 
-
-class EventUpdate(BaseModel):
-    title: Optional[str] = None
-    event_type: Optional[EventType] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    default_status: Optional[str] = None 
-    response_deadline_hours: Optional[int] = None
-    status: Optional[EventStatus] = None 
-
-class EventCancel(BaseModel):
-    cancel_reason: Optional[str] = None
-
-class EventResponse(BaseModel):
-    id: int
-    team_id: int
-    title: str
-    event_type: str
-    status: str 
-    start_time: datetime
-    end_time: Optional[datetime] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    created_by_trainer_id: int
-    default_status: str
-    response_deadline_hours: Optional[int] = None
-    class Config: from_attributes = True
-
-class AttendancePlayerResponse(BaseModel):
-    player_id: int
-    player_name: str
-    player_number: Optional[int]
-    status: str 
-    reason: Optional[str] = None
-    updated_at: datetime
-    class Config: from_attributes = True
-
+# H E L P E R - F U N K T I O N E N (Drill Verknüpfung)
 # ==================================================
-# H E L P E R - F U N K T I O N E N
-# ==================================================
+
+def drills_to_string(drill_ids: List[int]) -> Optional[str]:
+    """ Konvertiert eine Liste von Drill-IDs in einen kommagetrennten String. """
+    # Filtern, um sicherzustellen, dass keine Null-Werte oder Strings enthalten sind
+    valid_ids = [str(id) for id in drill_ids if isinstance(id, int) and id > 0]
+    return ",".join(valid_ids) if valid_ids else None
+
+def string_to_drills(drill_ids_str: Optional[str]) -> List[int]:
+    """ Konvertiert einen kommagetrennten String in eine Liste von Drill-IDs. """
+    try:
+        return [int(id_str.strip()) for id_str in drill_ids_str.split(',')] if drill_ids_str else []
+    except ValueError:
+        # Falls ein nicht-numerischer Wert im String ist
+        return []
+
 
 # KORRIGIERT: Akzeptiert event_start_time für die Abwesenheitsprüfung
 def create_default_attendances(db: Session, event_id: int, team_id: int, default_status_name: str, event_start_time: datetime):
@@ -114,7 +74,6 @@ def create_default_attendances(db: Session, event_id: int, team_id: int, default
         
         if existing_attendance is None:
             
-            # --- NEUE PRÜFUNG: Ist der Spieler an diesem Tag abwesend? ---
             player_absence = db.query(PlayerAbsence).filter(
                 PlayerAbsence.player_id == player.id,
                 PlayerAbsence.start_date <= event_start_time,
@@ -127,7 +86,6 @@ def create_default_attendances(db: Session, event_id: int, team_id: int, default
             if player_absence:
                 final_status = AttendanceStatus.DECLINED
                 final_reason = player_absence.reason.value # z.B. "Urlaub"
-            # --- ENDE NEUE PRÜFUNG ---
             
             new_attendance = Attendance(
                 event_id=event_id,
@@ -136,6 +94,72 @@ def create_default_attendances(db: Session, event_id: int, team_id: int, default
                 reason=final_reason
             )
             db.add(new_attendance)
+
+# ==================================================
+# Pydantic Modelle für Kalender
+# ==================================================
+class EventCreate(BaseModel):
+    team_id: int
+    title: str
+    event_type: EventType
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    default_status: str 
+    response_deadline_hours: Optional[int] = None
+    is_recurring: bool = False
+    repeat_until: Optional[datetime] = None
+    repeat_frequency: Optional[str] = None 
+    repeat_interval: int = 1 
+    
+    # NEU: Für Phase 12.5 (Liste der zugewiesenen Übungs-IDs)
+    planned_drill_ids: List[int] = [] 
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    event_type: Optional[EventType] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    default_status: Optional[str] = None 
+    response_deadline_hours: Optional[int] = None
+    status: Optional[EventStatus] = None 
+    
+    # NEU: Für Phase 12.5
+    planned_drill_ids: Optional[List[int]] = None 
+
+class EventCancel(BaseModel):
+    cancel_reason: Optional[str] = None
+
+class EventResponse(BaseModel):
+    id: int
+    team_id: int
+    title: str
+    event_type: str
+    status: str 
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    created_by_trainer_id: int
+    default_status: str
+    response_deadline_hours: Optional[int] = None
+    
+    # NEU: Für Phase 12.5 (Als Liste von Integern)
+    planned_drill_ids: List[int] = [] 
+    
+    class Config: from_attributes = True
+
+class AttendancePlayerResponse(BaseModel):
+    player_id: int
+    player_name: str
+    player_number: Optional[int]
+    status: str 
+    reason: Optional[str] = None
+    updated_at: datetime
+    class Config: from_attributes = True
 
 # ==================================================
 # Endpunkte (Nur für Trainer)
@@ -147,7 +171,6 @@ def create_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik für Deadlines und Regeltermine unverändert) ...
     check_team_auth_and_get_role(db, current_trainer.id, event_data.team_id)
     
     try:
@@ -155,6 +178,10 @@ def create_team_event(
     except KeyError:
          raise HTTPException(status_code=400, detail=f"Ungültiger Standardstatus: {event_data.default_status}")
 
+    # Validierung: Nur Training Events können Übungen haben
+    if event_data.planned_drill_ids and event_data.event_type != EventType.TRAINING:
+         raise HTTPException(status_code=400, detail="Übungen können nur Training Events zugewiesen werden.")
+         
     final_deadline_hours = event_data.response_deadline_hours
 
     if final_deadline_hours is None: 
@@ -207,6 +234,9 @@ def create_team_event(
         
     response_list = []
     
+    # NEU: Drill-IDs als String speichern
+    drill_ids_str = drills_to_string(event_data.planned_drill_ids)
+    
     for event_data_item in events_to_create:
         new_event = TeamEvent(
             team_id=event_data.team_id,
@@ -219,13 +249,13 @@ def create_team_event(
             location=event_data.location,
             description=event_data.description,
             default_status=status_for_new_event, 
-            response_deadline_hours=final_deadline_hours
+            response_deadline_hours=final_deadline_hours,
+            planned_drill_ids=drill_ids_str # Speichern als String
         )
         
         db.add(new_event)
         db.flush()
         
-        # KORRIGIERT: Übergibt new_event.start_time an die Helferfunktion
         create_default_attendances(
             db, new_event.id, event_data.team_id, 
             event_data.default_status, new_event.start_time
@@ -245,7 +275,8 @@ def create_team_event(
             description=new_event.description,
             created_by_trainer_id=new_event.created_by_trainer_id,
             default_status=new_event.default_status.value,
-            response_deadline_hours=new_event.response_deadline_hours
+            response_deadline_hours=new_event.response_deadline_hours,
+            planned_drill_ids=event_data.planned_drill_ids # Als Liste zurückgeben
         ))
         
     db.commit()
@@ -259,7 +290,6 @@ def update_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -267,6 +297,17 @@ def update_team_event(
     check_team_auth_and_get_role(db, current_trainer.id, event.team_id)
 
     update_fields = update_data.model_dump(exclude_unset=True)
+    
+    # NEU: Konvertiere Drill-IDs in String, falls vorhanden
+    if 'planned_drill_ids' in update_fields:
+        drill_ids_list = update_fields.pop('planned_drill_ids')
+        update_fields['planned_drill_ids'] = drills_to_string(drill_ids_list)
+        
+    # Validierung: Entfernen der Übungen, wenn der Typ geändert wird
+    if update_fields.get('event_type') and EventType[update_fields['event_type']] != EventType.TRAINING:
+         if update_fields.get('planned_drill_ids') is not None or event.planned_drill_ids:
+             # Lösche zugewiesene Drills, wenn Typ nicht Training ist
+             update_fields['planned_drill_ids'] = None
     
     old_default_status = event.default_status
     
@@ -317,7 +358,9 @@ def update_team_event(
         description=event.description,
         created_by_trainer_id=event.created_by_trainer_id,
         default_status=event.default_status.value,
-        response_deadline_hours=event.response_deadline_hours
+        response_deadline_hours=event.response_deadline_hours,
+        # NEU: Als Liste zurückgeben
+        planned_drill_ids=string_to_drills(event.planned_drill_ids) 
     )
 
 
@@ -328,7 +371,6 @@ def cancel_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -375,7 +417,8 @@ def cancel_team_event(
         description=event.description,
         created_by_trainer_id=event.created_by_trainer_id,
         default_status=event.default_status.value,
-        response_deadline_hours=event.response_deadline_hours
+        response_deadline_hours=event.response_deadline_hours,
+        planned_drill_ids=string_to_drills(event.planned_drill_ids) # Als Liste zurückgeben
     )
 
 
@@ -385,7 +428,6 @@ def get_team_events(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik mit Null-Check unverändert) ...
     check_team_auth_and_get_role(db, current_trainer.id, team_id)
     
     events = db.query(TeamEvent).filter(
@@ -411,11 +453,12 @@ def get_team_events(
             description=event.description,
             created_by_trainer_id=event.created_by_trainer_id,
             default_status=event.default_status.value,
-            response_deadline_hours=event.response_deadline_hours
+            response_deadline_hours=event.response_deadline_hours,
+            # NEU: Als Liste zurückgeben
+            planned_drill_ids=string_to_drills(event.planned_drill_ids) 
         ))
         
     return response_list
-
 
 @router.get("/attendance/{event_id}", response_model=List[AttendancePlayerResponse])
 def get_event_attendance(
@@ -423,7 +466,6 @@ def get_event_attendance(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")
@@ -473,7 +515,6 @@ def delete_team_event(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
-    # ... (Logik unverändert) ...
     event = db.query(TeamEvent).filter(TeamEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Termin nicht gefunden.")

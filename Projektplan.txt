@@ -1,7 +1,7 @@
 Projektplan: Handball-Auswertungs-App (Non-Plus-Ultra)
 
-Ziel: Entwicklung eines kompletten Team-Ökosystems, das von der Kreisliga bis zur Bundesliga alle Aspekte der Leistungsanalyse, Athletik-Steuerung und des Team-Managements abdeckt und zur unverzichtbaren Ressource für Trainer UND Spieler wird. Die App soll sowohl im Webbrowser als auch als Tablet-App (Android/iOS) nutzbar sein.
-
+Ziel: Entwicklung eines kompletten Team-Ökosystems, das von der Kreisliga bis zur Bundesliga alle Aspekte der Leistungsanalyse, Athletik-Steuerung und des Team-Managements abdeckt und zur unverzichtbaren Ressource für Trainer UND Spieler wird.
+Die App soll sowohl im Webbrowser als auch als Tablet-App (Android/iOS) nutzbar sein.
 ==================================================
 BLOCK 1: FUNDAMENT
 Status: ✅ ABGESCHLOSSEN (Phasen 1-7)
@@ -45,14 +45,13 @@ Status: ✅ FERTIG (MVP)
 [🆕] Spieler-Abwesenheits-Tracker: Spieler können Krankheit/Urlaub eintragen (Frontend & Backend).
 [🆕] Trainings-Absage: Trainer-Option, Events abzusagen (Statusänderung im Event-Modell).
 [🆕] Zentraler Spieler-Status (Ampel): Kombinierte Verfügbarkeits-Visualisierung im Trainer-Dashboard.
-
 ==================================================
 BLOCK 3.5: VERTIEFTES TRAINING & TAKTIK
-Status: ⬜ ZU PLANEN (NÄCHSTES ZIEL)
+Status: 🔄 ZURÜCKGESTELLT (Taktiktafel entfernt, Fokus auf Trainingsplan)
 
 Phase 12.5: Übungs- & Taktik-Modul
-[🆕] Übungs-DB: Erstellung, Speicherung und Filterung von Trainingseinheiten/Drills.
-[🆕] Taktiktafel: Interaktives 2D-Zeichenwerkzeug mit Exportfunktion (Grundfeature).
+[✅] Übungs-DB: Erstellung, Speicherung und Filterung von Trainingseinheiten/Drills.
+[🔄] Taktiktafel: Interaktives 2D-Zeichenwerkzeug mit Exportfunktion (Grundfeature). (ZURÜCKGESTELLT)
 [🆕] Taktik-DB: Video-Integration von Übungen/Taktiken mit Spiel-Video-Clips.
 [🆕] Taktiktafel: Animierte Spielzüge (Premium).
 [🆕] Trainingsplan-Erstellung: Zuweisung von Übungen zu Kalender-Events.
@@ -68,7 +67,6 @@ Status: ⬜ ZU PLANEN
 [🆕] Belastungsanalyse: Berechnung von akuter/chronischer Belastung (ACWR-Basis).
 [🆕] Dashboard-Warnungen: Visuelle Indikatoren (Ampel) bei hohem Belastungs-Risiko.
 [🆕] Grafische Verläufe: 30-Tage-Historie für Belastungswerte.
-
 Phase 13: KI-Analyse & Integration
 Status: ⬜ ZU PLANEN
 [🆕] KI-Basis: Analyse von Aktionsketten (erfolgreiche Passfolgen).
@@ -85,7 +83,6 @@ Phase 14: Integration & Erweiterung
 [🆕] Push-Benachrichtigungen: Integration von Deadlines/Terminen.
 [🆕] Club-Admin-Modul: Verwaltung mehrerer Teams unter einem Hauptaccount.
 [🆕] Cloud-Sync / Offline-Modus: Strategie für die App-Nutzung ohne Internet (IndexedDB für Protokollierung).
-
 ==================================================
 BLOCK 6: UX & REACH (GRUNDLAGEN DES BESTEN)
 Status: ⬜ ZU PLANEN

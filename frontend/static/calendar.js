@@ -1,5 +1,5 @@
 // DATEI: frontend/static/calendar.js
-// +++ NEU: Logik zur Trennung von anstehenden und vergangenen Terminen (Tabs) +++
+// +++ KORREKTUR: Stellt sicher, dass die Drill-Sektion beim Laden und Wechsel des Event-Typs sichtbar wird. +++
 
 (function() {
     
@@ -9,6 +9,11 @@
     var currentTeamDeadlines = {}; 
     var currentEventToCancel = null; 
     var allEventsCache = []; // Speichert alle Events für schnelles Filtern
+    
+    // NEU: Drill-Variablen (Zugriff auf den globalen Cache aus drills.js)
+    var allDrillsCache = window.allDrillsCache || [];
+    var drillSelect, editDrillSelect;
+    var createDrillSection, editDrillSection;
 
     // DOM-Elemente
     var calendarTeamName, addEventButton, eventMessageDiv, createEventForm;
@@ -58,6 +63,96 @@
         return 0;
     }
     
+    // NEUE HELFERFUNKTION: Extrahiert ausgewählte Drill-IDs
+    function getSelectedDrillIds(selectElement) {
+        const selectedOptions = Array.from(selectElement.selectedOptions);
+        return selectedOptions.map(option => parseInt(option.value));
+    }
+    
+    // NEUE HELFERFUNKTION: Setzt die ausgewählten Drill-IDs im Multi-Select
+    function setSelectedDrillIds(selectElement, drillIds) {
+        const idSet = new Set(drillIds);
+        Array.from(selectElement.options).forEach(option => {
+            if (idSet.has(parseInt(option.value))) {
+                option.selected = true;
+            } else {
+                option.selected = false;
+            }
+        });
+    }
+
+    // NEUE FUNKTION: Steuert die Sichtbarkeit der Drill-Sektion
+    function toggleDrillSection(eventType, mode = 'create') {
+         const section = mode === 'create' ? createDrillSection : editDrillSection;
+         const select = mode === 'create' ? drillSelect : editDrillSelect;
+         
+         if (section && eventType === 'Training') {
+             section.style.display = 'block';
+         } else if (section) {
+             section.style.display = 'none';
+             if (mode === 'create') {
+                 setSelectedDrillIds(select, []); 
+             }
+         }
+    }
+
+    // ==================================================
+    // --- L A D E N   V O N   D R I L L S ---
+    // ==================================================
+    
+    async function loadAvailableDrills(teamId) {
+        // Prüfen, ob drills.js geladen wurde (sollte im HTML <head> importiert sein)
+        if (typeof window.loadDrills !== 'function') {
+             console.warn("Drill-Logik (drills.js) wurde nicht geladen oder initialisiert. Kann Übungen nicht laden.");
+             // Setze Standard-Options, um Fehler im Select zu vermeiden
+             drillSelect.innerHTML = '<option value="" disabled>Übungs-DB fehlt!</option>';
+             editDrillSelect.innerHTML = '<option value="" disabled>Übungs-DB fehlt!</option>';
+             return;
+        }
+
+        if (!teamId || !drillSelect || !editDrillSelect) return;
+        
+        const loadingOption = '<option value="" disabled>Lade Übungen...</option>';
+        drillSelect.innerHTML = loadingOption;
+        editDrillSelect.innerHTML = loadingOption;
+        
+        try {
+            // Löst das Laden in drills.js aus und wartet, bis der Cache befüllt ist
+            await window.loadDrills(); 
+            
+            allDrillsCache = window.allDrillsCache || [];
+            
+            drillSelect.innerHTML = '';
+            editDrillSelect.innerHTML = '';
+            
+            if (allDrillsCache.length === 0) {
+                 const noDrills = '<option value="" disabled>Keine Übungen in der DB</option>';
+                 drillSelect.innerHTML = noDrills;
+                 editDrillSelect.innerHTML = noDrills;
+                 drillSelect.disabled = true;
+                 editDrillSelect.disabled = true;
+                 return;
+            }
+            
+            drillSelect.disabled = false;
+            editDrillSelect.disabled = false;
+
+            allDrillsCache.forEach(drill => {
+                const duration = drill.duration_minutes ? ` (${drill.duration_minutes} min)` : '';
+                const optionHtml = `<option value="${drill.id}">${drill.title} ${duration}</option>`;
+                
+                drillSelect.innerHTML += optionHtml;
+                editDrillSelect.innerHTML += optionHtml;
+            });
+
+        } catch (error) {
+            console.error('Fehler beim Laden der Drills für Kalender:', error);
+            drillSelect.innerHTML = '<option value="" disabled>Fehler beim Laden</option>';
+            editDrillSelect.innerHTML = '<option value="" disabled>Fehler beim Laden</option>';
+        }
+    }
+
+
     // ==================================================
     // --- A N W E S E N H E I T - M O D A L ---
     // ==================================================
@@ -65,7 +160,7 @@
     function closeAttendanceModal() {
         if (attendanceModal) attendanceModal.style.display = 'none';
     }
-    window.closeAttendanceModal = closeAttendanceModal; // Global machen
+    window.closeAttendanceModal = closeAttendanceModal; 
 
     async function showAttendance(eventId, eventTitle) {
         if (!attendanceModal) return;
@@ -89,7 +184,7 @@
             attendanceModalStats.className = 'message error';
         }
     }
-    window.showAttendance = showAttendance; // Global machen
+    window.showAttendance = showAttendance; 
 
     function renderAttendanceList(attendanceData) {
         attendanceList.innerHTML = '';
@@ -146,6 +241,7 @@
         if (addEventButton) addEventButton.disabled = false;
         
         await loadTeamDeadlines(teamId); 
+        await loadAvailableDrills(teamId); // Lade verfügbare Drills
 
         try {
             const response = await fetch(`/calendar/list/${teamId}`);
@@ -153,8 +249,8 @@
             if (!response.ok) throw new Error('Terminliste konnte nicht geladen werden.');
             
             allEventsCache = await response.json();
+            window.allEventsCache = allEventsCache; // Global für drill_event_modal.js
             
-            // Initiales Rendern (Standard-Tab ist 'upcoming')
             switchCalendarView('upcoming');
             
         } catch (error) {
@@ -190,7 +286,6 @@
         }
     }
 
-    // NEU: Logik zum Umschalten der Tabs
     function switchCalendarView(view) {
         if (view === 'upcoming') {
             tabBtnUpcoming.classList.add('active');
@@ -218,19 +313,14 @@
         let filteredEvents = [];
         
         if (filter === 'upcoming') {
-            // Anstehend: Alle, deren Startzeit noch nicht vorbei ist (oder gerade läuft)
-            // (Wir geben 1 Stunde Puffer, falls ein Training noch läuft)
             const cutoffTime = now.getTime() - (60 * 60 * 1000); 
             
             filteredEvents = events.filter(e => new Date(e.start_time).getTime() >= cutoffTime);
-            // Sortierung: Anstehende zuerst (aufsteigend)
             filteredEvents.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         } else {
-            // Vergangen: Alle, deren Startzeit bereits vorbei ist
             const cutoffTime = now.getTime() - (60 * 60 * 1000);
             
             filteredEvents = events.filter(e => new Date(e.start_time).getTime() < cutoffTime);
-            // Sortierung: Neueste vergangene zuerst (absteigend)
             filteredEvents.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
         }
 
@@ -246,7 +336,6 @@
             const statusColor = isCanceled ? '#f44336' : (event.event_type === 'Training' ? '#00bcd4' : (event.event_type === 'Spiel' ? '#38E838' : '#607d8b'));
 
             const item = document.createElement('div');
-            // Füge 'past-event' Klasse hinzu, wenn im Vergangen-Tab
             item.className = `event-item ${statusClass} ${filter === 'past' ? 'past-event' : ''}`;
             item.style.borderLeftColor = statusColor; 
 
@@ -263,8 +352,17 @@
             
             const isRecurringDisplay = isRecurringEvent ? ' (Regeltermin)' : '';
             const recurringClass = isRecurringEvent ? 'recurring' : '';
+            
+            // NEU: Drill-Anzeige-Button
+            let drillPlanHtml = '';
+            if (event.event_type === 'Training' && event.planned_drill_ids && event.planned_drill_ids.length > 0) {
+                 // Die Event-ID und der Titel müssen escapet werden
+                 const eventTitleEscaped = event.title.replace(/'/g, "\\'");
+                 drillPlanHtml = `<span class="drill-plan-indicator" onclick="showDrillViewModal(${event.id}, '${eventTitleEscaped}')">
+                    📚 Trainingsplan (${event.planned_drill_ids.length})
+                 </span>`;
+            }
 
-            // Buttons anpassen
             let editButton = (isCanceled || filter === 'past')
                 ? `<button class="btn btn-secondary btn-inline" disabled title="Abgesagte/Vergangene Termine können nicht bearbeitet werden.">Bearbeiten</button>` 
                 : `<button class="btn btn-secondary btn-inline" onclick="openEditModal(${event.id})">Bearbeiten</button>`;
@@ -273,18 +371,20 @@
                 ? `<button class="btn btn-info btn-inline" onclick="openReactivateModal(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Reaktivieren</button>`
                 : `<button class="btn btn-danger btn-inline" onclick="openCancelModal(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Absagen</button>`;
 
-            // Vergangene Termine können nicht abgesagt werden
             if (filter === 'past' && !isCanceled) {
                 cancelButton = `<button class="btn btn-danger btn-inline" disabled title="Vergangene Termine können nicht abgesagt werden.">Absagen</button>`;
             }
 
             item.innerHTML = `
                 <div class="event-info">
-                    <h4 class="${recurringClass}" style="color: ${isCanceled ? '#f44336' : '#fff'};">${event.title}${isRecurringDisplay}</h4>
+                    <h4 class="${recurringClass}" style="color: ${isCanceled ? '#f44336' : '#fff'};">
+                        ${event.title}${isRecurringDisplay}
+                    </h4>
                     <p>Status: <strong>${statusLabel}</strong>${deadlineHtml}</p>
                     <p>Zeit: ${startTime}${endTime}${location}</p>
                 </div>
                 <div class="event-actions">
+                    ${drillPlanHtml}
                     <button class="btn btn-info btn-inline" onclick="showAttendance(${event.id}, '${event.title.replace(/'/g, "\\'")}')">Anwesenheit</button>
                     ${editButton}
                     ${cancelButton}
@@ -297,7 +397,7 @@
 
 
     // ==================================================
-    // --- T E R M I N - C R U D (unverändert) ---
+    // --- T E R M I N - C R U D ---
     // ==================================================
 
     async function handleCreateEvent(event) {
@@ -361,6 +461,8 @@
             return;
         }
 
+        // NEU: Drill-IDs abrufen (nur, wenn Event-Type Training ist)
+        const selectedDrillIds = eventType.value === 'Training' ? getSelectedDrillIds(drillSelect) : [];
 
         const payload = {
             team_id: parseInt(selectedTeamId),
@@ -376,7 +478,9 @@
             is_recurring: isRecurring,
             repeat_until: repeatUntilValue ? new Date(repeatUntilValue + 'T23:59:59').toISOString() : null,
             repeat_frequency: repeatFrequency,
-            repeat_interval: repeatInterval
+            repeat_interval: repeatInterval,
+            
+            planned_drill_ids: selectedDrillIds // Hinzufügen der IDs
         };
 
         try {
@@ -404,6 +508,11 @@
             if(isRecurringCheckbox) isRecurringCheckbox.checked = false;
             if(recurringOptionsDiv) recurringOptionsDiv.style.display = 'none';
             if(repeatIntervalInput) repeatIntervalInput.value = 1; 
+            
+            // Setzt Drill-Sektion zurück
+            setSelectedDrillIds(drillSelect, []);
+            toggleDrillSection(eventType.value); 
+
 
             loadEvents(selectedTeamId); // Lädt neu und rendert (Standard: upcoming)
             
@@ -441,7 +550,7 @@
     }
     window.deleteEvent = deleteEvent;
     
-    // ... (openEditModal, handleEditEvent, closeCancelModal, openCancelModal, handleCancelEvent, openReactivateModal unverändert) ...
+    
     function closeEditModal() {
         editEventModal.style.display = 'none';
         editMessageDiv.textContent = '';
@@ -449,7 +558,6 @@
     window.closeEditModal = closeEditModal;
 
     async function openEditModal(eventId) {
-        // ... (Logik unverändert) ...
         editMessageDiv.textContent = 'Lade Event-Daten...';
         editEventModal.style.display = 'block';
 
@@ -479,6 +587,11 @@
             editEventDescription.value = event.description || '';
             editDefaultStatusSelect.value = event.default_status;
             editResponseDeadlineInput.value = event.response_deadline_hours || 0;
+            
+            // NEU: Setze Drill-IDs und blende Sektion ein/aus
+            setSelectedDrillIds(editDrillSelect, event.planned_drill_ids);
+            toggleDrillSection(event.event_type, 'edit');
+
 
             editMessageDiv.textContent = '';
             editModalTitle.textContent = `Termin bearbeiten: ${event.title}`;
@@ -491,7 +604,6 @@
     window.openEditModal = openEditModal;
     
     async function handleEditEvent(event) {
-        // ... (Logik unverändert) ...
         event.preventDefault();
         if (!window.checkVerification()) return;
         
@@ -516,15 +628,22 @@
              deadlineHours = parsedHours;
         }
         
+        // NEU: Drill-IDs abrufen (wenn Event-Type Training ist)
+        const currentEventType = editEventType.value;
+        // Wenn currentEventType nicht Training ist, senden wir null, damit das Backend löscht
+        const selectedDrillIds = currentEventType === 'Training' ? getSelectedDrillIds(editDrillSelect) : null;
+        
         const payload = {
             title: editEventTitle.value,
-            event_type: editEventType.value,
+            event_type: currentEventType,
             start_time: editEventStartTime.value,
             end_time: editEventEndTime.value || null,
             location: editEventLocation.value || null,
             description: editEventDescription.value || null,
             default_status: editDefaultStatusSelect.value, 
-            response_deadline_hours: deadlineHours
+            response_deadline_hours: deadlineHours,
+            
+            planned_drill_ids: selectedDrillIds // Hinzufügen der IDs (null, wenn nicht Training)
         };
         
         try {
@@ -575,7 +694,6 @@
     window.openCancelModal = openCancelModal;
 
     async function handleCancelEvent() {
-        // ... (Logik unverändert) ...
         if (!window.checkVerification() || !currentEventToCancel) return;
         
         confirmCancelButton.disabled = true;
@@ -641,6 +759,23 @@
     }
     window.openReactivateModal = openReactivateModal;
 
+    
+    // NEUE FUNKTION: Steuert die Sichtbarkeit der Drill-Sektion
+    function toggleDrillSection(eventType, mode = 'create') {
+         const section = mode === 'create' ? createDrillSection : editDrillSection;
+         const select = mode === 'create' ? drillSelect : editDrillSelect;
+         
+         if (section && eventType === 'Training') {
+             section.style.display = 'block';
+         } else if (section) {
+             section.style.display = 'none';
+             if (mode === 'create') {
+                 setSelectedDrillIds(select, []); 
+             }
+         }
+    }
+
+
     // ==================================================
     // --- I N I T I A L I S I E R U N G ---
     // ==================================================
@@ -656,6 +791,10 @@
         eventEndTime = document.getElementById('event-end-time');
         eventLocation = document.getElementById('event-location');
         eventDescription = document.getElementById('event-description');
+        
+        // NEU: Drill-Zuweisungen
+        drillSelect = document.getElementById('drill-select');
+        createDrillSection = document.getElementById('create-drill-section');
         
         // NEU: Listen-Container
         eventListContainer = document.getElementById('event-list-container');
@@ -698,6 +837,10 @@
         editResponseDeadlineInput = document.getElementById('edit-response-deadline-input');
         editMessageDiv = document.getElementById('edit-message');
         editModalTitle = document.getElementById('edit-modal-title');
+        
+        // NEU: Drill-Zuweisungen Edit-Modal
+        editDrillSelect = document.getElementById('edit-drill-select');
+        editDrillSection = document.getElementById('edit-drill-section');
 
 
         console.log("initCalendar() wird aufgerufen.");
@@ -732,9 +875,16 @@
              });
         }
         
+        // Event Listener für Event-Typ (für Drill-Sektion)
         if(eventType) {
             eventType.addEventListener('change', function() {
                 responseDeadlineInput.value = getDefaultDeadline(this.value);
+                toggleDrillSection(this.value, 'create');
+            });
+        }
+        if(editEventType) {
+            editEventType.addEventListener('change', function() {
+                toggleDrillSection(this.value, 'edit');
             });
         }
         
@@ -754,6 +904,11 @@
                 closeCancelModal();
             }
         });
+        
+        // Initialer Check der Drill-Sektion beim Laden
+        if (eventType) {
+            toggleDrillSection(eventType.value, 'create');
+        }
     }
 
     document.addEventListener('DOMContentLoaded', initCalendar);

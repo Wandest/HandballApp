@@ -1,5 +1,5 @@
 # DATEI: backend/database.py
-# +++ NEU: Fügt DrillCategory und Drill Modelle hinzu (Phase 12.5) +++
+# +++ FIX: Korrigiert die bidirektionale Beziehung zwischen Game und Player (participating_players) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -182,10 +182,12 @@ class Player(Base):
     games_participated = relationship(
         "Game",
         secondary=game_participations_table,
+        # KORREKT: Dies ist die Eigenschaft im Game-Modell, die auf Player zeigt.
         back_populates="participating_players"
     )
     
-    event_attendances = relationship("Attendance", back_populates="player", cascade="all, delete-orphan")
+    # FIX: Korrigiert die back_populates, um auf die Eigenschaft 'player' in der Attendance-Klasse zu zeigen.
+    event_attendances = relationship("Attendance", back_populates="player") 
     absences = relationship("PlayerAbsence", back_populates="player", cascade="all, delete-orphan")
 
 
@@ -209,7 +211,8 @@ class Game(Base):
     participating_players = relationship(
         "Player",
         secondary=game_participations_table,
-        back_populates="games_participated"
+        # KORREKT: Dies ist die Eigenschaft im Player-Modell, die auf Game zeigt.
+        back_populates="games_participated" 
     )
     
     scouting_reports = relationship("ScoutingReport", back_populates="game")
@@ -321,6 +324,9 @@ class TeamEvent(Base):
     
     response_deadline_hours = Column(Integer, nullable=True) 
     
+    # NEU: Liste von Drill-IDs, gespeichert als kommagetrennter String (Phase 12.5)
+    planned_drill_ids = Column(String, nullable=True) 
+    
     team = relationship("Team", back_populates="events")
     creator = relationship("Trainer", back_populates="created_events", foreign_keys=[created_by_trainer_id])
     
@@ -339,7 +345,7 @@ class Attendance(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     event = relationship("TeamEvent", back_populates="attendances")
-    player = relationship("Player", back_populates="event_attendances")
+    player = relationship("Player", back_populates="event_attendances") 
 
 # ---------------------------------
 # 11. PlayerAbsence

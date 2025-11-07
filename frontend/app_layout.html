@@ -121,12 +121,7 @@
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 20px;
         }
-        .dashboard-grid {
-             display: grid;
-             grid-template-columns: 1fr 2fr; /* Alt */
-             gap: 20px;
-        }
-        /* NEU: Grid für Dashboard mit Ampel */
+        /* Grid für Dashboard mit Ampel */
         .dashboard-grid-ampel {
             display: grid;
             grid-template-columns: 1fr 2fr 1fr; 
@@ -151,6 +146,20 @@
         .analysis-grid-2-col {
              display: grid;
             grid-template-columns: 2fr 1fr; 
+            gap: 20px;
+        }
+        
+        /* Grid für Übungs-DB */
+        .drills-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+        }
+        
+        /* NEU: Grid für Taktiktafel */
+        .tacticboard-layout {
+            display: grid;
+            grid-template-columns: 1fr 200px; /* Hauptbereich | Werkzeuge */
             gap: 20px;
         }
         
@@ -603,7 +612,6 @@
         {% if user_type == "trainer" %}
             <a id="nav-calendar" href="/calendar" class="nav-link">🗓️ Kalender</a>
             <a id="nav-drills" href="/drills" class="nav-link">📚 Übungs-DB</a>
-            
             <a id="nav-team" href="/team-management" class="nav-link">🏟️ Team Management</a>
             <a id="nav-planning" href="/game-planning" class="nav-link">📅 Spielplanung</a>
             
@@ -665,7 +673,7 @@
         // Fügt user_type zum Local Storage hinzu, um JS-Logik zu steuern
         localStorage.setItem('logged_in_user_type', '{{ user_type }}');
         
-        // KORREKTUR: Navigations-Active-State setzen, damit der richtige Link blau wird
+        // Navigations-Active-State setzen
         document.addEventListener('DOMContentLoaded', function() {
             const currentPath = window.location.pathname;
             const navLinks = document.querySelectorAll('.sidebar a.nav-link');
@@ -673,13 +681,11 @@
             navLinks.forEach(link => {
                 link.classList.remove('active');
                 
-                // Exakte Übereinstimmung für die Aktivierung (z.B. /dashboard, /player-dashboard)
                 if (link.getAttribute('href') === currentPath) {
                     link.classList.add('active');
                 }
             });
             
-            // Sonderfall: Wenn man auf der Protokoll-Seite ist, den Game Planning Link als aktiv markieren (falls vorhanden)
             if (currentPath.startsWith('/protocol/')) {
                  const planningLink = document.getElementById('nav-planning');
                  if (planningLink) {
@@ -687,7 +693,6 @@
                  }
             }
         });
-        // --- ENDE KORREKTUR ---
     </script>
     
     </body>

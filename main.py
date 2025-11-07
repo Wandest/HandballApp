@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT: Fügt den neuen /drills Router hinzu)
+# DATEI: main.py (KORRIGIERT: Entfernt die /tacticboard Route)
 import webview
 import threading
 import uvicorn
@@ -25,8 +25,6 @@ from backend.player_portal import router as player_portal_router
 from backend.calendar import router as calendar_router
 from backend.absence import router as absence_router
 from backend.dashboard_service import get_team_availability
-
-# NEU: Übungs-DB Router
 from backend.drill import router as drill_router
 
 # Kategorien für Aktionen
@@ -49,7 +47,6 @@ app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
 app.include_router(player_portal_router) 
 app.include_router(calendar_router) 
 app.include_router(absence_router)
-# NEU: Übungs-DB Router einbinden (Präfix /drills ist in drill.py definiert)
 app.include_router(drill_router)
 
 # Jinja2 Templates für HTML-Seiten
@@ -233,7 +230,6 @@ def calendar_page(request: Request, current_trainer: Trainer = Depends(get_curre
     finally:
         db.close()
 
-# NEU: Route für die Übungs-DB-Seite
 @app.get("/drills", response_class=HTMLResponse)
 def drills_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -247,7 +243,7 @@ def drills_page(request: Request, current_trainer: Trainer = Depends(get_current
             "leagues": get_league_list(),
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
-            "page_content_template": "drills.html", # Verweist auf die neue HTML-Datei
+            "page_content_template": "drills.html", 
         }
         return templates.TemplateResponse(
             "app_layout.html",
@@ -256,6 +252,7 @@ def drills_page(request: Request, current_trainer: Trainer = Depends(get_current
     finally:
         db.close()
 
+# Entfernter Endpunkt: /tacticboard
 
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
