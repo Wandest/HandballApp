@@ -1,12 +1,16 @@
-# DATEI: main.py (KORRIGIERT: Fügt den neuen /absence Router hinzu)
+# DATEI: main.py (KORRIGIERT: Behebt Tippfehler Jinj2Templates -> Jinja2Templates)
 import webview
 import threading
 import uvicorn
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+# KORRIGIERTER IMPORT
+from fastapi.templating import Jinja2Templates 
 from fastapi.staticfiles import StaticFiles 
-from typing import Optional
+from typing import Optional, List, Dict 
+
+# Importiert Session für Typ-Hinweise
+from sqlalchemy.orm import Session
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
 from backend.auth import router as auth_router, get_current_trainer, get_current_player_only
@@ -17,13 +21,15 @@ from backend.action import router as action_router
 from backend.custom_action import router as custom_action_router
 from backend.public import router as public_router
 from backend.scouting import router as scouting_router
-# KORREKTUR: EventType importieren für Jinja
+# KORREKTUR: SessionLocal, EventType importieren für Jinja und get_db
 from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player, EventType
 
 from backend.player_portal import router as player_portal_router 
 from backend.calendar import router as calendar_router
-# NEU: Abwesenheits-Router importieren
 from backend.absence import router as absence_router
+
+# NEU: Import des Dashboard-Service
+from backend.dashboard_service import get_team_availability
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -44,7 +50,6 @@ app.include_router(public_router, prefix="/public", tags=["Public Data"])
 app.include_router(scouting_router, prefix="/scouting", tags=["Scouting"])
 app.include_router(player_portal_router) 
 app.include_router(calendar_router) 
-# NEU: Abwesenheits-Router einbinden (Präfix /absence ist bereits in absence.py definiert)
 app.include_router(absence_router)
 
 # Jinja2 Templates für HTML-Seiten
@@ -53,7 +58,18 @@ templates = Jinja2Templates(directory="frontend")
 # Datenbank initialisieren
 init_db()
 
-# Unprotected route: Home / Authentication page
+# +++ NEU: get_db Hilfsfunktion (Wurde in main.py benötigt) +++
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+# +++ ENDE NEU +++
+
+# ==================================================
+# ÖFFENTLICHE ROUTEN (z.B. Login)
+# ==================================================
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(
@@ -87,6 +103,19 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
     finally:
         db.close()
 
+# NEU: Endpunkt für die "Ampel"
+@app.get("/dashboard/availability/{team_id}", response_model=List[Dict])
+def get_dashboard_availability(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db) # Nutzt jetzt die neue get_db Funktion
+):
+    """
+    Ruft den aggregierten Verfügbarkeitsstatus (Ampel) für das Dashboard ab.
+    """
+    return get_team_availability(db, team_id)
+
+
 # ==================================================
 # SPIELER-DASHBOARD (Geschützt & Spieler-Exklusiv)
 # ==================================================
@@ -95,7 +124,6 @@ def dashboard_page(request: Request, current_trainer: Trainer = Depends(get_curr
 def player_dashboard_page(request: Request, current_player: Player = Depends(get_current_player_only)):
     db = SessionLocal()
     try:
-        # NEU: Lade Abwesenheitsgründe für das Formular
         from backend.database import AbsenceReason
         template_vars = {
             "request": request,
@@ -107,7 +135,7 @@ def player_dashboard_page(request: Request, current_player: Player = Depends(get
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
             "page_content_template": "player_dashboard.html",
-            "absence_reasons": [e.value for e in AbsenceReason] # NEU
+            "absence_reasons": [e.value for e in AbsenceReason] 
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -116,12 +144,10 @@ def player_dashboard_page(request: Request, current_player: Player = Depends(get
     finally:
         db.close()
 
-# +++ NEUE ROUTE: SPIELER-KALENDER (Alle Termine) +++
 @app.get("/player-calendar", response_class=HTMLResponse)
 def player_calendar_page(request: Request, current_player: Player = Depends(get_current_player_only)):
     db = SessionLocal()
     try:
-        # NEU: Lade Abwesenheitsgründe für das Formular
         from backend.database import AbsenceReason
         template_vars = {
             "request": request,
@@ -133,7 +159,7 @@ def player_calendar_page(request: Request, current_player: Player = Depends(get_
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
             "page_content_template": "player_calendar.html", 
-            "absence_reasons": [e.value for e in AbsenceReason] # NEU
+            "absence_reasons": [e.value for e in AbsenceReason] 
         }
         return templates.TemplateResponse(
             "app_layout.html", 
@@ -141,8 +167,6 @@ def player_calendar_page(request: Request, current_player: Player = Depends(get_
         )
     finally:
         db.close()
-# +++ ENDE NEUE ROUTE +++
-
 
 # --- RESTLICHE TRAINER-EXKLUSIVE ROUTEN (Dependency bleibt get_current_trainer) ---
 
@@ -190,7 +214,6 @@ def game_planning_page(request: Request, current_trainer: Trainer = Depends(get_
     finally:
         db.close()
 
-# +++ TRAINER KALENDER SEITE +++
 @app.get("/calendar", response_class=HTMLResponse)
 def calendar_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):
     db = SessionLocal()
@@ -207,7 +230,7 @@ def calendar_page(request: Request, current_trainer: Trainer = Depends(get_curre
             "positions": POSITIONS,
             "action_categories": ACTION_CATEGORIES,
             "page_content_template": "calendar.html", 
-            "event_types": [e.value for e in EventType] # Übergibt die Enum-Werte an Jinja
+            "event_types": [e.value for e in EventType] 
         }
         return templates.TemplateResponse(
             "app_layout.html",
@@ -215,7 +238,6 @@ def calendar_page(request: Request, current_trainer: Trainer = Depends(get_curre
         )
     finally:
         db.close()
-# +++ ENDE NEUE SEITE +++
 
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):

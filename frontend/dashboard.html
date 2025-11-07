@@ -1,4 +1,69 @@
-<div class="dashboard-grid">
+<style>
+    /* NEU: Stile für die Spieler-Status-Ampel */
+    .dashboard-grid-ampel {
+        display: grid;
+        /* Ändere das Layout: Team-Auswahl (1fr), Spielplan (2fr), Status (1fr) */
+        grid-template-columns: 1fr 2fr 1fr;
+        gap: 20px;
+    }
+
+    /* Anpassung für kleinere Bildschirme */
+    @media (max-width: 1200px) {
+        .dashboard-grid-ampel {
+            grid-template-columns: 1fr 2fr; /* Status unter Spielplan */
+        }
+    }
+    @media (max-width: 768px) {
+        .dashboard-grid-ampel {
+            grid-template-columns: 1fr; /* Alles gestapelt */
+        }
+    }
+
+
+    #availability-list-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .availability-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .availability-item:last-child {
+        border-bottom: none;
+    }
+    
+    .availability-light {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        margin-right: 12px;
+        flex-shrink: 0;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Status-Farben (Ampel) */
+    .status-ATTENDING { background-color: #38E838; } /* Grün */
+    .status-DECLINED { background-color: #f44336; } /* Rot */
+    .status-TENTATIVE { background-color: #ffcc00; } /* Gelb */
+    .status-NOT_RESPONDED { background-color: #9e9e9e; } /* Grau */
+
+    .availability-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .availability-info strong {
+        font-size: 1em;
+        color: #fff;
+    }
+    .availability-info span {
+        font-size: 0.85em;
+        opacity: 0.7;
+    }
+</style>
+
+<div class="dashboard-grid-ampel">
     <div class="card">
         <div class="card-content">
             <h2>Team-Auswahl</h2>
@@ -20,6 +85,17 @@
             </div>
         </div>
     </div>
+    
+    <div class="card">
+        <div class="card-content">
+            <h2>Verfügbarkeit (Nächste 7 Tage)</h2>
+            <h3><span id="availability-team-name" style="color: #ffcc00;">(Team wählen)</span></h3>
+            <p style="opacity: 0.8; font-size: 0.9em;">Status basierend auf Kalender-Antworten und Abwesenheiten (Krank, Urlaub).</p>
+            <div id="availability-list-container">
+                <p style="opacity: 0.6;">Lade Spielerstatus...</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -33,7 +109,58 @@
     const gameplanTeamName = document.getElementById('gameplan-team-name');
     const gameListContainer = document.getElementById('game-list-container');
     
+    // NEU: DOM-Elemente für Ampel
+    const availabilityTeamName = document.getElementById('availability-team-name');
+    const availabilityListContainer = document.getElementById('availability-list-container');
+
+    
     // --- Dashboard Logik ---
+    
+    // NEU: Funktion zum Laden der Ampel-Daten
+    async function loadAvailability(teamId) {
+        if (!availabilityListContainer) return;
+        availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Spielerstatus...</p>';
+        availabilityTeamName.textContent = selectedTeamName;
+        
+        try {
+            const response = await fetch(`/dashboard/availability/${teamId}`);
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error('Status-Daten konnten nicht geladen werden.');
+            
+            const availabilityData = await response.json();
+            
+            availabilityListContainer.innerHTML = '';
+            if (availabilityData.length === 0) {
+                availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Keine Spieler im Team.</p>';
+                return;
+            }
+            
+            availabilityData.forEach(player => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'availability-item';
+                
+                // Status-Klasse (ATTENDING, DECLINED, TENTATIVE, NOT_RESPONDED)
+                let statusClass = `status-${player.status}`;
+                // Fallback für Gründe wie "Krankheit", die als DECLINED angezeigt werden sollen
+                if (!['ATTENDING', 'DECLINED', 'TENTATIVE', 'NOT_RESPONDED'].includes(player.status)) {
+                    statusClass = 'status-DECLINED';
+                }
+
+                itemEl.innerHTML = `
+                    <div class="availability-light ${statusClass}"></div>
+                    <div class="availability-info">
+                        <strong>${player.player_number ? '#' + player.player_number : ''} ${player.player_name}</strong>
+                        <span>${player.reason || player.status}</span>
+                    </div>
+                `;
+                availabilityListContainer.appendChild(itemEl);
+            });
+            
+        } catch (error) {
+            availabilityListContainer.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
+        }
+    }
+    
     
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
@@ -53,12 +180,15 @@
         localStorage.setItem('selected_team_id', teamId);
         localStorage.setItem('selected_team_name', teamName);
         
-        // WICHTIG: Übergibt 'dashboard', um die Liste zu filtern
+        // KORREKTUR: Übergibt den 'dashboard'-Modus, um die Liste zu filtern
         if (typeof loadGames === 'function') {
             loadGames(teamId, 'dashboard');
         } else {
              gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         }
+        
+        // NEU: Lade Verfügbarkeit
+        loadAvailability(teamId);
     }
     
     async function loadTeams() {
@@ -85,7 +215,9 @@
             if (teams.length === 0) {
                 teamListDiv.innerHTML = '<p style="opacity: 0.6;">Keine Teams vorhanden. Bitte im "Team Management" ein Team erstellen.</p>';
                 gameplanTeamName.textContent = "(Kein Team erstellt)";
+                availabilityTeamName.textContent = "(Kein Team erstellt)"; // NEU
                 gameListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team erstellen.</p>';
+                availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte zuerst ein Team erstellen.</p>'; // NEU
                 return;
             }
             
