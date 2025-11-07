@@ -1,0 +1,256 @@
+<style>
+    /* Spezifische Stile für die Taktiktafel */
+    .tacticboard-layout {
+        display: grid;
+        grid-template-columns: 1fr 200px; /* Hauptbereich | Werkzeuge */
+        gap: 20px;
+        /* Wir nutzen 'align-items: start', damit die Werkzeugleiste nicht gestreckt wird */
+        align-items: start;
+    }
+
+    @media (max-width: 900px) {
+        .tacticboard-layout {
+            grid-template-columns: 1fr; /* Alles stapeln */
+            height: auto;
+        }
+        .tacticboard-layout .card:first-child { order: 1; }
+        .tacticboard-layout .card:last-child { order: 2; }
+    }
+    
+    .canvas-container {
+        position: relative;
+        width: 100%;
+        max-width: 600px; /* Maximale Breite für das Hochkant-Layout */
+        margin: 0 auto; /* Zentrieren */
+        background-color: #ffffff; 
+        border-radius: 8px;
+        overflow: hidden;
+        
+        /* WICHTIG: Sorgt dafür, dass der Container die Höhe des SVGs annimmt */
+        line-height: 0; 
+    }
+    
+    /* KORREKTUR: SVGs sind NICHT mehr 'position: absolute' */
+    .tacticboard-svg-background {
+        width: 100%;
+        height: auto;
+        display: none; /* Standardmäßig versteckt */
+        z-index: 1;
+    }
+    .tacticboard-svg-background.active {
+        display: block; /* Nur das aktive SVG ist sichtbar und gibt dem Container die Höhe */
+    }
+    
+    #tactic-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%; 
+        z-index: 2; /* Canvas liegt ÜBER dem SVG */
+        cursor: none; 
+    }
+    
+    /* ... (CSS für Werkzeuge, Knöpfe, Farben, Slider) ... */
+    .tactic-tools .tool-group { margin-bottom: 15px; } /* Weniger Abstand */
+    .tactic-tools .tool-group h4 {
+        color: #ffcc00; margin-top: 0; margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 5px;
+    }
+    .tool-button {
+        width: 100%; padding: 10px; font-size: 1em;
+        margin: 5px 0; display: flex; align-items: center;
+        justify-content: center; gap: 8px;
+    }
+    .tool-button.active {
+        background: #00bcd4;
+        box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+    }
+    .tool-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 5px;
+    }
+    .tool-grid .tool-button {
+        padding: 8px;
+        font-size: 1.2em;
+    }
+    .color-swatches {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    .color-swatch {
+        width: 100%; height: 35px; border-radius: 5px;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        cursor: pointer; transition: transform 0.1s;
+    }
+    .color-swatch:hover { transform: scale(1.1); }
+    .color-swatch.active {
+        border: 3px solid #ffcc00;
+        box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+    }
+    .color-swatch[data-color="#FF0000"] { background-color: #FF0000; }
+    .color-swatch[data-color="#0000FF"] { background-color: #0000FF; }
+    .color-swatch[data-color="#000000"] { background-color: #000000; }
+    .color-swatch[data-color="#FFFFFF"] { background-color: #FFFFFF; }
+    .size-slider-container {
+        display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    }
+    .size-slider-container label { margin-bottom: 0; font-size: 0.9em; }
+    #stroke-width-slider { flex-grow: 1; cursor: pointer; }
+    
+    /* NEU: Input für Spielernummer */
+    .player-number-input {
+        display: flex;
+        gap: 10px;
+    }
+    .player-number-input input[type="number"] {
+        width: 60px;
+        padding: 8px;
+        margin-bottom: 0;
+        text-align: center;
+        font-weight: bold;
+    }
+    .player-number-input .btn {
+        flex-grow: 1;
+        margin: 0;
+        font-size: 0.9em;
+        padding: 8px;
+    }
+    
+    .animation-controls {
+        width: 100%;
+        max-width: 600px; 
+        margin: 20px auto 0 auto; 
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+    .frame-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+    .frame-controls .btn {
+        margin: 0;
+        padding: 8px;
+        font-size: 1.2em;
+    }
+    #frame-counter {
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #ffcc00;
+    }
+    .animation-play-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .animation-play-controls .btn {
+        flex-grow: 1;
+        margin: 0;
+    }
+</style>
+
+<div class="tacticboard-layout">
+    
+    <div style="display: flex; flex-direction: column;">
+        <div class="card">
+            <div class="canvas-container">
+                <img src="/static/ganzfeld_hochkant.svg" id="field-full" class="tacticboard-svg-background active" alt="Ganzfeld Hochkant">
+                <img src="/static/halbfeld_unten.svg" id="field-half" class="tacticboard-svg-background" alt="Halbfeld Hochkant (Unten)">
+                
+                <canvas id="tactic-canvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="animation-controls">
+            <div class="frame-controls">
+                <button id="tool-prev-frame" class="btn btn-secondary">⏪</button>
+                <span id="frame-counter">Frame 1 / 1</span>
+                <button id="tool-next-frame" class="btn btn-secondary">⏩</button>
+            </div>
+            <div class="animation-play-controls">
+                <button id="tool-play" class="btn btn-primary" style="background: #38E838;">▶️ Play</button>
+                <button id="tool-pause" class="btn btn-secondary" style="display: none;">❚❚ Pause</button>
+            </div>
+            <div class="animation-play-controls">
+                <button id="tool-new-frame" class="btn btn-info">➕ Neuer Frame</button>
+                <button id="tool-delete-frame" class="btn btn-danger">🗑️ Frame löschen</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-content tactic-tools">
+            
+            <div class="tool-group">
+                <h4>Feld-Typ</h4>
+                <button id="tool-field-full" class="btn btn-secondary tool-button active">Ganzfeld</button>
+                <button id="tool-field-half" class="btn btn-secondary tool-button">Halbfeld</button>
+            </div>
+
+            <div class="tool-group">
+                <h4>Werkzeuge</h4>
+                <button id="tool-pen" class="btn btn-secondary tool-button active">✏️ Stift (Linie)</button>
+                <button id="tool-dashed" class="btn btn-secondary tool-button">Strich (Gestrichelt)</button>
+                <button id="tool-arrow" class="btn btn-secondary tool-button">➡️ Pfeil (Laufweg)</button>
+                <button id="tool-eraser" class="btn btn-secondary tool-button">🧼 Radierer</button>
+            </div>
+            
+            <div class="tool-group">
+                <h4>Symbole (Stempel)</h4>
+                <div class="tool-grid">
+                    <button id="tool-player" class="btn btn-secondary tool-button">X</button>
+                    <button id="tool-opponent" class="btn btn-secondary tool-button">O</button>
+                    <button id="tool-ball" class="btn btn-secondary tool-button">⚽</button>
+                </div>
+            </div>
+            
+            <div class="tool-group">
+                <h4>Nummerierte Spieler</h4>
+                <div class="player-number-input">
+                    <input type="number" id="player-number-input" value="7" min="1" max="99">
+                    <button id="tool-player-num" class="btn btn-secondary tool-button">Setze Spieler</button>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h4>Farbe</h4>
+                <div class="color-swatches">
+                    <div class="color-swatch active" data-color="#FF0000"></div>
+                    <div class="color-swatch" data-color="#0000FF"></div>
+                    <div class="color-swatch" data-color="#000000"></div>
+                    <div class="color-swatch" data-color="#FFFFFF"></div>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <h4>Größe / Stärke</h4>
+                <div class="size-slider-container">
+                    <label id="stroke-width-label-start" for="stroke-width-slider">2</label>
+                    <input type="range" id="stroke-width-slider" min="2" max="10" value="4">
+                    <label id="stroke-width-label-end" for="stroke-width-slider">10</label>
+                </div>
+            </div>
+            
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+            <div class="tool-group">
+                <h4>Aktionen</h4>
+                <button id="tool-undo" class="btn btn-secondary tool-button">↩️ Rückgängig (Strich)</button>
+                <button id="tool-clear" class="btn btn-danger tool-button">🗑️ Frame leeren</button>
+            </div>
+            
+            <div class="tool-group">
+                <h4>Export</h4>
+                <button id="tool-export" class="btn btn-primary tool-button">📥 Akt. Frame als PNG</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="/static/tacticboard.js"></script>
