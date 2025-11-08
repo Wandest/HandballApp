@@ -1,5 +1,5 @@
 # DATEI: backend/athletic.py
-# +++ FIX: Korrigiert Dependency für Wellness-Routen und fügt Injury Management hinzu +++
+# +++ FIX: Korrigiert die fehlerhafte Trainer-Dependency-Injection (Behebt 500 Fehler) +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,8 +13,8 @@ from backend.database import (
 )
 from backend.auth import get_current_player_only, get_current_trainer, check_team_auth_and_get_role
 
+# Prefix entfernt, da er schon in main.py gesetzt wird
 router = APIRouter(
-    prefix="/athletic",
     tags=["Athletics (Player/Wellness)"],
 )
 
@@ -44,7 +44,7 @@ class WellnessResponse(WellnessCreate):
         from_attributes = True
 
 
-# --- INJURY MODELLE (NEU) ---
+# --- INJURY MODELLE ---
 class InjuryCreate(BaseModel):
     player_id: int 
     description: str
@@ -119,7 +119,6 @@ def log_wellness_entry(
     
     return new_log
 
-# [FIX]: Korrigierte Route, die den aktuellen Spieler zur Filterung nutzt (Behebt 404/Fehler in Bild 3)
 @router.get("/wellness/latest", response_model=Optional[WellnessResponse])
 def get_latest_wellness_entry(
     current_player: Player = Depends(get_current_player_only),
@@ -132,14 +131,13 @@ def get_latest_wellness_entry(
     
     return latest_log
 
-@router.get("/wellness/history/{player_id}", response_model=List[WellnessResponse], dependencies=[Depends(get_current_trainer)])
+@router.get("/wellness/history/{player_id}", response_model=List[WellnessResponse])
 def get_wellness_history(
     player_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
     db: Session = Depends(get_db)
 ):
     """ Liefert die Wellness-Historie eines Spielers (Trainer-Zugriff). """
-    
-    current_trainer = db.query(Trainer).filter(Trainer.id == get_current_trainer(db).id).first()
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
         raise HTTPException(status_code=404, detail="Spieler nicht gefunden.")
@@ -157,17 +155,16 @@ def get_wellness_history(
 
 
 # ==================================================
-# ENDPUNKTE: INJURY MANAGEMENT (NUR FÜR TRAINER) (NEU: Phase 11)
+# ENDPUNKTE: INJURY MANAGEMENT (NUR FÜR TRAINER)
 # ==================================================
 
-@router.post("/injuries/add", response_model=InjuryResponse, dependencies=[Depends(get_current_trainer)])
+@router.post("/injuries/add", response_model=InjuryResponse)
 def create_injury(
     injury_data: InjuryCreate,
+    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
     db: Session = Depends(get_db)
 ):
     """ Erlaubt einem Trainer, eine neue Verletzung für einen Spieler zu loggen. """
-    
-    current_trainer = db.query(Trainer).filter(Trainer.id == get_current_trainer(db).id).first()
     player = db.query(Player).filter(Player.id == injury_data.player_id).first()
     if not player:
         raise HTTPException(status_code=404, detail="Spieler nicht gefunden.")
@@ -196,10 +193,11 @@ def create_injury(
     return response_data
 
 
-@router.put("/injuries/update/{injury_id}", response_model=InjuryResponse, dependencies=[Depends(get_current_trainer)])
+@router.put("/injuries/update/{injury_id}", response_model=InjuryResponse)
 def update_injury(
     injury_id: int,
     update_data: InjuryUpdate,
+    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
     db: Session = Depends(get_db)
 ):
     """ Aktualisiert eine bestehende Verletzung. """
@@ -207,7 +205,6 @@ def update_injury(
     if not injury:
         raise HTTPException(status_code=404, detail="Verletzungseintrag nicht gefunden.")
 
-    current_trainer = db.query(Trainer).filter(Trainer.id == get_current_trainer(db).id).first()
     player = db.query(Player).filter(Player.id == injury.player_id).first()
     check_team_auth_and_get_role(db, current_trainer.id, player.team_id)
 
@@ -229,14 +226,13 @@ def update_injury(
     return response_data
 
 
-@router.get("/injuries/list/{player_id}", response_model=List[InjuryResponse], dependencies=[Depends(get_current_trainer)])
+@router.get("/injuries/list/{player_id}", response_model=List[InjuryResponse])
 def list_player_injuries(
     player_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
     db: Session = Depends(get_db)
 ):
     """ Listet alle Verletzungen eines Spielers auf (Trainer-Zugriff). """
-    
-    current_trainer = db.query(Trainer).filter(Trainer.id == get_current_trainer(db).id).first()
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
         raise HTTPException(status_code=404, detail="Spieler nicht gefunden.")
@@ -260,9 +256,10 @@ def list_player_injuries(
 # ENDPUNKTE: BELASTUNGS-ANALYSE (NEU: ACWR Platzhalter)
 # ==================================================
 
-@router.get("/acwr/report/{player_id}", response_model=Dict[str, float], dependencies=[Depends(get_current_trainer)])
+@router.get("/acwr/report/{player_id}", response_model=Dict[str, float])
 def get_acwr_report(
     player_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
     db: Session = Depends(get_db)
 ):
     """ 
@@ -272,10 +269,11 @@ def get_acwr_report(
     if not player:
         raise HTTPException(status_code=404, detail="Spieler nicht gefunden.")
     
-    # ACWR-Platzhalter-Daten
+    check_team_auth_and_get_role(db, current_trainer.id, player.team_id)
+
     return {
         "acute_load_7d": 1500.0,
         "chronic_load_28d": 1350.0,
         "acwr_ratio": 1.11,
-        "is_high_risk": 0 # Wir simulieren keinen hohen Risiko-Wert
+        "is_high_risk": 0 
     }

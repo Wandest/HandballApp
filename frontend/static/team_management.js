@@ -1,7 +1,7 @@
-// DATEI: frontend/static/team_management.js (FINALE KORREKTUR: Staff Management Logik)
+// DATEI: frontend/static/team_management.js (FINALE KORREKTUR: Staff & Injury Management)
 
 /**
- * Logik für Team, Spieler, Custom Actions und Staff Management.
+ * Logik für Team, Spieler, Custom Actions und Staff Management UND Verletzungen.
  * Der gesamte Code ist in eine IIFE (Immediately Invoked Function Expression)
  * gekapselt, um 'Identifier already declared' Fehler zu vermeiden.
  */
@@ -26,6 +26,9 @@
     // NEUE DOM-ELEMENTE für Deadlines
     var settingsTeamName, settingsLoadingIndicator, settingsFormContent, saveSettingsBtn, settingsMessage, updateSettingsForm;
     var settingGame, settingTournament, settingTestspiel, settingTraining, settingOther;
+    
+    // NEUE DOM-ELEMENTE für Verletzungen (Phase 11)
+    var injuryModal, injuryPlayerName, injuryForm, injuryPlayerIdInput, injuryDescriptionInput, injuryLocationInput, injuryStatusSelect, injuryStartDateInput, injuryEndDateInput, injuryNotesInput, injuryMessageDiv, injuryHistoryList;
 
 
     const ROLE_LABELS = {
@@ -34,9 +37,16 @@
         'ASSISTANT_COACH': 'Co-Trainer 👨‍🏫'
     };
     
+    const INJURY_STATUS_LABELS = {
+        'ACUTE': '🔴 Akut (Ausfall)',
+        'REHAB': '🟡 Reha / Aufbau',
+        'CHRONIC': '🟠 Chronisch',
+        'CLEARED': '🟢 Ausgeheilt (Fit)'
+    };
+    
     // --- Hilfsfunktion zum Zuweisen der Input-Elemente (muss hier sein) ---
-    function assignSettingsElements() {
-        // ... (Zuweisung unverändert) ...
+    function assignDynamicElements() {
+        // Settings Elemente
         settingsTeamName = document.getElementById('settings-team-name');
         settingsLoadingIndicator = document.getElementById('settings-loading-indicator');
         settingsFormContent = document.getElementById('settings-form-content');
@@ -50,7 +60,7 @@
         settingTraining = document.getElementById('setting-training');
         settingOther = document.getElementById('setting-other');
         
-        // Zuweisung der Staff-Elemente
+        // Staff Elemente
         staffTeamName = document.getElementById('staff-team-name');
         staffListContainer = document.getElementById('staff-list-container');
         addCoachButton = document.getElementById('add-coach-button');
@@ -65,6 +75,20 @@
         newRoleSelectSwap = document.getElementById('new-role-select-swap');
         newRoleSelectUpdate = document.getElementById('new-role-select-update');
         roleModalMessage = document.getElementById('role-modal-message');
+        
+        // Injury Elemente
+        injuryModal = document.getElementById('injury-modal');
+        injuryPlayerName = document.getElementById('injury-player-name');
+        injuryForm = document.getElementById('injury-form');
+        injuryPlayerIdInput = document.getElementById('injury-player-id');
+        injuryDescriptionInput = document.getElementById('injury-description');
+        injuryLocationInput = document.getElementById('injury-location');
+        injuryStatusSelect = document.getElementById('injury-status');
+        injuryStartDateInput = document.getElementById('injury-start-date');
+        injuryEndDateInput = document.getElementById('injury-end-date');
+        injuryNotesInput = document.getElementById('injury-notes');
+        injuryMessageDiv = document.getElementById('injury-message');
+        injuryHistoryList = document.getElementById('injury-history-list');
     }
 
 
@@ -76,7 +100,7 @@
     function selectTeam(teamId, teamName) {
         selectedTeamId = teamId;
         selectedTeamName = teamName;
-        // ... (Update UI Elemente) ...
+        
         document.querySelectorAll('.team-list-item').forEach(item => {
             item.classList.remove('selected');
         });
@@ -111,9 +135,7 @@
 
     // --- Teams laden und Toggle ---
     async function loadTeams() {
-        // ... (Team Lade Logik unverändert) ...
         try {
-            // Ladeindikator sichtbar machen
             teamListDiv.innerHTML = '<p style="opacity: 0.6;">Lade Mannschaften...</p>';
             
             const response = await fetch('/teams/list', {
@@ -124,7 +146,7 @@
             const teams = await response.json();
             teamListDiv.innerHTML = '';
             
-            // UI Reset (wenn kein Team gespeichert ist)
+            // UI Reset
             if (!localStorage.getItem('selected_team_id')) {
                 if(selectedTeamInfoDiv) selectedTeamInfoDiv.textContent = "";
                 kaderTeamName.textContent = "(Team wählen)";
@@ -190,7 +212,7 @@
     }
     window.loadTeams = loadTeams;
 
-    // --- Public Toggle Logik (unverändert) ---
+    // --- Public Toggle Logik ---
     async function toggleTeamPublic(teamId, teamName, isPublic) {
         if (!window.checkVerification()) {
             const checkbox = document.getElementById(`public-checkbox-${teamId}`);
@@ -262,7 +284,7 @@
 
 
     // ==================================================
-    // --- D E A D L I N E S   S E T T I N G S (unverändert) ---
+    // --- D E A D L I N E S   S E T T I N G S ---
     // ==================================================
 
     async function loadDeadlines(teamId) {
@@ -288,7 +310,6 @@
             
             const settings = await response.json();
             
-            // Felder mit Werten füllen (ACHTUNG: Namen entsprechen TeamSettingsResponse)
             settingGame.value = settings.game_deadline_hours || 0;
             settingTournament.value = settings.tournament_deadline_hours || 0;
             settingTestspiel.value = settings.testspiel_deadline_hours || 0;
@@ -353,7 +374,7 @@
     });
 
     // ==================================================
-    // --- P L A Y E R / C U S T O M - A C T I O N S (unverändert) ---
+    // --- P L A Y E R / C U S T O M - A C T I O N S ---
     // ==================================================
 
     // --- Spieler laden (loadPlayers) ---
@@ -367,7 +388,7 @@
             const response = await fetch(`/players/list/${teamId}`, {
                 method: 'GET'
             });
-            if (response.status === 401 || response.status === 403) { window.logout(); return; }
+            if (response.status === 401) { window.logout(); return; }
             const players = await response.json();
             playerListContainer.innerHTML = '';
             
@@ -382,7 +403,7 @@
             header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.2)';
             header.innerHTML = `
                 <strong class="player-info">Spieler</strong>
-                <strong class="player-actions" style="text-align: right;">Account-Status / Aktionen</strong>
+                <strong class="player-actions" style="text-align: right;">Aktionen</strong>
             `;
             playerListContainer.appendChild(header);
 
@@ -392,6 +413,7 @@
                 
                 const numberDisplay = player.number !== null ? `#${player.number}` : '';
                 const positionDisplay = player.position ? ` (${player.position})` : '';
+                const playerNameEscaped = player.name.replace(/'/g, "\\'");
                 
                 let accountStatusHtml = '';
                 if (player.is_active) {
@@ -399,14 +421,18 @@
                 } else if (player.email) {
                     accountStatusHtml = '<span class="account-status pending">⚠️ Eingeladen</span>';
                 } else {
-                    accountStatusHtml = `<button class="btn btn-info" onclick="openInviteModal(${player.id}, '${player.name.replace(/'/g, "\\'")}')">👤 Account einladen</button>`;
+                    accountStatusHtml = `<button class="btn btn-info btn-inline" onclick="openInviteModal(${player.id}, '${playerNameEscaped}')">👤 Einladen</button>`;
                 }
+                
+                // NEU: Verletzungs-Button
+                const injuryButton = `<button class="btn btn-danger btn-inline" style="background-color: #f44336;" onclick="openInjuryModal(${player.id}, '${playerNameEscaped}')" title="Verletzungs-Akte öffnen">🚑</button>`;
 
                 playerItem.innerHTML = `
                     <div class="player-info">
                         <span>${numberDisplay} <strong>${player.name}</strong>${positionDisplay}</span>
                     </div>
                     <div class="player-actions">
+                        ${injuryButton}
                         ${accountStatusHtml}
                         <button class="btn btn-danger btn-inline-delete" onclick="deletePlayer(${player.id})">Löschen</button>
                     </div>
@@ -491,7 +517,7 @@
     }
     window.deletePlayer = deletePlayer;
 
-    // --- Modal: Spieler Einladung (openInviteModal, sendInvitation, closeInviteModal) ---
+    // --- Modal: Spieler Einladung ---
     function openInviteModal(playerId, playerName) {
         inviteModalTitle.textContent = `Account für ${playerName} einladen`;
         invitePlayerIdInput.value = playerId;
@@ -525,32 +551,23 @@
             });
             
             const data = await response.json();
-            
             if (response.status === 401) { window.logout(); return; }
-            
-            if (!response.ok) {
-                throw new Error(data.detail || "Unbekannter Fehler beim Einladen.");
-            }
+            if (!response.ok) throw new Error(data.detail || "Unbekannter Fehler beim Einladen.");
             
             window.showToast('✅ Einladung erfolgreich gesendet.', "success");
             invitePlayerMessage.textContent = '✅ Einladung erfolgreich gesendet.';
             invitePlayerMessage.className = 'message success';
-            
             loadPlayers(selectedTeamId); 
-            
-            if (typeof closeInviteModal === 'function') {
-                setTimeout(closeInviteModal, 1500);
-            }
+            if (typeof window.closeInviteModal === 'function') setTimeout(window.closeInviteModal, 1500);
 
         } catch (error) {
             invitePlayerMessage.textContent = `❌ ${error.message}`;
             invitePlayerMessage.className = 'message error';
-            console.error("Fehler beim Senden der Einladung:", error);
         }
     }
     window.sendInvitation = sendInvitation;
     
-    // --- Custom Actions (unverändert) ---
+    // --- Custom Actions ---
     async function loadCustomActions(teamId) {
         if (!teamId) { 
             customActionListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie ein Team.</p>';
@@ -559,7 +576,7 @@
         customActionListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Aktionen...</p>`;
         try {
             const response = await fetch(`/custom-actions/list?team_id=${teamId}`);
-            if (response.status === 401 || response.status === 403) { window.logout(); return; }
+            if (response.status === 401) { window.logout(); return; }
             const actions = await response.json();
             customActionListContainer.innerHTML = '';
             if (actions.length === 0) {
@@ -720,9 +737,8 @@
             
             let roleButtonDisabled = !canManage;
             let roleButtonTitle = canManage ? '' : 'Keine Berechtigung.';
-            // Der Haupttrainer kann seine Rolle nur über den Tausch-Endpunkt ändern.
             if (isMe && isCriticalRole) {
-                roleButtonDisabled = false; // Wir erlauben den Klick, um das Modal zu zeigen
+                roleButtonDisabled = false; 
                 roleButtonTitle = 'Rolle tauschen / bearbeiten'; 
             }
             
@@ -749,7 +765,7 @@
         });
     }
 
-    // --- Trainer hinzufügen (unverändert) ---
+    // --- Trainer hinzufügen ---
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-coach-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -785,7 +801,7 @@
         });
     });
 
-    // --- Trainer entfernen (unverändert) ---
+    // --- Trainer entfernen ---
     async function removeCoach(coachId, username) {
         if (!window.checkVerification() || !selectedTeamId) return;
         
@@ -813,7 +829,7 @@
     }
     window.removeCoach = removeCoach;
 
-    // --- Modal: Rolle ändern/tauschen (Logik) ---
+    // --- Modal: Rolle ändern/tauschen ---
     function openRoleModal(coachId, username, currentRole) {
         if (!checkVerification() || !selectedTeamId) return;
 
@@ -844,8 +860,6 @@
                 <option value="MAIN_COACH" selected>Haupttrainer (MAIN_COACH)</option>
                 <option value="ASSISTANT_COACH">Co-Trainer (ASSISTANT_COACH)</option>
             `;
-            // Der Button wird nun "Rolle herabstufen" (muss über Code im HTML erfolgen, hier nicht möglich)
-            // Wir lassen den Button-Text gleich, aber der Swap-Handler muss den Fall abfangen.
 
         } else if (isMeTheMainCoach) {
             // FALL 2: Ich bin Haupttrainer und klicke auf EINEN ANDEREN Trainer
@@ -864,9 +878,11 @@
         } else {
             // FALL 3: Ich bin Admin/Co-Trainer und klicke auf irgendjemanden
             // Als Admin/Co-Trainer kann ich keine kritischen Rollen ändern/tauschen
-            if (isCriticalRole) {
-                 window.showToast("Als Co-Trainer/Admin können Sie die Rolle des Haupttrainers/Admins nicht ändern.", "error");
-                 return;
+            if (currentRole === 'MAIN_COACH' || currentRole === 'TEAM_ADMIN') {
+                 if (!isMe) {
+                     window.showToast("Als Co-Trainer/Admin können Sie die Rolle des Haupttrainers/Admins nicht ändern.", "error");
+                     return;
+                 }
             }
             // Zeige nur das Update-Feld für unkritische Rollen
             roleSwapSection.style.display = 'none';
@@ -879,7 +895,7 @@
     }
     window.openRoleModal = openRoleModal;
 
-    // --- Rolle aktualisieren (Update, für Admin/Co-Trainer / Nur unkritische Rollen) ---
+    // --- Rolle aktualisieren (Update) ---
     async function confirmRoleUpdate() {
         if (!checkVerification() || !selectedTeamId || !targetCoachId) return;
         const newRole = newRoleSelectUpdate.value;
@@ -995,10 +1011,154 @@
     }
     window.confirmRoleSwap = confirmRoleSwap;
 
+    
+    // ==================================================
+    // --- V E R L E T Z U N G S - M A N A G E M E N T (NEU) ---
+    // ==================================================
+
+    async function loadInjuries(playerId) {
+        injuryHistoryList.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Akte...</p>';
+        try {
+            const response = await fetch(`/athletic/injuries/list/${playerId}`);
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error("Verletzungen konnten nicht geladen werden.");
+            
+            const injuries = await response.json();
+            renderInjuryList(injuries);
+        } catch (error) {
+            injuryHistoryList.innerHTML = `<p class="error">Fehler: ${error.message}</p>`;
+        }
+    }
+
+    function renderInjuryList(injuries) {
+        injuryHistoryList.innerHTML = '';
+        if (injuries.length === 0) {
+            injuryHistoryList.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Einträge vorhanden.</p>';
+            return;
+        }
+
+        injuries.forEach(injury => {
+            const item = document.createElement('div');
+            item.className = `injury-item status-${injury.status}`;
+            
+            const startDate = new Date(injury.start_date).toLocaleDateString('de-DE');
+            const endDate = injury.end_date ? new Date(injury.end_date).toLocaleDateString('de-DE') : 'laufend';
+            const statusLabel = INJURY_STATUS_LABELS[injury.status] || injury.status;
+            
+            let updateButton = '';
+            if (injury.status !== 'CLEARED') {
+                updateButton = `<button class="btn btn-success btn-small" onclick="updateInjuryStatus(${injury.id}, 'CLEARED')">✅ Als ausgeheilt markieren</button>`;
+            }
+
+            item.innerHTML = `
+                <div class="injury-header">
+                    <span>${injury.description} (${injury.location || 'k.A.'})</span>
+                    <span>${statusLabel}</span>
+                </div>
+                <div class="injury-dates">
+                    Von: ${startDate} | Bis: ${endDate}
+                </div>
+                <p style="font-size: 0.9em; margin: 5px 0; font-style: italic; opacity: 0.8;">${injury.notes || ''}</p>
+                <div class="injury-actions">
+                    ${updateButton}
+                </div>
+            `;
+            injuryHistoryList.appendChild(item);
+        });
+    }
+
+    async function updateInjuryStatus(injuryId, newStatus) {
+        if (!window.checkVerification()) return;
+        try {
+            const payload = { status: newStatus };
+            // Wenn auf CLEARED gesetzt wird, setzen wir auch das Enddatum auf heute
+            if (newStatus === 'CLEARED') {
+                payload.end_date = new Date().toISOString().split('T')[0];
+            }
+
+            const response = await fetch(`/athletic/injuries/update/${injuryId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error("Status konnte nicht aktualisiert werden.");
+
+            window.showToast("Status aktualisiert.", "success");
+            const playerId = document.getElementById('injury-player-id').value;
+            loadInjuries(playerId); 
+
+        } catch (error) {
+            window.showToast(`❌ Fehler: ${error.message}`, "error");
+        }
+    }
+    window.updateInjuryStatus = updateInjuryStatus;
+
+    async function handleSaveInjury(event) {
+        event.preventDefault();
+        if (!window.checkVerification()) return;
+        
+        injuryMessageDiv.textContent = 'Speichere...';
+        injuryMessageDiv.className = 'message';
+        
+        const payload = {
+            player_id: parseInt(injuryPlayerIdInput.value),
+            description: injuryDescriptionInput.value,
+            location: injuryLocationInput.value || null,
+            status: injuryStatusSelect.value,
+            start_date: injuryStartDateInput.value,
+            end_date: injuryEndDateInput.value || null,
+            notes: injuryNotesInput.value || null
+        };
+
+        try {
+            const response = await fetch('/athletic/injuries/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || "Fehler beim Speichern.");
+            }
+
+            injuryMessageDiv.textContent = '✅ Verletzung gespeichert.';
+            injuryMessageDiv.className = 'message success';
+            window.showToast("Verletzung eingetragen.", "success");
+            
+            // Formular teilweise zurücksetzen (Spieler-ID behalten)
+            injuryDescriptionInput.value = '';
+            injuryLocationInput.value = '';
+            injuryStatusSelect.value = 'ACUTE';
+            injuryStartDateInput.value = '';
+            injuryEndDateInput.value = '';
+            injuryNotesInput.value = '';
+
+            loadInjuries(payload.player_id);
+
+        } catch (error) {
+            injuryMessageDiv.textContent = `❌ ${error.message}`;
+            injuryMessageDiv.className = 'message error';
+        }
+    }
+
+    function openInjuryModal(playerId, playerName) {
+        injuryPlayerName.textContent = playerName;
+        injuryPlayerIdInput.value = playerId;
+        injuryMessageDiv.textContent = '';
+        injuryForm.reset();
+        loadInjuries(playerId);
+        injuryModal.style.display = 'block';
+    }
+    window.openInjuryModal = openInjuryModal;
+
 
     // --- Initialisierung ---
     function initTeamManagement() {
-        // 💡 FIX: Zuweisung der DOM-Elemente
+        // Zuweisung der DOM-Elemente
         teamListDiv = document.getElementById('team-list');
         teamMessageDiv = document.getElementById('team-message');
         playerMessageDiv = document.getElementById('player-message');
@@ -1018,11 +1178,15 @@
         invitePlayerEmailInput = document.getElementById('invite-player-email');
         invitePlayerMessage = document.getElementById('invite-player-message');
         
-        // Zuweisung der Staff- und Settings-Elemente
-        assignSettingsElements(); 
+        assignDynamicElements(); 
 
         console.log("initTeamManagement() wird aufgerufen. Lade Teams...");
         loadTeams();
+        
+        // Event Listeners
+        if (injuryForm) {
+            injuryForm.addEventListener('submit', handleSaveInjury);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', initTeamManagement);
