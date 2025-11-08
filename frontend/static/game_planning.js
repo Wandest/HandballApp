@@ -1,5 +1,5 @@
 // DATEI: frontend/static/game_planning.js
-// +++ FIX: Korrigiert die Datums-Filterlogik für den Dashboard-Modus +++
+// +++ FIX: Erkennt nun automatisch den richtigen Container für Dashboard ODER Planungsseite +++
 
 (function() {
     
@@ -61,14 +61,27 @@
 
     // --- Spielplan laden (MIT FILTER-LOGIK) ---
     async function loadGames(teamId, mode = 'all') { // 'all' (Standard) oder 'dashboard'
-        if (!gameListContainer) {
-            // Verhindert Fehler, wenn auf Seiten geladen, die die Liste nicht haben
+        
+        // [FIX] Dynamische Bestimmung des Containers, falls er sich geändert hat (z.B. durch SPA-Navigation, falls genutzt)
+        // Priorisiere den Dashboard-Container, wenn mode 'dashboard' ist.
+        let targetContainer = gameListContainer;
+        if (mode === 'dashboard') {
+             targetContainer = document.getElementById('dashboard-game-list-container') || gameListContainer;
+        } else {
+             targetContainer = document.getElementById('game-list-container') || gameListContainer;
+        }
+
+        if (!targetContainer) {
+            console.warn("Kein Game-List-Container gefunden für Modus:", mode);
             return;
         }
         
-        gameListContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
+        targetContainer.innerHTML = `<p style="opacity: 0.6;">Lade Spielplan...</p>`;
         
-        if (!teamId) return;
+        if (!teamId) {
+             targetContainer.innerHTML = `<p style="opacity: 0.6;">Bitte Team auswählen.</p>`;
+             return;
+        }
 
         try {
             const response = await fetch(`/games/list/${teamId}`, { method: 'GET' });
@@ -78,35 +91,29 @@
             // +++ KORRIGIERTE FILTERLOGIK FÜR DASHBOARD +++
             if (mode === 'dashboard') {
                 const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const twoWeeksFromNow = new Date();
+                twoWeeksFromNow.setDate(now.getDate() + 14);
+                twoWeeksFromNow.setHours(23, 59, 59, 999);
                 
-                // 1. ZUERST das Zieldatum (in 14 Tagen) berechnen
-                const twoWeeksFromNow = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
-                
-                // 2. DANN 'now' auf den Beginn des heutigen Tages setzen (00:00:00)
-                now.setHours(0, 0, 0, 0); 
-
                 games = games.filter(game => {
                     const gameDate = new Date(game.date);
-                    
-                    // Zeige Spiele, die HEUTE oder SPÄTER stattfinden (>= now)
-                    // UND VOR dem 14-Tage-Limit liegen (<= twoWeeksFromNow)
                     return gameDate >= now && gameDate <= twoWeeksFromNow;
                 });
             }
-            // +++ ENDE KORREKTUR +++
 
-
-            gameListContainer.innerHTML = '';
+            targetContainer.innerHTML = '';
 
             if (games.length === 0) {
                 if (mode === 'dashboard') {
-                    gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele in den nächsten 14 Tagen geplant.</p>`;
+                    targetContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele in den nächsten 14 Tagen.</p>`;
                 } else {
-                    gameListContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
+                    targetContainer.innerHTML = `<p style="opacity: 0.6;">Keine Spiele angelegt.</p>`;
                 }
                 return;
             }
             
+            // ... (Gruppierungslogik unverändert) ...
             const groupedGames = { 'Saison': [], 'Testspiel': [], 'Turnier': {} };
             const archiveGroups = {}; 
             games.forEach(game => {
@@ -127,12 +134,10 @@
             
             const renderGameList = (gameList) => {
                 let html = '';
-                // Sortiere nach Datum (aufsteigend)
                 gameList.sort((a, b) => new Date(a.date) - new Date(b.date));
                 
                 gameList.forEach(game => {
                     const dateObj = new Date(game.date);
-                    // Zeige Datum UND Uhrzeit an, wenn vorhanden
                     const formattedDate = dateObj.toLocaleString('de-DE', {
                         day: '2-digit', month: '2-digit', year: 'numeric',
                         hour: '2-digit', minute: '2-digit'
@@ -185,10 +190,12 @@
                     finalHtml += renderGameList(archiveGroups[archiveName]);
                 }
             }
-            gameListContainer.innerHTML = finalHtml;
+            
+            targetContainer.innerHTML = finalHtml;
+
         } catch (error) {
             console.error("Fehler loadGames:", error);
-            gameListContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
+            if (targetContainer) targetContainer.innerHTML = `<p class="error">Fehler beim Laden des Spielplans.</p>`;
         }
     }
     window.loadGames = loadGames;
@@ -279,7 +286,7 @@
             videoModalMessage.textContent = '✅ Erfolgreich gespeichert.';
             videoModalMessage.className = 'message success';
             
-            loadGames(selectedTeamId, 'all'); // Im Zweifel immer alle laden
+            loadGames(selectedTeamId, 'all'); 
 
             if (typeof window.closeVideoModal === 'function') {
                 setTimeout(window.closeVideoModal, 1000); 
@@ -303,7 +310,10 @@
         gameplanTeamName = document.getElementById('gameplan-team-name');
         addGameButton = document.getElementById('add-game-button');
         gameMessageDiv = document.getElementById('game-message');
-        gameListContainer = document.getElementById('game-list-container');
+        
+        // [FIX] Versuche BEIDE möglichen Container-IDs zu finden
+        gameListContainer = document.getElementById('game-list-container') || document.getElementById('dashboard-game-list-container');
+        
         tabBtnSaison = document.getElementById('tab-btn-saison');
         tabBtnTestspiel = document.getElementById('tab-btn-testspiel');
         tabBtnTurnier = document.getElementById('tab-btn-turnier');
@@ -316,9 +326,10 @@
         videoModalGameId = document.getElementById('video-modal-game-id');
         videoModalMessage = document.getElementById('video-modal-message');
 
-        // Prüfen, ob wir uns auf der game-planning Seite befinden
+        // Prüfen, ob wir uns auf der game-planning Seite befinden (Buttons existieren nur dort)
         if (!addGameButton) {
             // Wir sind auf dem Dashboard, das nur 'loadGames' braucht.
+            // Initialisierung ist hier fertig, loadGames wird vom Dashboard aufgerufen.
             return;
         }
 
@@ -423,14 +434,14 @@
             gameplanTeamName.textContent = selectedTeamName;
             addGameButton.disabled = false;
             [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = false);
-            loadGames(selectedTeamId, 'all'); // Explizit 'all'
+            loadGames(selectedTeamId, 'all'); // Explizit 'all' auf der Planungsseite
             loadTournaments(selectedTeamId);
             switchGameCategory('Testspiel');
         } else {
             gameplanTeamName.textContent = "(Team wählen)";
             addGameButton.disabled = true;
             [tabBtnSaison, tabBtnTestspiel, tabBtnTurnier].forEach(btn => btn.disabled = true);
-            gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
+            if (gameListContainer) gameListContainer.innerHTML = '<p style="opacity: 0.6;">Wählen Sie eine Mannschaft aus.</p>';
         }
     }
 

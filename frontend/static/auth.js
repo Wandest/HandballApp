@@ -1,4 +1,4 @@
-// DATEI: frontend/static/auth.js
+// DATEI: frontend/static/auth.js (KORRIGIERT: Login-Endpunkt auf /auth/token)
 
 /**
  * Enthält die gesamte Login- und Registrierungslogik für index.html.
@@ -331,17 +331,24 @@ window.updateRegisterButtonState = updateRegisterButtonState;
 // --- HILFSFUNKTION: Login und Weiterleitung ---
 async function loginAndRedirect(identifier, password, messageDiv) {
     try {
-        const response = await fetch('/auth/login', {
+        // [KORREKTUR]: Verwendung des korrekten Endpunkts /auth/token
+        const response = await fetch('/auth/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: identifier, password: password }),
+            body: JSON.stringify({ username: identifier, password: password }),
         });
 
         if (response.ok) {
+            const data = await response.json();
+            
+            localStorage.setItem('logged_in_user_type', data.user_type);
+            localStorage.setItem('logged_in_username', data.username);
+            localStorage.setItem('is_verified', data.is_verified);
+            
             messageDiv.innerHTML = `✅ Login erfolgreich. Weiterleitung...`;
             messageDiv.className = 'message success';
             
-            window.location.href = "/dashboard"; 
+            window.location.href = data.redirect_url; // Nutzt den vom Backend gesendeten Pfad
             
         } else {
             let detail = 'Unbekannter Fehler';

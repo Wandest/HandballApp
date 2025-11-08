@@ -1,5 +1,5 @@
 // DATEI: frontend/static/player_calendar.js
-// +++ FIX: Lädt die Kalenderliste neu, nachdem eine Abwesenheit hinzugefügt wurde +++
+// +++ FINAL FIX: Korrigiert die `disabled` Logik der Buttons und entfernt die Blockierung bei weicher Absage. +++
 
 /**
  * Verantwortlichkeit: Enthält die gesamte Logik für den Spieler-Kalender
@@ -87,7 +87,9 @@
      * Lädt alle Termine des Spielers vom Backend.
      */
     async function loadMyCalendar() {
-        if (!playerCalendarContainer) return;
+        // HINWEIS: playerCalendarContainer ist auf dem Dashboard-Teilnehmer-Screen nicht vorhanden, aber hier auf der vollen Seite schon.
+        if (!playerCalendarContainer) return; 
+        
         playerCalendarContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade Termine...</p>';
         if (playerCalendarMessage) playerCalendarMessage.textContent = '';
         
@@ -130,7 +132,7 @@
             const eventStart = new Date(event.start_time).getTime();
             const eventEnd = event.end_time ? new Date(event.end_time).getTime() : eventStart + 3600000; 
             
-            // Vergangene Events (ältere als 5 Minuten) ausblenden
+            // Vergangene Events (älter als 5 Minuten) ausblenden
             const fiveMinutesAgo = now.getTime() - 5 * 60 * 1000;
             if (eventEnd < fiveMinutesAgo) { 
                 return false;
@@ -186,27 +188,43 @@
                  }
             }
             
-            const statusText = event.my_status.replace('_', ' ');
-            const reasonText = event.my_reason ? ` (${event.my_reason})` : '';
+            // ************ KORRIGIERTER STATUS TEXT ************
+            // Übersetzt Status und fügt Grund hinzu
+            let statusText;
+            let statusValue = event.my_status;
             
-            // Buttons deaktivieren, wenn Event abgesagt ist ODER wenn der Status ABGESAGT ist (durch Abwesenheit)
-            const buttonsDisabled = (deadlinePassed || isCanceled || event.my_status === 'DECLINED') ? 'disabled' : '';
-            
-            // Wenn der Status DECLINED ist, aber es KEINEN Grund gibt (manuell),
-            // dann Button "Vielleicht" aktivieren, um Grund hinzuzufügen.
-            const maybeButtonDisabled = (deadlinePassed || isCanceled) ? 'disabled' : '';
+            switch (statusValue) {
+                case 'ATTENDING': statusText = 'Zugesagt'; break;
+                case 'DECLINED': statusText = 'Abgesagt'; break;
+                case 'TENTATIVE': statusText = 'Vielleicht'; break;
+                case 'NOT_RESPONDED': statusText = 'Keine Antwort'; break;
+                default: statusText = statusValue; 
+            }
 
+            const reasonText = event.my_reason ? ` (${event.my_reason})` : '';
+            // ************ ENDE KORRIGIERTER STATUS TEXT ************
+            
+            
+            // NEU DEFINIERTE DISABLED LOGIK:
+            // isEventLocked = Nur sperren, wenn das Event ABSAGE ist oder Frist abgelaufen ist. 
+            // Abwesenheits-DECLINED darf manuell überschrieben werden (deshalb ist er nicht gesperrt).
+            const isEventLocked = deadlinePassed || isCanceled; 
+            const buttonsDisabled = isEventLocked ? 'disabled' : '';
+
+            // KORRIGIERTE STRUKTUR: Trenne Info von Status und Buttons
             itemEl.innerHTML = `
                 <div class="player-event-info">
                     <h4 style="color: ${isCanceled ? '#f44336' : '#fff'};">${event.title} (${event.event_type})</h4>
                     <p>Zeit: ${startTime}${endTime}${deadlineHtml}${location}${description}</p>
                 </div>
-                <div class="player-event-status">
+                
+                <div class="player-event-status" style="margin-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <span id="status-badge-${event.id}" class="status-badge ${event.my_status}">
                         ${statusText}${reasonText}
                     </span>
-                    <div class="status-buttons">
-                        <button class="btn btn-secondary btn-reason" onclick="respondToEvent(${event.id}, 'TENTATIVE')" ${maybeButtonDisabled}>Vielleicht</button>
+                    
+                    <div class="status-buttons" style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-reason" onclick="respondToEvent(${event.id}, 'TENTATIVE')" ${buttonsDisabled}>Vielleicht</button>
                         <button class="btn btn-danger" onclick="respondToEvent(${event.id}, 'DECLINED')" ${buttonsDisabled}>Absagen</button>
                         <button class="btn btn-primary" onclick="respondToEvent(${event.id}, 'ATTENDING')" ${buttonsDisabled}>Zusagen</button>
                     </div>
@@ -232,12 +250,10 @@
     
     async function respondToEvent(eventId, status) {
         const event = myEventsData.find(e => e.id === eventId);
-        if (event && isDeadlinePassed(event)) {
-             showToast("❌ Die Antwortfrist ist abgelaufen. Wende dich an deinen Trainer.", "error");
-             return;
-        }
-
+        
         let reason = null;
+        
+        // HIER KORRIGIERT: Abwesenheits-Grund wird nur abgefragt, wenn Status NICHT ATTENDING ist.
         if (status === 'DECLINED' || status === 'TENTATIVE') {
             reason = prompt(`Grund für '${status === 'DECLINED' ? 'Absage' : 'Vielleicht'}' (erforderlich):`, '');
             if (!reason) { 
@@ -328,6 +344,8 @@
      * Rendert die Abwesenheitsliste.
      */
     function renderAbsences(absences) {
+        if (!absenceListContainer) return; // WICHTIG: Nur auf der richtigen Seite rendern
+        
         absenceListContainer.innerHTML = '';
         if (absences.length === 0) {
             absenceListContainer.innerHTML = '<p style="opacity: 0.6; text-align: center;">Keine Abwesenheiten gemeldet.</p>';
@@ -384,6 +402,19 @@
      */
     async function handleAddAbsence(event) {
         event.preventDefault();
+        
+        // Initialisiere die DOM-Elemente für Abwesenheit, falls noch nicht geschehen
+        if (!addAbsenceForm) {
+            addAbsenceForm = document.getElementById('add-absence-form');
+            absenceReasonSelect = document.getElementById('absence-reason');
+            absenceStartDate = document.getElementById('absence-start-date');
+            absenceEndDate = document.getElementById('absence-end-date');
+            absenceNotes = document.getElementById('absence-notes');
+            absenceMessage = document.getElementById('absence-message');
+            absenceListContainer = document.getElementById('absence-list-container');
+        }
+
+
         absenceMessage.textContent = 'Speichere...';
         absenceMessage.className = 'message';
 
@@ -428,7 +459,7 @@
             absenceMessage.className = 'message success';
             addAbsenceForm.reset();
             
-            // KORREKTUR: Lade beide Listen neu
+            // Lade beide Listen neu
             loadAbsences(); 
             loadMyCalendar(); 
 
@@ -449,29 +480,30 @@
         
         // DOM-Zuweisung (Abwesenheit)
         addAbsenceForm = document.getElementById('add-absence-form');
-        absenceReasonSelect = document.getElementById('absence-reason');
-        absenceStartDate = document.getElementById('absence-start-date');
-        absenceEndDate = document.getElementById('absence-end-date');
-        absenceNotes = document.getElementById('absence-notes');
-        absenceMessage = document.getElementById('absence-message');
-        absenceListContainer = document.getElementById('absence-list-container');
+        // WICHTIG: Prüfen, ob die Elemente existieren, bevor sie zugewiesen werden (nur auf player_calendar.html)
+        if (addAbsenceForm) {
+            absenceReasonSelect = document.getElementById('absence-reason');
+            absenceStartDate = document.getElementById('absence-start-date');
+            absenceEndDate = document.getElementById('absence-end-date');
+            absenceNotes = document.getElementById('absence-notes');
+            absenceMessage = document.getElementById('absence-message');
+            absenceListContainer = document.getElementById('absence-list-container');
+        }
         
         // Initialer Filter-Status basierend auf der geladenen Seite
         if (window.location.pathname === '/player-calendar') {
-            // Seite 'Alle Termine'
             currentCalendarFilter = 'all';
             
             if (document.getElementById('tab-week')) document.getElementById('tab-week').classList.remove('active');
             if (document.getElementById('tab-all')) document.getElementById('tab-all').classList.add('active');
             
         } else {
-            // Dashboard-Seite (7 Tage Ansicht)
             currentCalendarFilter = 'week';
         }
 
         console.log(`initPlayerCalendar() wird aufgerufen (Filter: ${currentCalendarFilter}).`);
         
-        // Lade beide Sektionen
+        // Lade Kalender
         loadMyCalendar(); 
         
         // Lade Abwesenheiten nur, wenn das Formular auf der Seite ist

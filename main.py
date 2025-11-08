@@ -1,4 +1,4 @@
-# DATEI: main.py (KORRIGIERT: Entfernt die /tacticboard Route)
+# DATEI: main.py (Registriert den neuen Athletic Router)
 import webview
 import threading
 import uvicorn
@@ -26,6 +26,7 @@ from backend.calendar import router as calendar_router
 from backend.absence import router as absence_router
 from backend.dashboard_service import get_team_availability
 from backend.drill import router as drill_router
+from backend.athletic import router as athletic_router # NEU: Athletic Router importieren
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -48,6 +49,7 @@ app.include_router(player_portal_router)
 app.include_router(calendar_router) 
 app.include_router(absence_router)
 app.include_router(drill_router)
+app.include_router(athletic_router, prefix="/athletic", tags=["Athletics"]) # NEU: Athletic Router registrieren
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -251,8 +253,6 @@ def drills_page(request: Request, current_trainer: Trainer = Depends(get_current
         )
     finally:
         db.close()
-
-# Entfernter Endpunkt: /tacticboard
 
 @app.get("/season-analysis", response_class=HTMLResponse)
 def season_analysis_page(request: Request, current_trainer: Trainer = Depends(get_current_trainer)):

@@ -1,5 +1,5 @@
 # DATEI: backend/database.py
-# +++ FIX: Korrigiert die bidirektionale Beziehung zwischen Game und Player (participating_players) +++
+# +++ NEU: Fügt WellnessLog und Injury Modelle für Athletik-Tracking hinzu (Phase 11) +++
 
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Table, Float, Text, DateTime, Enum
 from sqlalchemy.orm import sessionmaker, relationship
@@ -49,6 +49,12 @@ class AbsenceReason(enum.Enum):
     VACATION = "Urlaub"
     WORK = "Arbeit/Schule"
     OTHER = "Sonstiges"
+    
+class InjuryStatus(enum.Enum): # NEU: Status der Verletzung
+    ACUTE = "Akut"
+    CHRONIC = "Chronisch"
+    REHAB = "Reha"
+    CLEARED = "Ausgeheilt"
 
 # ==================================================
 # NEUTRALES PYDANTIC MODELL FÜR STATISTIKEN
@@ -115,7 +121,6 @@ class Trainer(Base):
     scouting_reports = relationship("ScoutingReport", back_populates="trainer", cascade="all, delete-orphan")
     created_events = relationship("TeamEvent", back_populates="creator", foreign_keys="[TeamEvent.created_by_trainer_id]")
     
-    # NEU: Beziehung zu erstellten Übungen
     created_drills = relationship("Drill", back_populates="creator", cascade="all, delete-orphan")
 
 
@@ -142,7 +147,6 @@ class Team(Base):
     events = relationship("TeamEvent", back_populates="team", cascade="all, delete-orphan")
     settings = relationship("TeamSettings", back_populates="team", uselist=False, cascade="all, delete-orphan")
     
-    # NEU: Beziehung zur Übungs-DB
     drill_categories = relationship("DrillCategory", back_populates="team", cascade="all, delete-orphan")
     drills = relationship("Drill", back_populates="team", cascade="all, delete-orphan")
 
@@ -182,13 +186,15 @@ class Player(Base):
     games_participated = relationship(
         "Game",
         secondary=game_participations_table,
-        # KORREKT: Dies ist die Eigenschaft im Game-Modell, die auf Player zeigt.
         back_populates="participating_players"
     )
     
-    # FIX: Korrigiert die back_populates, um auf die Eigenschaft 'player' in der Attendance-Klasse zu zeigen.
     event_attendances = relationship("Attendance", back_populates="player") 
     absences = relationship("PlayerAbsence", back_populates="player", cascade="all, delete-orphan")
+
+    # NEU: Beziehungen für Phase 11
+    wellness_logs = relationship("WellnessLog", back_populates="player", cascade="all, delete-orphan")
+    injuries = relationship("Injury", back_populates="player", cascade="all, delete-orphan")
 
 
 # ---------------------------------
@@ -211,8 +217,7 @@ class Game(Base):
     participating_players = relationship(
         "Player",
         secondary=game_participations_table,
-        # KORREKT: Dies ist die Eigenschaft im Player-Modell, die auf Game zeigt.
-        back_populates="games_participated" 
+        back_populates="games_participated"
     )
     
     scouting_reports = relationship("ScoutingReport", back_populates="game")
@@ -324,7 +329,6 @@ class TeamEvent(Base):
     
     response_deadline_hours = Column(Integer, nullable=True) 
     
-    # NEU: Liste von Drill-IDs, gespeichert als kommagetrennter String (Phase 12.5)
     planned_drill_ids = Column(String, nullable=True) 
     
     team = relationship("Team", back_populates="events")
@@ -366,38 +370,75 @@ class PlayerAbsence(Base):
 
 
 # ==================================================
-# NEUE MODELLE (PHASE 12.5): ÜBUNGS-DB
+# NEUE MODELLE (PHASE 11): ATHLETIK & WELLNESS
 # ==================================================
 
 # ---------------------------------
-# 12. DrillCategory (NEUES MODELL)
+# 12. WellnessLog (NEUES MODELL)
+# ---------------------------------
+class WellnessLog(Base):
+    __tablename__ = "wellness_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(Integer, ForeignKey("players.id"))
+    
+    # RPE-Werte (Skala 1-5 oder 1-10, hier 1-5 für einfacheres UI)
+    sleep_quality = Column(Integer, nullable=False) # 1 (schlecht) - 5 (sehr gut)
+    muscle_soreness = Column(Integer, nullable=False) # 1 (kein) - 5 (extrem)
+    stress_level = Column(Integer, nullable=False) # 1 (gering) - 5 (hoch)
+    
+    # Optional: Gefühlte Belastung der letzten Einheit (RPE der Session)
+    session_rpe = Column(Integer, nullable=True) 
+    
+    logged_at = Column(DateTime, default=datetime.utcnow)
+    
+    player = relationship("Player", back_populates="wellness_logs")
+
+
+# ---------------------------------
+# 13. Injury (NEUES MODELL)
+# ---------------------------------
+class Injury(Base):
+    __tablename__ = "injuries"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(Integer, ForeignKey("players.id"))
+    
+    description = Column(String, nullable=False)
+    location = Column(String, nullable=True) # z.B. Knie, Schulter
+    status = Column(Enum(InjuryStatus), default=InjuryStatus.ACUTE)
+    
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)
+    
+    notes = Column(Text, nullable=True)
+    
+    player = relationship("Player", back_populates="injuries")
+
+
+# ---------------------------------
+# 14. DrillCategory (NEUES MODELL)
 # ---------------------------------
 class DrillCategory(Base):
     __tablename__ = "drill_categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    # Jede Kategorie gehört zu einem Team (damit Teams ihre eigenen Kategorien haben)
     team_id = Column(Integer, ForeignKey("teams.id"))
     
     team = relationship("Team", back_populates="drill_categories")
     drills = relationship("Drill", back_populates="category", cascade="all, delete-orphan")
 
 # ---------------------------------
-# 13. Drill (NEUES MODELL)
+# 15. Drill (NEUES MODELL)
 # ---------------------------------
 class Drill(Base):
     __tablename__ = "drills"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(Text, nullable=True)
-    duration_minutes = Column(Integer, nullable=True) # Geschätzte Dauer in Min.
-    media_url = Column(String, nullable=True) # Für YouTube-Links oder Bilder
+    duration_minutes = Column(Integer, nullable=True) 
+    media_url = Column(String, nullable=True) 
     
-    # Jede Übung gehört zu einem Team
     team_id = Column(Integer, ForeignKey("teams.id"))
-    # Jede Übung kann einer Kategorie angehören
     category_id = Column(Integer, ForeignKey("drill_categories.id"), nullable=True)
-    # Jede Übung hat einen Ersteller
     creator_id = Column(Integer, ForeignKey("trainers.id"))
     
     created_at = Column(DateTime, default=datetime.utcnow)
