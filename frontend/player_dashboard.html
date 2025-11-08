@@ -13,7 +13,7 @@
         gap: 20px;
     }
     
-    /* --- WELLNESS LOG SLIDER STYLING (Phase 11) --- */
+    /* --- WELLNESS LOG SLIDER STYLING (Phase 11) - KORRIGIERT --- */
     .wellness-scale-group {
         margin-bottom: 15px;
     }
@@ -27,47 +27,38 @@
     }
     
     .wellness-scale-group label span.value-display {
-        /* WICHTIG: Erhöhte Schriftgröße und Gewichtung */
         font-weight: 900; 
-        font-size: 1.4em; /* Leichte Vergrößerung */
+        font-size: 1.4em; 
         color: #ffcc00;
-        /* Wir stellen sicher, dass das Element nicht von anderen Dingen überlagert wird */
         position: relative;
-        z-index: 5;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Für bessere Sichtbarkeit */
+        z-index: 2;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     }
     
+    /* KORRIGIERTER SLIDER-STYLE */
     .wellness-scale-group input[type="range"] {
-        width: 100%; /* **KRITISCHE KORREKTUR** */
-        margin: 0;
-        cursor: pointer;
-        /* Versteckt den Standard-Slider */
         -webkit-appearance: none;
         appearance: none;
-        height: 10px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 5px;
-        position: relative;
-        overflow: hidden;
+        width: 100%;
+        height: 12px; /* Etwas höher für bessere Bedienbarkeit */
+        border-radius: 6px;
+        outline: none;
+        margin: 0;
+        cursor: pointer;
+        overflow: hidden; /* Wichtig für den abgerundeten Fülleffekt */
+        
+        /* Hintergrund-Trick für Fortschrittsbalken:
+           - background-color ist der leere Teil (grau transparent)
+           - background-image ist der gefüllte Teil (Farbverlauf)
+           - background-size steuert die Breite des gefüllten Teils über --percent
+        */
+        background-color: rgba(255, 255, 255, 0.2); 
+        background-image: linear-gradient(90deg, #38E838, #00bcd4); 
+        background-size: var(--percent, 50%) 100%; 
+        background-repeat: no-repeat;
     }
 
-    /* Style für den farbigen Fortschritt (der Balken vor dem Daumen) */
-    .wellness-scale-group input[type="range"]::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100%;
-        border-radius: 5px;
-        background: linear-gradient(90deg, #38E838, #00bcd4); 
-        width: calc((var(--value) / var(--max)) * 100%);
-        max-width: 100%;
-        pointer-events: none;
-        z-index: 1; 
-        transition: width 0.1s;
-    }
-
-    /* Style für den "Daumen" */
+    /* Style für den "Daumen" (Webkit/Chromium) */
     .wellness-scale-group input[type="range"]::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
@@ -76,13 +67,24 @@
         border-radius: 50%;
         background: #ffcc00; 
         cursor: pointer;
-        margin-top: -5px;
-        border: 2px solid #1e3c72;
-        position: relative;
-        z-index: 2;
+        border: 3px solid #1e3c72; /* Dickerer Rand für besseren Kontrast */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        /* Ein kleiner Trick, um den Daumen optisch besser zu zentrieren, 
+           da er durch 'overflow: hidden' am Rand abgeschnitten werden könnte. 
+           Wir nutzen box-shadow, um ihn "sichtbar" zu machen, falls er überlappt. */
+    }
+    /* Style für Firefox (falls benötigt) */
+    .wellness-scale-group input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ffcc00;
+        cursor: pointer;
+        border: 3px solid #1e3c72;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
     
-    /* --- KALENDER EVENT STYLING (Wiederherstellung) --- */
+    /* ... (Restliche Styles unverändert) ... */
     .player-event-item {
         background: rgba(0, 0, 0, 0.2); 
         padding: 15px; border-radius: 5px;
@@ -110,7 +112,7 @@
 
 <div class="analysis-grid-1-col">
 
-    <!-- Zeile 1: Kalender (Nimmt jetzt volle Breite ein) -->
+    <!-- Zeile 1: Kalender -->
     <div class="card">
         <div class="card-content">
             <h2>🗓️ Meine Termine (Nächste 7 Tage)</h2>
@@ -125,7 +127,7 @@
         </div>
     </div>
     
-    <!-- Zeile 2: Wellness Log (Jetzt unterhalb und Full-Width) -->
+    <!-- Zeile 2: Wellness Log -->
     <div class="card">
         <div class="card-content">
             <h2>🧘 Wellness Log (Täglich)</h2>
@@ -133,9 +135,7 @@
                 Bitte trage täglich deinen Zustand ein. Nur ein Eintrag pro Tag erlaubt.
             </p>
             
-            <div id="wellness-status-indicator" class="message" style="margin-bottom: 15px;">
-                <!-- ANFÄNGLICHER TEXT IST NUN LEER, WIRD SOFORT VON JS BEFÜLLT -->
-            </div>
+            <div id="wellness-status-indicator" class="message" style="margin-bottom: 15px;"></div>
             
             <form id="wellness-form">
                 
@@ -143,28 +143,38 @@
                     <label for="sleep-quality-input">Schlafqualität (1=Schlecht, 5=Sehr Gut):
                         <span id="sleep-quality-input-value" class="value-display">3</span>
                     </label>
-                    <input type="range" id="sleep-quality-input" min="1" max="5" value="3" required oninput="setScaleValue('sleep-quality-input', this.value)">
+                    <!-- Initialwert für --percent wird hier direkt gesetzt für besseres Laden ohne JS-Flackern -->
+                    <input type="range" id="sleep-quality-input" min="1" max="5" value="3" required 
+                           style="--percent: 50%;"
+                           oninput="setScaleValue('sleep-quality-input', this.value)">
                 </div>
 
                 <div class="wellness-scale-group">
                     <label for="muscle-soreness-input">Muskelkater (1=Kein, 5=Extrem):
                          <span id="muscle-soreness-input-value" class="value-display">3</span>
                     </label>
-                    <input type="range" id="muscle-soreness-input" min="1" max="5" value="3" required oninput="setScaleValue('muscle-soreness-input', this.value)">
+                    <input type="range" id="muscle-soreness-input" min="1" max="5" value="3" required 
+                           style="--percent: 50%;"
+                           oninput="setScaleValue('muscle-soreness-input', this.value)">
                 </div>
                 
                 <div class="wellness-scale-group">
                     <label for="stress-level-input">Stresslevel (1=Gering, 5=Hoch):
                         <span id="stress-level-input-value" class="value-display">3</span>
                     </label>
-                    <input type="range" id="stress-level-input" min="1" max="5" value="3" required oninput="setScaleValue('stress-level-input', this.value)">
+                    <input type="range" id="stress-level-input" min="1" max="5" value="3" required 
+                           style="--percent: 50%;"
+                           oninput="setScaleValue('stress-level-input', this.value)">
                 </div>
                 
                 <div class="wellness-scale-group">
                     <label for="session-rpe-input">Gefühlte Trainingsbelastung (RPE 1-10) (Optional):
                         <span id="session-rpe-input-value" class="value-display">5</span>
                     </label>
-                    <input type="range" id="session-rpe-input" min="1" max="10" value="5" oninput="setScaleValue('session-rpe-input', this.value)">
+                    <!-- Bei 1-10 ist 5 etwa 44% ((5-1)/(10-1) = 4/9 = 0.444) -->
+                    <input type="range" id="session-rpe-input" min="1" max="10" value="5" 
+                           style="--percent: 44.4%;"
+                           oninput="setScaleValue('session-rpe-input', this.value)">
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-full-width">Wellness-Log speichern</button>
@@ -173,18 +183,15 @@
         </div>
     </div>
     
-    <!-- Zeile 3: Statistik und Clips (WICHTIG: Originalstruktur wiederhergestellt) -->
+    <!-- Zeile 3: Statistik und Clips -->
     <div class="analysis-grid-1-col"> 
-        <!-- Statistik-Container -->
         <div class="card">
             <div class="card-content">
                 <h2>📊 Deine Saison-Statistik (Aggregiert)</h2>
                 <p style="opacity: 0.8; font-size: 0.9em;">
                     Dies ist eine Zusammenfassung deiner persönlichen Leistung in allen Saisonspielen.
                 </p>
-                
                 <div id="stats-container-wrapper">
-                    
                     <div id="field-stats-section" style="display: none;">
                         <h3 id="field-stats-title" style="margin-top: 20px;">Feldspieler-Statistik</h3>
                         <div class="stats-table-container" id="stats-table-container-field-season">
@@ -200,7 +207,7 @@
                     <div id="custom-stats-section" style="display: none;">
                         <h3 id="custom-stats-title" style="margin-top: 20px;">Team-Aktionen Statistik</h3>
                         <div class="stats-table-container" id="stats-table-container-custom-season">
-                            <p style.opacity: 0.6; text-align: center;>Lade deine Team-Aktionen...</p>
+                            <p style="opacity: 0.6; text-align: center;">Lade deine Team-Aktionen...</p>
                         </div>
                     </div>
                 </div>

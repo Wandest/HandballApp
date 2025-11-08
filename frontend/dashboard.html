@@ -1,41 +1,46 @@
 <style>
-    /* ... (Deine Styles bleiben unverändert) ... */
     /* NEU: Stile für die Spieler-Status-Ampel */
     .dashboard-grid-ampel {
         display: grid;
-        /* Ändere das Layout: Team-Auswahl (1fr), Spielplan (2fr), Status (1fr) */
-        grid-template-columns: 1fr 2fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr; /* Drei Spalten nebeneinander */
         gap: 20px;
     }
 
     /* Anpassung für kleinere Bildschirme */
     @media (max-width: 1200px) {
         .dashboard-grid-ampel {
-            grid-template-columns: 1fr 2fr; /* Status unter Spielplan */
+            grid-template-columns: 1fr 1fr; /* Zwei Spalten */
+        }
+        /* Das dritte Element (Verfügbarkeit) nimmt die volle Breite der neuen Zeile ein */
+        .dashboard-grid-ampel .card:nth-child(3) {
+            grid-column: span 2;
         }
     }
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
         .dashboard-grid-ampel {
-            grid-template-columns: 1fr; /* Alles gestapelt */
+            grid-template-columns: 1fr; /* Alles untereinander */
+        }
+        .dashboard-grid-ampel .card:nth-child(3) {
+            grid-column: span 1;
         }
     }
 
 
-    #availability-list-container {
+    #availability-list-container, #acwr-list-container {
         max-height: 400px;
         overflow-y: auto;
     }
-    .availability-item {
+    .availability-item, .acwr-item {
         display: flex;
         align-items: center;
-        padding: 8px 0;
+        padding: 10px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .availability-item:last-child {
+    .availability-item:last-child, .acwr-item:last-child {
         border-bottom: none;
     }
     
-    .availability-light {
+    .availability-light, .acwr-light {
         width: 15px;
         height: 15px;
         border-radius: 50%;
@@ -47,16 +52,26 @@
     .light-DECLINED { background-color: #f44336; } /* Rot */
     .light-NOT_RESPONDED { background-color: #607d8b; } /* Grau */
     
-    .player-info-ampel {
+    /* ACWR Ampel-Farben */
+    .acwr-light.risk-0 { background-color: #607d8b; opacity: 0.5; } /* Grau (keine Daten) */
+    .acwr-light.risk-1 { background-color: #38E838; } /* Grün (Optimal) */
+    .acwr-light.risk-2 { background-color: #ffcc00; } /* Gelb (Warnung) */
+    .acwr-light.risk-3 { background-color: #f44336; box-shadow: 0 0 8px #f44336; } /* Rot (Gefahr!) */
+    
+    .player-info-ampel, .player-info-acwr {
         flex-grow: 1;
         display: flex;
         justify-content: space-between;
         font-size: 0.95em;
     }
-    .player-status-reason {
+    .player-status-reason, .acwr-status-text {
         font-size: 0.85em;
         opacity: 0.8;
         color: #ddd;
+    }
+    .acwr-ratio-value {
+        font-weight: bold;
+        margin-left: 5px;
     }
     
     /* Spieleliste für Dashboard */
@@ -69,58 +84,67 @@
 
 <div class="dashboard-grid-ampel">
     
-    <!-- 1. Team-Auswahl -->
-    <div class="card">
-        <div class="card-content">
-            <h2>Team-Auswahl</h2>
-            <p style="opacity: 0.8; font-size: 0.9em;">
-                Wähle das Team aus, das du aktuell bearbeiten möchtest. Alle Ansichten (Kalender, Protokoll, Analyse) beziehen sich auf dieses Team.
-            </p>
-            
-            <div id="team-list-dashboard" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
-                <p style="opacity: 0.6;">Lade Mannschaften...</p>
+    <!-- 1. Spalte: Team-Auswahl & ACWR (untereinander) -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Team-Auswahl -->
+        <div class="card">
+            <div class="card-content">
+                <h2>Team-Auswahl</h2>
+                <p style="opacity: 0.8; font-size: 0.9em;">
+                    Wähle das aktive Team.
+                </p>
+                <div id="team-list-dashboard" style="max-height: 200px; overflow-y: auto; margin-top: 15px;">
+                    <p style="opacity: 0.6;">Lade Mannschaften...</p>
+                </div>
+                <h3 style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; font-size: 1.1em;">
+                    Aktiv: <span id="selected-team-name-dashboard" style="color: #ffcc00;">(Kein Team)</span>
+                </h3>
             </div>
-            
-            <h3 style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
-                Ausgewählt: <span id="selected-team-name-dashboard" style="color: #ffcc00;">(Kein Team)</span>
-            </h3>
+        </div>
+
+        <!-- NEU: ACWR / Belastungs-Warnungen -->
+        <div class="card">
+            <div class="card-content">
+                <h2>⚠️ Belastungs-Radar</h2>
+                <p style="opacity: 0.8; font-size: 0.9em;">
+                    ACWR-Status basierend auf Wellness-Logs der letzten 28 Tage.
+                </p>
+                <div id="acwr-list-container">
+                    <p style="opacity: 0.6;">Bitte ein Team auswählen.</p>
+                </div>
+            </div>
         </div>
     </div>
     
-    <!-- 2. Spielplan & Protokoll (Nächste 14 Tage) -->
+    <!-- 2. Spalte: Spielplan & Protokoll -->
     <div class="card">
         <div class="card-content">
             <h2>Spielplan & Protokoll (Nächste 14 Tage)</h2>
             <p style="opacity: 0.8; font-size: 0.9em;">
                 Wähle ein Spiel aus, um das Live-Protokoll zu starten.
             </p>
-            
             <h3 id="game-list-team-name" style="color: #00bcd4;">(Team wählen)</h3>
-            
             <div id="dashboard-game-list-container">
                 <p style="opacity: 0.6;">Bitte ein Team auswählen.</p>
             </div>
         </div>
     </div>
     
-    <!-- 3. Verfügbarkeit (Ampel) -->
+    <!-- 3. Spalte: Verfügbarkeit (Ampel) -->
     <div class="card">
         <div class="card-content">
-            <h2>Verfügbarkeit (Nächste 7 Tage)</h2>
+            <h2>Verfügbarkeit (7 Tage)</h2>
             <p style="opacity: 0.8; font-size: 0.9em;">
-                Status basierend auf Kalender-Antworten und Abwesenheiten (Krank, Urlaub).
+                Status basierend auf Kalender & Abwesenheiten.
             </p>
-            
             <h3 id="availability-team-name" style="color: #00bcd4;">(Team wählen)</h3>
-            
             <div id="availability-list-container">
                 <p style="opacity: 0.6;">Bitte ein Team auswählen.</p>
             </div>
-
-            <div class="shot-chart-legend" style="justify-content: flex-start; margin-left: 0; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                <div class="legend-item"><span class="availability-light light-ATTENDING"></span> <span>Zugesagt</span></div>
-                <div class="legend-item"><span class="availability-light light-TENTATIVE"></span> <span>Vielleicht</span></div>
-                <div class="legend-item"><span class="availability-light light-DECLINED"></span> <span>Abgesagt</span></div>
+            <div class="shot-chart-legend" style="justify-content: flex-start; margin-left: 0; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; flex-wrap: wrap;">
+                <div class="legend-item" style="margin-right: 10px;"><span class="availability-light light-ATTENDING"></span> <span style="font-size: 0.8em;">Zugesagt</span></div>
+                <div class="legend-item" style="margin-right: 10px;"><span class="availability-light light-TENTATIVE"></span> <span style="font-size: 0.8em;">Vielleicht</span></div>
+                <div class="legend-item"><span class="availability-light light-DECLINED"></span> <span style="font-size: 0.8em;">Abgesagt</span></div>
             </div>
         </div>
     </div>
@@ -144,6 +168,8 @@
     var availabilityTeamName = document.getElementById('availability-team-name');
     var gameListContainer = document.getElementById('dashboard-game-list-container');
     var availabilityListContainer = document.getElementById('availability-list-container');
+    // NEU: ACWR Container
+    var acwrListContainer = document.getElementById('acwr-list-container');
     
 
     // --- Team Selection ---
@@ -165,23 +191,20 @@
         gameListTeamName.textContent = teamName;
         availabilityTeamName.textContent = teamName;
 
-        // Startet Laden für andere Module (Game Planning, Availability)
-        // [FIX] Direkter Aufruf, da game_planning.js jetzt vorher geladen wird
+        // Startet Laden für andere Module
         if (typeof window.loadGames === 'function') {
             window.loadGames(teamId, 'dashboard'); 
         } else {
-             // Fallback, falls es doch noch ein Timing-Problem gibt (sollte nicht passieren)
-             console.warn("loadGames noch nicht verfügbar. Versuche es gleich nochmal...");
+             // Fallback, falls es doch noch ein Timing-Problem gibt
              setTimeout(() => {
                  if (typeof window.loadGames === 'function') {
                      window.loadGames(teamId, 'dashboard');
-                 } else {
-                     gameListContainer.innerHTML = '<p class="error">Fehler: Spielplan-Modul konnte nicht geladen werden.</p>';
                  }
              }, 500);
         }
 
         loadAvailability(teamId);
+        loadACWRStatus(teamId); // NEU: ACWR laden
 
         // Speichern für alle Seiten
         localStorage.setItem('selected_team_id', teamId);
@@ -196,124 +219,78 @@
         teamListDiv.innerHTML = '<p style="opacity: 0.6;">Lade Mannschaften...</p>';
         
         try {
-            const response = await fetch('/teams/list', {
-                method: 'GET'
-            });
+            const response = await fetch('/teams/list', { method: 'GET' });
             if (response.status === 401 || response.status === 403) { window.logout(); return; }
             if (!response.ok) throw new Error('Netzwerkfehler beim Laden der Teams.');
             const teams = await response.json();
             teamListDiv.innerHTML = '';
             
             if (teams.length === 0) {
-                teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden. Bitte unter "Team Management" erstellen.</p>';
+                teamListDiv.innerHTML = '<p style="opacity: 0.6;">Noch keine Mannschaften vorhanden.</p>';
                 return;
             }
             
             let initialTeamToSelect = null;
-
             teams.forEach(team => {
                 const teamItem = document.createElement('div');
                 teamItem.className = 'team-list-item';
                 teamItem.id = `team-${team.id}-dashboard`;
-                teamItem.innerHTML = `
-                    <span><strong>${team.name}</strong> (${team.league})</span>
-                `;
-                teamItem.addEventListener('click', () => {
-                    selectTeam(team.id, team.name);
-                });
+                teamItem.innerHTML = `<span><strong>${team.name}</strong> (${team.league})</span>`;
+                teamItem.addEventListener('click', () => { selectTeam(team.id, team.name); });
                 teamListDiv.appendChild(teamItem);
                 
-                // Prüfe, ob dieses Team das gespeicherte ist
                 if (selectedTeamId && team.id === parseInt(selectedTeamId)) {
                     initialTeamToSelect = team;
                 }
             });
             
-            // Wähle das zuletzt ausgewählte oder das erste Team
             if (initialTeamToSelect) {
                 selectTeam(initialTeamToSelect.id, initialTeamToSelect.name);
             } else if (teams.length > 0) {
-                // Wenn kein gespeichertes Team gefunden wurde (oder gelöscht), nimm das erste
                 selectTeam(teams[0].id, teams[0].name);
             }
 
         } catch (error) {
-            console.error('Kritischer Fehler beim Laden der Teams:', error);
-            teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams: ${error.message || 'Netzwerkfehler'}</p>`;
+            console.error('Fehler beim Laden der Teams:', error);
+            teamListDiv.innerHTML = `<p class="error">FEHLER beim Laden der Teams.</p>`;
         }
     }
-    window.loadTeams = loadTeams;
 
     // --- Availability Logic (Ampel) ---
-
     async function loadAvailability(teamId) {
-        // FIX: Prüfe auf die Speichervariable, NICHT auf das DOM-Element
         if (!teamId || teamId === 'null') {
             availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte ein Team auswählen.</p>';
             return;
         }
-
         availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Verfügbarkeit...</p>';
-
         try {
             const response = await fetch(`/dashboard/availability/${teamId}`); 
             if (response.status === 401) { window.logout(); return; }
             if (!response.ok) throw new Error('Verfügbarkeitsdaten konnten nicht geladen werden.');
-            
             const availabilityData = await response.json();
             renderAvailabilityList(availabilityData);
-            
         } catch (error) {
-            console.error("Fehler beim Laden der Verfügbarkeit:", error);
             availabilityListContainer.innerHTML = `<p class="error">FEHLER: ${error.message}</p>`;
         }
     }
 
     function renderAvailabilityList(data) {
         availabilityListContainer.innerHTML = '';
-
         if (data.length === 0) {
             availabilityListContainer.innerHTML = '<p style="opacity: 0.6;">Keine Spieler im Team.</p>';
             return;
         }
-        
-        // Deutsche Status-Übersetzung
-        const STATUS_MAPPING = {
-            "ATTENDING": "Zugesagt",
-            "TENTATIVE": "Vielleicht",
-            "DECLINED": "Abgesagt",
-            "NOT_RESPONDED": "Keine Antwort",
-            "ILLNESS": "Krankheit",
-            "INJURY": "Verletzung",
-            "VACATION": "Urlaub",
-            "WORK": "Arbeit/Schule",
-            "OTHER": "Abwesenheit"
-        };
-
-
+        const STATUS_MAPPING = { "ATTENDING": "Zugesagt", "TENTATIVE": "Vielleicht", "DECLINED": "Abgesagt", "NOT_RESPONDED": "Keine Antwort", "ILLNESS": "Krankheit", "INJURY": "Verletzung", "VACATION": "Urlaub", "WORK": "Arbeit/Schule", "OTHER": "Abwesenheit" };
         data.forEach(player => {
             const itemEl = document.createElement('div');
             itemEl.className = 'availability-item';
-            
-            // [FIX] Mappe auch die Gründe auf die Ampel-Farben
             let statusKey = player.status;
-            // Wenn der Status ein Abwesenheitsgrund ist, soll er ROT sein (wie DECLINED)
-            if (["ILLNESS", "INJURY", "VACATION", "WORK", "OTHER"].includes(statusKey)) {
-                 statusKey = "DECLINED";
-            }
-
-            const lightClass = `light-${statusKey}`; // light-ATTENDING, light-DECLINED, etc.
+            if (["ILLNESS", "INJURY", "VACATION", "WORK", "OTHER"].includes(statusKey)) { statusKey = "DECLINED"; }
+            const lightClass = `light-${statusKey}`;
             const number = player.player_number ? `#${player.player_number}` : '#?';
-            
-            // Übersetzen des Status-Schlüssels und des Grundes
             let statusDisplay = STATUS_MAPPING[player.status] || player.status;
-            
             let reasonDisplay = player.reason;
-            if (STATUS_MAPPING[player.reason]) {
-                 reasonDisplay = STATUS_MAPPING[player.reason];
-            }
-
-            // Wenn Status und Grund gleich sind (z.B. bei Krankheit), zeige nur eines an
+            if (STATUS_MAPPING[player.reason]) { reasonDisplay = STATUS_MAPPING[player.reason]; }
             const reason = (reasonDisplay && reasonDisplay !== statusDisplay) ? ` (${reasonDisplay})` : '';
 
             itemEl.innerHTML = `
@@ -326,16 +303,59 @@
             availabilityListContainer.appendChild(itemEl);
         });
     }
+    
+    // --- NEU: ACWR Status Logic ---
+    async function loadACWRStatus(teamId) {
+        if (!teamId || teamId === 'null') {
+            acwrListContainer.innerHTML = '<p style="opacity: 0.6;">Bitte ein Team auswählen.</p>';
+            return;
+        }
+        acwrListContainer.innerHTML = '<p style="opacity: 0.6;">Lade Belastungsdaten...</p>';
+        try {
+            const response = await fetch(`/dashboard/acwr/${teamId}`);
+            if (response.status === 401) { window.logout(); return; }
+            if (!response.ok) throw new Error('ACWR-Daten konnten nicht geladen werden.');
+            const acwrData = await response.json();
+            renderACWRList(acwrData);
+        } catch (error) {
+            acwrListContainer.innerHTML = `<p class="error">FEHLER: ${error.message}</p>`;
+        }
+    }
+
+    function renderACWRList(data) {
+        acwrListContainer.innerHTML = '';
+        if (data.length === 0) {
+            acwrListContainer.innerHTML = '<p style="opacity: 0.6; font-size: 0.9em;">Noch keine Wellness-Daten vorhanden.</p>';
+            return;
+        }
+        
+        // Zeige nur relevante Spieler (Risiko > 0 oder Ratio vorhanden) - bereits vom Backend gefiltert
+        data.forEach(player => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'acwr-item';
+            const riskClass = `risk-${player.risk_level}`;
+            const number = player.player_number ? `#${player.player_number}` : '';
+            
+            itemEl.innerHTML = `
+                <div class="acwr-light ${riskClass}"></div>
+                <div class="player-info-acwr">
+                    <span>${number} <strong>${player.player_name}</strong></span>
+                    <span class="acwr-status-text">
+                        ${player.status_text} 
+                        <span class="acwr-ratio-value">(${player.acwr_ratio})</span>
+                    </span>
+                </div>
+            `;
+            acwrListContainer.appendChild(itemEl);
+        });
+    }
 
     // --- Initialisierung ---
     function initDashboard() {
-        // FIX: Korrigiere die initialen Werte, bevor loadTeams aufgerufen wird
         selectedTeamId = localStorage.getItem('selected_team_id');
         selectedTeamName = localStorage.getItem('selected_team_name');
-        
         console.log("initDashboard() wird aufgerufen.");
         loadTeams();
     }
-    
     document.addEventListener('DOMContentLoaded', initDashboard);
 </script>

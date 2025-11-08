@@ -1,4 +1,4 @@
-# DATEI: main.py (Registriert den neuen Athletic Router)
+# DATEI: main.py (Registriert den neuen Athletic Router und ACWR Endpunkt)
 import webview
 import threading
 import uvicorn
@@ -11,7 +11,7 @@ from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
 
 # WICHTIG: get_db und Trainer, Game, Team-Modelle importieren
-from backend.auth import router as auth_router, get_current_trainer, get_current_player_only
+from backend.auth import router as auth_router, get_current_trainer, get_current_player_only, check_team_auth_and_get_role # <--- check_team_auth_and_get_role hinzugefügt
 from backend.team import router as team_router, get_league_list 
 from backend.player import router as player_router, POSITIONS
 from backend.game import router as game_router
@@ -24,9 +24,10 @@ from backend.database import init_db, Trainer, SessionLocal, Game, Team, Player,
 from backend.player_portal import router as player_portal_router 
 from backend.calendar import router as calendar_router
 from backend.absence import router as absence_router
-from backend.dashboard_service import get_team_availability
+# WICHTIG: Beide Funktionen importieren
+from backend.dashboard_service import get_team_availability, get_team_acwr_status 
 from backend.drill import router as drill_router
-from backend.athletic import router as athletic_router # NEU: Athletic Router importieren
+from backend.athletic import router as athletic_router 
 
 # Kategorien für Aktionen
 ACTION_CATEGORIES = ["Offensiv", "Defensiv", "Torwart", "Sonstiges"]
@@ -49,7 +50,7 @@ app.include_router(player_portal_router)
 app.include_router(calendar_router) 
 app.include_router(absence_router)
 app.include_router(drill_router)
-app.include_router(athletic_router, prefix="/athletic", tags=["Athletics"]) # NEU: Athletic Router registrieren
+app.include_router(athletic_router, prefix="/athletic", tags=["Athletics"]) 
 
 # Jinja2 Templates für HTML-Seiten
 templates = Jinja2Templates(directory="frontend")
@@ -106,7 +107,20 @@ def get_dashboard_availability(
     current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db) 
 ):
+    # Optional: Berechtigungsprüfung hier einfügen, falls gewünscht
     return get_team_availability(db, team_id)
+
+# +++ NEUER ENDPUNKT FÜR ACWR IM DASHBOARD +++
+@app.get("/dashboard/acwr/{team_id}", response_model=List[Dict])
+def get_dashboard_acwr(
+    team_id: int,
+    current_trainer: Trainer = Depends(get_current_trainer),
+    db: Session = Depends(get_db)
+):
+    # Berechtigungsprüfung
+    check_team_auth_and_get_role(db, current_trainer.id, team_id)
+    
+    return get_team_acwr_status(db, team_id)
 
 
 # ==================================================

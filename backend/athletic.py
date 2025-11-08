@@ -1,10 +1,10 @@
 # DATEI: backend/athletic.py
-# +++ FIX: Korrigiert die fehlerhafte Trainer-Dependency-Injection (Behebt 500 Fehler) +++
+# +++ UPDATE: Nutzt nun den echten ACWR-Service +++
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
 
 from backend.database import (
@@ -12,6 +12,8 @@ from backend.database import (
     Trainer 
 )
 from backend.auth import get_current_player_only, get_current_trainer, check_team_auth_and_get_role
+# NEU: Import des ACWR Services
+from backend.acwr_service import get_player_acwr
 
 # Prefix entfernt, da er schon in main.py gesetzt wird
 router = APIRouter(
@@ -134,7 +136,7 @@ def get_latest_wellness_entry(
 @router.get("/wellness/history/{player_id}", response_model=List[WellnessResponse])
 def get_wellness_history(
     player_id: int,
-    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
     """ Liefert die Wellness-Historie eines Spielers (Trainer-Zugriff). """
@@ -161,7 +163,7 @@ def get_wellness_history(
 @router.post("/injuries/add", response_model=InjuryResponse)
 def create_injury(
     injury_data: InjuryCreate,
-    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
     """ Erlaubt einem Trainer, eine neue Verletzung für einen Spieler zu loggen. """
@@ -197,7 +199,7 @@ def create_injury(
 def update_injury(
     injury_id: int,
     update_data: InjuryUpdate,
-    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
     """ Aktualisiert eine bestehende Verletzung. """
@@ -229,7 +231,7 @@ def update_injury(
 @router.get("/injuries/list/{player_id}", response_model=List[InjuryResponse])
 def list_player_injuries(
     player_id: int,
-    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
     """ Listet alle Verletzungen eines Spielers auf (Trainer-Zugriff). """
@@ -253,17 +255,17 @@ def list_player_injuries(
 
 
 # ==================================================
-# ENDPUNKTE: BELASTUNGS-ANALYSE (NEU: ACWR Platzhalter)
+# ENDPUNKTE: BELASTUNGS-ANALYSE (NEU: ECHTE ACWR BERECHNUNG)
 # ==================================================
 
-@router.get("/acwr/report/{player_id}", response_model=Dict[str, float])
-def get_acwr_report(
+@router.get("/acwr/report/{player_id}")
+def get_acwr_report_endpoint(
     player_id: int,
-    current_trainer: Trainer = Depends(get_current_trainer), # [FIX] Korrekte Injection
+    current_trainer: Trainer = Depends(get_current_trainer),
     db: Session = Depends(get_db)
 ):
     """ 
-    [Platzhalter] Berechnet die Akute/Chronische Belastung (ACWR) (Phase 11). 
+    Berechnet die Akute/Chronische Belastung (ACWR) basierend auf echten Wellness-Daten.
     """
     player = db.query(Player).filter(Player.id == player_id).first()
     if not player:
@@ -271,9 +273,7 @@ def get_acwr_report(
     
     check_team_auth_and_get_role(db, current_trainer.id, player.team_id)
 
-    return {
-        "acute_load_7d": 1500.0,
-        "chronic_load_28d": 1350.0,
-        "acwr_ratio": 1.11,
-        "is_high_risk": 0 
-    }
+    # Nutze den neuen Service für die echte Berechnung
+    acwr_data = get_player_acwr(db, player_id)
+    
+    return acwr_data

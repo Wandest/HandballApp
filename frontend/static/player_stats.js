@@ -1,6 +1,5 @@
 // DATEI: frontend/static/player_stats.js
-// +++ FIX: Stellt den visuellen Fortschrittsbalken für Range-Slider im Wellness Log wieder her. +++
-// +++ FIX: Fügt die fehlende renderCutterPlaylist Funktion hinzu und exportiert sie. +++
+// +++ FIX: Präzise Berechnung des Fortschrittsbalkens für Wellness-Slider +++
 
 (function() {
     
@@ -12,7 +11,7 @@
     var statsContainerField, statsContainerGoalie, statsContainerCustom, playerStatsMessage;
     var cutterActionSelect, cutterGameSelect, cutterPlaylistContainer;
     
-    // NEU: Wellness DOM-Elemente
+    // Wellness DOM-Elemente
     var wellnessForm, sleepQualityInput, muscleSorenessInput, stressLevelInput, sessionRPEInput, wellnessMessageDiv;
     var wellnessStatusIndicator;
     
@@ -46,22 +45,27 @@
     
     /**
      * Setzt die Skala (1-5 oder 1-10) visuell und aktualisiert die CSS-Variablen für den Fortschrittsbalken.
+     * [FIX] Berechnet jetzt den exakten Prozentwert basierend auf min/max.
      */
     function setScaleValue(elementId, value) {
         const input = document.getElementById(elementId);
-        // Sicherstellen, dass max-Wert vorhanden ist (Standard 5 oder 10)
-        const max = input ? input.max || 5 : 5;
-
-        // 1. Wert für das Range-Input setzen
-        if (input) { 
-             input.value = value; 
-             // 2. WICHTIG: CSS Variable setzen, um den Fortschrittsbalken zu steuern
-             // Der Wert muss als String auf dem style-Attribut des Inputs gesetzt werden.
-             input.style.setProperty('--value', value);
-             input.style.setProperty('--max', max);
+        if (input) {
+             const max = parseFloat(input.max) || 5;
+             const min = parseFloat(input.min) || 0;
+             const val = parseFloat(value) || min;
+             
+             // Wenn min == max, vermeiden wir Division durch Null (sollte nicht vorkommen)
+             const range = max - min;
+             let percent = 0;
+             if (range > 0) {
+                 percent = ((val - min) / range) * 100;
+             }
+             
+             input.value = val; 
+             // Wir setzen die neue CSS Variable --percent
+             input.style.setProperty('--percent', `${percent}%`);
         }
         
-        // 3. Wert für das Span-Element setzen
         const valueSpan = document.getElementById(`${elementId}-value`);
         if (valueSpan) {
              valueSpan.textContent = value;
@@ -71,35 +75,24 @@
 
 
     // ==================================================
-    // --- W E L L N E S S   L O G I K (Phase 11) ---
+    // --- W E L L N E S S   L O G I K ---
     // ==================================================
     
-    /**
-     * Lädt den letzten Wellness-Eintrag, um Doppeleinträge zu vermeiden.
-     */
     async function loadLatestWellness() {
         if (!wellnessStatusIndicator) return;
-        
-        // Initialer Ladezustand
         wellnessStatusIndicator.innerHTML = `Lade Status...`;
         wellnessStatusIndicator.className = 'message';
-        
         try {
             const response = await fetch('/athletic/wellness/latest');
             if (response.status === 401) { logout(); return; }
             if (!response.ok) {
-                 if (response.status === 404) {
-                      throw new Error('Keine bisherigen Logs gefunden.');
-                 }
+                 if (response.status === 404) { throw new Error('Keine bisherigen Logs gefunden.'); }
                  throw new Error('Wellness-Daten konnten nicht geladen werden.');
             }
-            
             const latestLog = await response.json();
-            
             if (latestLog) {
                 const loggedDate = new Date(latestLog.logged_at).toDateString();
                 const today = new Date().toDateString();
-                
                 if (loggedDate === today) {
                     wellnessStatusIndicator.innerHTML = `✅ **Heute geloggt** (${new Date(latestLog.logged_at).toLocaleTimeString()}). Nur ein Eintrag pro Tag erlaubt.`;
                     wellnessStatusIndicator.className = 'message success';
@@ -110,14 +103,11 @@
                     if (wellnessForm) wellnessForm.style.pointerEvents = 'auto';
                 }
             } else {
-                // NEUE ANZEIGE: Wenn keine Logs existieren
                 wellnessStatusIndicator.innerHTML = `⚠️ Keine bisherigen Logs gefunden. Bitte logge heute deinen Zustand.`;
                 wellnessStatusIndicator.className = 'message error';
                 if (wellnessForm) wellnessForm.style.pointerEvents = 'auto';
             }
-            
         } catch (error) {
-             // Wenn 404 (keine Logs), behandeln wir das als leeren Status
              if (error.message.includes('Keine bisherigen Logs')) {
                  wellnessStatusIndicator.innerHTML = `⚠️ Keine bisherigen Logs gefunden. Bitte logge heute deinen Zustand.`;
                  wellnessStatusIndicator.className = 'message error';
@@ -130,12 +120,8 @@
         }
     }
     
-    /**
-     * Speichert den neuen Wellness-Eintrag.
-     */
     async function handleLogWellness(event) {
         event.preventDefault();
-        
         const sleep = parseInt(sleepQualityInput.value);
         const muscle = parseInt(muscleSorenessInput.value);
         const stress = parseInt(stressLevelInput.value);
@@ -146,37 +132,25 @@
              wellnessMessageDiv.className = 'message error';
              return;
         }
-
-        const payload = {
-            sleep_quality: sleep,
-            muscle_soreness: muscle,
-            stress_level: stress,
-            session_rpe: rpeValue
-        };
-        
+        const payload = { sleep_quality: sleep, muscle_soreness: muscle, stress_level: stress, session_rpe: rpeValue };
         wellnessMessageDiv.textContent = 'Speichere Wellness-Daten...';
         wellnessMessageDiv.className = 'message';
-        
         try {
             const response = await fetch('/athletic/wellness/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
             if (response.status === 401) { logout(); return; }
             const data = await response.json();
-            
             if (response.ok) {
                  showToast('✅ Wellness-Eintrag gespeichert!', "success");
-                 
-                 // Skalen-Displays zurücksetzen
+                 // Skalen-Displays zurücksetzen (auf Standardwerte 3 bzw. 5)
                  setScaleValue('sleep-quality-input', 3);
                  setScaleValue('muscle-soreness-input', 3);
                  setScaleValue('stress-level-input', 3);
                  setScaleValue('session-rpe-input', 5);
-                 
-                 loadLatestWellness(); // Status aktualisieren
+                 loadLatestWellness(); 
             } else {
                  throw new Error(data.detail || 'Fehler beim Speichern des Logs.');
             }
@@ -187,187 +161,115 @@
     }
 
     // ==================================================
-    // --- S T A T I S T I K - L O G I K (unverändert) ---
+    // --- S T A T I S T I K   &   C L I P S ---
     // ==================================================
     
     async function loadMyStats() {
         if (!statsContainerField) return; 
-
         try {
-            // Initialen Ladezustand setzen
             statsContainerField.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade deine Feld-Statistik...</p>';
             statsContainerGoalie.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade deine Torwart-Statistik...</p>';
             statsContainerCustom.innerHTML = '<p style="opacity: 0.6; text-align: center;">Lade deine Team-Aktionen...</p>';
-            
             const response = await fetch('/portal/stats');
             if (response.status === 401) { logout(); return; }
-            
             const stats = await response.json(); 
-            
-            if (!response.ok) {
-                 const errorMsg = stats.detail || `Fehler beim Laden der Statistik: Status ${response.status}`;
-                 throw new Error(errorMsg);
-            }
-            
-            if (playerStatsMessage) {
-                 playerStatsMessage.textContent = '';
-                 playerStatsMessage.className = 'message';
-            }
-
+            if (!response.ok) throw new Error(stats.detail || `Fehler beim Laden der Statistik.`);
+            if (playerStatsMessage) { playerStatsMessage.textContent = ''; playerStatsMessage.className = 'message'; }
             displayMyStats(stats); 
-            
         } catch (error) {
-            console.error("Fehler beim Laden meiner Statistik:", error);
-            
-            if (playerStatsMessage) {
-                 playerStatsMessage.textContent = `❌ ${error.message}`;
-                 playerStatsMessage.className = 'message error';
-            }
-            
+            if (playerStatsMessage) { playerStatsMessage.textContent = `❌ ${error.message}`; playerStatsMessage.className = 'message error'; }
             if (fieldSection) fieldSection.style.display = 'none';
             if (goalieSection) goalieSection.style.display = 'none';
             if (customSection) customSection.style.display = 'none';
         }
     }
-    window.loadMyStats = loadMyStats;
 
     function displayMyStats(stats) {
         if (fieldSection) fieldSection.style.display = 'block';
         if (goalieSection) goalieSection.style.display = 'block';
         if (customSection) customSection.style.display = 'block';
-
         statsContainerField.innerHTML = stats.field_stats || '<p style="opacity: 0.6; text-align: center;">Keine Feldspieler-Statistik vorhanden.</p>';
         statsContainerGoalie.innerHTML = stats.goalie_stats || '<p style="opacity: 0.6; text-align: center;">Keine Torwart-Statistik vorhanden.</p>';
         statsContainerCustom.innerHTML = stats.custom_stats || '<p style="opacity: 0.6; text-align: center;">Keine Team-Aktionen getrackt.</p>';
-
         if (!stats.field_stats) fieldSection.style.display = 'none';
         if (!stats.goalie_stats) goalieSection.style.display = 'none';
         if (!stats.custom_stats) customSection.style.display = 'none';
     }
-
-
-    // ==================================================
-    // --- V I D E O - C L I P S - L O G I K ---
-    // ==================================================
     
     async function loadMyClips() {
         if (!cutterPlaylistContainer) return;
-
         cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Lade deine Video-Clips...</p>';
-        
         try {
             const response = await fetch('/portal/clips');
             if (response.status === 401) { logout(); return; }
-            
             const data = await response.json(); 
-            if (!response.ok) {
-                 throw new Error(data.detail || `Fehler beim Laden der Clips: Status ${response.status}`);
-            }
-            
+            if (!response.ok) throw new Error(data.detail || `Fehler beim Laden der Clips.`);
             myActionData = data; 
-            
-            // [FIX] Initialisiere den Video-Cutter, falls noch nicht geschehen
-            if (typeof window.initVideoCutter === 'function') {
-                window.initVideoCutter();
-            }
-            
+            if (typeof window.initVideoCutter === 'function') { window.initVideoCutter(); }
             populateCutterFilters();
             renderCutterPlaylist();
-            
         } catch (error) {
-            console.error("Fehler beim Laden meiner Clips:", error);
             cutterPlaylistContainer.innerHTML = `<p class="error">❌ Fehler: ${error.message}</p>`;
         }
     }
-    window.loadMyClips = loadMyClips; 
 
     function populateCutterFilters() {
         if (myActionData.length === 0) return;
-
         const actions = new Set();
         const games = new Map();
-
         myActionData.forEach(item => {
             actions.add(item.action_type);
             games.set(item.game_id, item.game_opponent);
         });
-
-        // Game-Dropdown füllen
         if (cutterGameSelect.options.length <= 1) {
              cutterGameSelect.innerHTML = '<option value="all" selected>Alle Spiele</option>';
-             games.forEach((opponent, id) => {
-                  cutterGameSelect.innerHTML += `<option value="${id}">vs. ${opponent}</option>`;
-             });
+             games.forEach((opponent, id) => { cutterGameSelect.innerHTML += `<option value="${id}">vs. ${opponent}</option>`; });
         }
-        
-        // Action-Dropdown füllen
         if (cutterActionSelect.options.length <= 1) {
              cutterActionSelect.innerHTML = '<option value="all" selected>Alle Aktionen</option>';
-             actions.forEach(action => {
-                  cutterActionSelect.innerHTML += `<option value="${action}">${action}</option>`;
-             });
+             actions.forEach(action => { cutterActionSelect.innerHTML += `<option value="${action}">${action}</option>`; });
         }
     }
 
-    // [NEU] HIER WIRD DIE FEHLENDE FUNKTION HINZUGEFÜGT UND GLOBAL EXPORTIERT
     function renderCutterPlaylist() {
         if (!cutterActionSelect || !cutterGameSelect || !cutterPlaylistContainer) return;
-        
         const filterActionType = cutterActionSelect.value;
         const filterGameId = cutterGameSelect.value;
-
         const filteredData = myActionData.filter(item => {
-            // NUR Aktionen, die einen Video-Zeitstempel haben
             if (!item.video_timestamp) return false;
-            
             const actionMatch = filterActionType === 'all' || item.action_type === filterActionType;
             const gameMatch = filterGameId === 'all' || item.game_id == filterGameId;
             return actionMatch && gameMatch;
         });
-
         cutterPlaylistContainer.innerHTML = '';
         if (filteredData.length === 0) {
             cutterPlaylistContainer.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 20px;">Keine Szenen für diese Filterung.</p>';
             return;
         }
-
         filteredData.forEach(item => {
             const itemEl = document.createElement('div');
             itemEl.className = 'playlist-item';
             itemEl.id = `playlist-item-${item.id}`;
-            
-            // Escape für JSON-Übergabe an playCut (falls nötig, hier direktes Objekt)
-            
-            itemEl.innerHTML = `
-                <div>
-                    <span class="time">[${item.video_timestamp}]</span>
-                    <strong>${item.action_type}</strong>
-                </div>
-                <span class="opponent">Spiel: vs. ${item.game_opponent} (${item.time_in_game})</span>
-            `;
+            const playerNameDisplay = item.player_name ? `(${item.player_name})` : '';
+            itemEl.innerHTML = `<div><span class="time">[${item.video_timestamp}]</span><strong>${item.action_type}</strong> ${playerNameDisplay}</div><span class="opponent">Spiel: vs. ${item.game_opponent} (${item.time_in_game})</span>`;
             itemEl.onclick = () => playCut(item); 
             cutterPlaylistContainer.appendChild(itemEl);
         });
     }
-    window.renderCutterPlaylist = renderCutterPlaylist; // GLOBAL FÜR AUFRUFE
-
+    window.renderCutterPlaylist = renderCutterPlaylist; 
 
     // --- Initialisierung ---
     function initPlayerStats() {
-        // DOM-Zuweisung
         statsContainerField = document.getElementById('stats-table-container-field-season');
         statsContainerGoalie = document.getElementById('stats-table-container-goalie-season');
         statsContainerCustom = document.getElementById('stats-table-container-custom-season');
         playerStatsMessage = document.getElementById('player-stats-message');
-        cutterActionSelect = document.getElementById('cutter-action-select');
-        cutterGameSelect = document.getElementById('cutter-game-select');
-        cutterPlaylistContainer = document.getElementById('cutter-playlist-container');
-        
         fieldSection = document.getElementById('field-stats-section');
         goalieSection = document.getElementById('goalie-stats-section');
         customSection = document.getElementById('custom-stats-section');
-        
-        // NEU: Wellness-DOM-Zuweisung
+        cutterActionSelect = document.getElementById('cutter-action-select');
+        cutterGameSelect = document.getElementById('cutter-game-select');
+        cutterPlaylistContainer = document.getElementById('cutter-playlist-container');
         wellnessForm = document.getElementById('wellness-form');
         sleepQualityInput = document.getElementById('sleep-quality-input');
         muscleSorenessInput = document.getElementById('muscle-soreness-input');
@@ -376,39 +278,23 @@
         wellnessMessageDiv = document.getElementById('wellness-message');
         wellnessStatusIndicator = document.getElementById('wellness-status-indicator');
 
-        // Lade Logik nur auf der Dashboard-Seite
         if (window.location.pathname === '/player-dashboard') {
-             
-             // Lade alles parallel
-             loadMyStats();
-             loadMyClips(); 
-             loadLatestWellness(); 
-             
-             // Event Listener für Wellness-Formular
+             loadMyStats(); loadMyClips(); loadLatestWellness(); 
              if (wellnessForm) {
-                 // WICHTIG: Range-Input Listener hinzufügen, um Live-Update zu gewährleisten
                  [sleepQualityInput, muscleSorenessInput, stressLevelInput, sessionRPEInput].forEach(input => {
-                    if (input) {
-                        input.addEventListener('input', () => setScaleValue(input.id, input.value));
-                    }
+                    if (input) { input.addEventListener('input', () => setScaleValue(input.id, input.value)); }
                  });
-                 
                  wellnessForm.addEventListener('submit', handleLogWellness);
              }
-             
-             // Initialisiere die Skalen-Displays (setzt auch die CSS-Variablen)
-             // Wir rufen setScaleValue einmal auf, um den initialen Wert (3 bzw. 5) anzuzeigen
+             // Initiale Werte setzen
              if (sleepQualityInput) setScaleValue('sleep-quality-input', sleepQualityInput.value);
              if (muscleSorenessInput) setScaleValue('muscle-soreness-input', muscleSorenessInput.value);
              if (stressLevelInput) setScaleValue('stress-level-input', stressLevelInput.value);
              if (sessionRPEInput) setScaleValue('session-rpe-input', sessionRPEInput.value);
              
-             // Event Listeners für Filter
              if (cutterActionSelect) cutterActionSelect.addEventListener('change', renderCutterPlaylist);
              if (cutterGameSelect) cutterGameSelect.addEventListener('change', renderCutterPlaylist);
         }
     }
-
     document.addEventListener('DOMContentLoaded', initPlayerStats);
-    
-})(); // ENDE IIFE
+})();
